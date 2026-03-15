@@ -1,13 +1,13 @@
 /**
- * Notification scheduler: sends "Время X" + [Продолжить] at configured day+time per user
+ * Notification scheduler: sends "Время X" + [Продолжить] at configured day+time per user.
+ * Sends to Telegram and/or MAX per user (tg_id / max_id).
  */
 import cron from 'node-cron';
-import type { Api } from 'grammy';
 import type { Pool } from 'pg';
-import { InlineKeyboard } from 'grammy';
-import { logger } from './logger.js';
+import { logger } from '../observability/logger.js';
 import { parseTimezoneOffset } from '../domain/timezone.js';
 import { getWeekId } from '../services/plan-service.js';
+import type { InlineButton } from '../bot/transport/types.js';
 
 const NOTIFY_WINDOW_MIN = 7;
 
@@ -15,12 +15,18 @@ function dateStrToWeekId(dateStr: string): string {
   return getWeekId(new Date(dateStr + 'T12:00:00Z'));
 }
 
-export function initNotificationScheduler(pool: Pool, botApi: Api) {
+export interface NotificationSender {
+  sendToTelegram(chatId: string, text: string, buttons?: InlineButton[][]): Promise<void>;
+  sendToMax?(maxUserId: string, text: string, buttons?: InlineButton[][]): Promise<void>;
+}
+
+export function initNotificationScheduler(pool: Pool, sender: NotificationSender) {
   cron.schedule('*/15 * * * *', async () => {
     try {
       const rows = await pool.query<{
         user_id: string;
-        tg_id: string;
+        tg_id: string | null;
+        max_id: string | null;
         timezone: string | null;
         plan_notify_day: number | null;
         plan_notify_time: string | null;
@@ -32,7 +38,7 @@ export function initNotificationScheduler(pool: Pool, botApi: Api) {
         last_reflect_notify_date: string | null;
         last_review_notify_week_id: string | null;
       }>(
-        `SELECT s.user_id, u.tg_id, s.timezone,
+        `SELECT s.user_id, u.tg_id, u.max_id, s.timezone,
                 s.plan_notify_day, s.plan_notify_time,
                 s.reflect_notify_days, s.reflect_notify_time,
                 s.review_notify_day, s.review_notify_time,
@@ -89,47 +95,61 @@ export function initNotificationScheduler(pool: Pool, botApi: Api) {
           );
         };
 
+        const planButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_plan' }]];
+        const reflectButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_reflect' }]];
+        const reviewButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_review' }]];
+
+        const sendToUserChannels = async (
+          text: string,
+          buttons: InlineButton[][],
+          onSuccess: () => Promise<void>
+        ) => {
+          let ok = false;
+          if (r.tg_id) {
+            try {
+              await sender.sendToTelegram(r.tg_id, text, buttons);
+              ok = true;
+            } catch (e) {
+              logger.warn({ err: e, userId: r.user_id }, 'Notify Telegram send failed');
+            }
+          }
+          if (r.max_id && sender.sendToMax) {
+            try {
+              await sender.sendToMax(r.max_id, text, buttons);
+              ok = true;
+            } catch (e) {
+              logger.warn({ err: e, userId: r.user_id }, 'Notify MAX send failed');
+            }
+          }
+          if (ok) await onSuccess();
+        };
+
         if (check(r.plan_notify_day, r.plan_notify_time, 'plan') && r.last_plan_notify_week_id !== userWeekId) {
-          await botApi
-            .sendMessage(r.tg_id, '⏰ Время планирования', {
-              reply_markup: new InlineKeyboard().text('Продолжить', 'notify_plan'),
-            })
-            .then(async () => {
-              await pool.query(
-                'UPDATE user_settings SET last_plan_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
-                [userWeekId, r.user_id]
-              );
-              logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify plan sent');
-            })
-            .catch((e) => logger.warn({ err: e, userId: r.user_id }, 'Notify plan send failed'));
+          await sendToUserChannels('⏰ Время планирования', planButtons, async () => {
+            await pool.query(
+              'UPDATE user_settings SET last_plan_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
+              [userWeekId, r.user_id]
+            );
+            logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify plan sent');
+          });
         }
         if (checkReflect() && r.last_reflect_notify_date !== userDateStr) {
-          await botApi
-            .sendMessage(r.tg_id, '⏰ Время рефлексии', {
-              reply_markup: new InlineKeyboard().text('Продолжить', 'notify_reflect'),
-            })
-            .then(async () => {
-              await pool.query(
-                'UPDATE user_settings SET last_reflect_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',
-                [userDateStr, r.user_id]
-              );
-              logger.debug({ userId: r.user_id, date: userDateStr }, 'Notify reflect sent');
-            })
-            .catch((e) => logger.warn({ err: e, userId: r.user_id }, 'Notify reflect send failed'));
+          await sendToUserChannels('⏰ Время рефлексии', reflectButtons, async () => {
+            await pool.query(
+              'UPDATE user_settings SET last_reflect_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',
+              [userDateStr, r.user_id]
+            );
+            logger.debug({ userId: r.user_id, date: userDateStr }, 'Notify reflect sent');
+          });
         }
         if (check(r.review_notify_day, r.review_notify_time, 'review') && r.last_review_notify_week_id !== userWeekId) {
-          await botApi
-            .sendMessage(r.tg_id, '⏰ Время обзора', {
-              reply_markup: new InlineKeyboard().text('Продолжить', 'notify_review'),
-            })
-            .then(async () => {
-              await pool.query(
-                'UPDATE user_settings SET last_review_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
-                [userWeekId, r.user_id]
-              );
-              logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify review sent');
-            })
-            .catch((e) => logger.warn({ err: e, userId: r.user_id }, 'Notify review send failed'));
+          await sendToUserChannels('⏰ Время обзора', reviewButtons, async () => {
+            await pool.query(
+              'UPDATE user_settings SET last_review_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
+              [userWeekId, r.user_id]
+            );
+            logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify review sent');
+          });
         }
       }
     } catch (err) {

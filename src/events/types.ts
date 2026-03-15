@@ -72,7 +72,8 @@ export interface ReviewGeneratedPayload {
 
 export interface UserRegisteredPayload {
   user_id: string; // UUID, internal
-  tg_id: string; // Telegram platform ID
+  tg_id?: string; // Telegram platform ID
+  max_id?: string; // MAX messenger platform ID (at least one of tg_id, max_id)
 }
 
 export interface PlanCreatedEvent extends BaseEvent {

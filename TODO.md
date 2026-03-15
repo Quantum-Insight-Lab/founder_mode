@@ -39,3 +39,5 @@
 - [x] **Авторебут сервера** — порядок: Docker → Postgres; systemd unit founder-mode с After=docker.service и ExecStartPre=wait-for-db.js (см. OPERATOR_PLAN §6.4, deploy/founder-mode.service).
 
 - [ ] **Передача данных в llm по рефлексии** - решить, добавлять ли в рефлексию план недели и рефлексии за другие дни.
+
+- [ ] **Время уведомлений*** - уменьшить? в Максе шрифт съедает часть текста. Дни рефлексий тоже уменьшить текст.

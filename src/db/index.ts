@@ -7,6 +7,11 @@ export async function getUserByTgId(p: Pool, tgId: string): Promise<{ user_id: s
   return r.rows[0] ?? null;
 }
 
+export async function getUserByMaxId(p: Pool, maxId: string): Promise<{ user_id: string } | null> {
+  const r = await p.query<{ user_id: string }>('SELECT user_id FROM users WHERE max_id = $1 LIMIT 1', [maxId]);
+  return r.rows[0] ?? null;
+}
+
 export async function markOnboarded(p: Pool, userId: string): Promise<void> {
   await p.query('UPDATE users SET onboarded_at = NOW() WHERE user_id = $1', [userId]);
 }

@@ -14,9 +14,8 @@ import { createReflectionService } from '../../services/reflection-service.js';
 import { createReviewService } from '../../services/review-service.js';
 import { createSettingsService, formatDay, formatDays, formatTime } from '../../services/settings-service.js';
 import { createLLMClient } from '../../llm/client.js';
-import { getPool, getUserByTgId, markOnboarded, countRows } from '../../db/index.js';
+import { getPool, getUserByTgId, getUserByMaxId, markOnboarded, countRows } from '../../db/index.js';
 import { initTokenSpikeChecker } from '../../observability/token-spike.js';
-import { notifyDeveloper } from '../../observability/alert.js';
 import {
   SETTINGS_NOTIFICATIONS,
   SETTINGS_PLAN,
@@ -44,7 +43,8 @@ function formatErrorForUser(err: unknown): string {
   return SERVICE_ERROR_FALLBACK;
 }
 
-export function registerHandlers(bot: Bot<BotContext>) {
+/** Creates handler deps (including ensureUser) for use in index and registerHandlers. */
+export function createAppDeps(): HandlerDeps {
   const pool = getPool();
   const eventStore = createEventStore(pool);
   const projectors = createProjectors(pool);
@@ -55,21 +55,27 @@ export function registerHandlers(bot: Bot<BotContext>) {
   const reviewService = createReviewService(eventStore, serviceDeps);
   const settingsService = createSettingsService(pool);
 
-  initTokenSpikeChecker(pool, bot.api);
-
-  async function ensureUser(tgId: string): Promise<string> {
-    const row = await pool.query<{ user_id: string }>('SELECT user_id FROM users WHERE tg_id = $1 LIMIT 1', [tgId]);
+  async function ensureUser(channel: 'telegram' | 'max', externalId: string): Promise<string> {
+    const col = channel === 'telegram' ? 'tg_id' : 'max_id';
+    const row = await pool.query<{ user_id: string }>(
+      `SELECT user_id FROM users WHERE ${col} = $1 LIMIT 1`,
+      [externalId]
+    );
     if (row.rows.length > 0) return row.rows[0].user_id;
 
     const userId = randomUUID();
+    const payload =
+      channel === 'telegram'
+        ? { user_id: userId, tg_id: externalId }
+        : { user_id: userId, max_id: externalId };
     const appended = await eventStore.append({
       event_type: EVENT_TYPES.UserRegistered,
       actor: { id: userId, role: 'user' },
       subject: { entity: 'User', id: userId },
-      payload: { user_id: userId, tg_id: tgId },
+      payload,
       causation_id: null,
       correlation_id: null,
-      idempotency_key: `user:${tgId}`,
+      idempotency_key: `user:${channel}:${externalId}`,
       schema_version: 1,
     });
     await projectors.handleEvent(appended);
@@ -85,21 +91,23 @@ export function registerHandlers(bot: Bot<BotContext>) {
   }
 
   async function handleLlmReply(
-    ctx: BotContext,
+    ctx: import('../transport/types.js').AppContext,
     rawPost: string,
     userId: string,
     context: 'plan' | 'reflect' | 'review'
   ): Promise<void> {
     const formatted = formatLlmResponse(rawPost?.trim() || '');
     if (!formatted) {
-      const { logger } = await import('../../observability/logger.js');
       logger.error({ userId }, `${context}: empty LLM response`);
-      notifyDeveloper(ctx.api, new Error('Empty LLM response'), context, userId);
+      ctx.alertError?.(new Error('Empty LLM response'), context, userId);
     }
     await ctx.reply(formatted || SERVICE_ERROR_FALLBACK, { parse_mode: 'HTML' });
   }
 
-  async function showSettingsMenu(ctx: BotContext, userId: string): Promise<void> {
+  async function showSettingsMenu(
+    ctx: import('../transport/types.js').AppContext,
+    userId: string
+  ): Promise<void> {
     const settings = await settingsService.getOrCreate(userId);
     const notif = settings.notifications_enabled ? 'Вкл' : 'Выкл';
     const planStr = settings.plan_notify_day != null
@@ -120,22 +128,27 @@ export function registerHandlers(bot: Bot<BotContext>) {
       `<b>${SETTINGS_REVIEW}</b>: ${reviewStr}\n` +
       `<b>${SETTINGS_TIMEZONE}</b>: ${tzStr}`;
 
-    const { InlineKeyboard } = await import('grammy');
-    const kb = new InlineKeyboard()
-      .text(notif === 'Вкл' ? 'Выкл уведомления' : 'Вкл уведомления', 'settings_notif_toggle')
-      .row()
-      .text('План', 'settings_plan')
-      .text('Рефлексия', 'settings_reflect')
-      .text('Обзор', 'settings_review')
-      .row()
-      .text('Таймзона', 'settings_tz');
-
-    await ctx.reply(text, { parse_mode: 'HTML', reply_markup: kb });
+    const reply_markup: import('../transport/types.js').InlineButton[][] = [
+      [
+        {
+          text: notif === 'Вкл' ? 'Выкл уведомления' : 'Вкл уведомления',
+          callback_data: 'settings_notif_toggle',
+        },
+      ],
+      [
+        { text: 'План', callback_data: 'settings_plan' },
+        { text: 'Рефлексия', callback_data: 'settings_reflect' },
+        { text: 'Обзор', callback_data: 'settings_review' },
+      ],
+      [{ text: 'Таймзона', callback_data: 'settings_tz' }],
+    ];
+    await ctx.reply(text, { parse_mode: 'HTML', reply_markup });
   }
 
-  const deps: HandlerDeps = {
+  return {
     pool,
     getUserByTgId: (tgId) => getUserByTgId(pool, tgId),
+    getUserByMaxId: (maxId) => getUserByMaxId(pool, maxId),
     markOnboarded: (userId) => markOnboarded(pool, userId),
     ensureUser,
     getReflectDate,
@@ -148,7 +161,10 @@ export function registerHandlers(bot: Bot<BotContext>) {
     settingsService,
     showSettingsMenu,
   };
+}
 
+export function registerHandlers(bot: Bot<BotContext>, deps: HandlerDeps) {
+  initTokenSpikeChecker(deps.pool, bot.api);
   registerOnboardingHandlers(bot, deps);
   registerPlanHandlers(bot, deps);
   registerReflectHandlers(bot, deps);

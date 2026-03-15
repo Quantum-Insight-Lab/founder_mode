@@ -1,15 +1,21 @@
+/**
+ * Drop public schema and run migrations from scratch.
+ * Use only for local/dev or empty DBs — destroys all data.
+ */
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-async function migrate(dbUrl: string, label: string) {
+async function resetAndMigrate(dbUrl: string, label: string) {
   const pool = new Pool({ connectionString: dbUrl });
-  for (const name of ['001_init.sql']) {
-    const sql = readFileSync(resolve(process.cwd(), 'migrations', name), 'utf-8');
-    await pool.query(sql);
-    console.log(`Migration ${name} applied to ${label}`);
-  }
+  await pool.query('DROP SCHEMA IF EXISTS public CASCADE');
+  await pool.query('CREATE SCHEMA public');
+  console.log(`Schema reset for ${label}`);
+
+  const sql = readFileSync(resolve(process.cwd(), 'migrations', '001_init.sql'), 'utf-8');
+  await pool.query(sql);
+  console.log(`Migration 001_init.sql applied to ${label}`);
   await pool.end();
 }
 
@@ -23,7 +29,7 @@ async function main() {
   }
 
   for (const { url, label } of urls) {
-    await migrate(url, label);
+    await resetAndMigrate(url, label);
   }
 }
 

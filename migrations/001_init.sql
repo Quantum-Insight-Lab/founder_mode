@@ -23,12 +23,14 @@ CREATE INDEX IF NOT EXISTS idx_events_actor ON events(actor_id);
 CREATE INDEX IF NOT EXISTS idx_events_occurred ON events(occurred_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_events_idempotency ON events(idempotency_key) WHERE idempotency_key IS NOT NULL;
 
--- Users (user_id = internal ID, tg_id = Telegram platform ID; future: user_connections for multi-messenger)
+-- Users (user_id = internal ID; tg_id / max_id = platform IDs, at least one required)
 CREATE TABLE IF NOT EXISTS users (
   user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tg_id VARCHAR(64) UNIQUE NOT NULL,
+  tg_id VARCHAR(64) UNIQUE NULL,
+  max_id VARCHAR(64) UNIQUE NULL,
   onboarded_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT users_at_least_one_channel CHECK (tg_id IS NOT NULL OR max_id IS NOT NULL)
 );
 
 -- User settings (timezone, notifications, review question)

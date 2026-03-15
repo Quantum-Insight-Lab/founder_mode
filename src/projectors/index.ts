@@ -36,11 +36,21 @@ export function createProjectors(pool: Pool) {
   };
 
   async function projectUser(event: UserRegisteredEvent): Promise<void> {
-    const { user_id, tg_id } = event.payload;
-    await pool.query(
-      `INSERT INTO users (user_id, tg_id) VALUES ($1, $2) ON CONFLICT (tg_id) DO NOTHING`,
-      [user_id, tg_id]
-    );
+    const { user_id, tg_id, max_id } = event.payload;
+    if (tg_id) {
+      await pool.query(
+        `INSERT INTO users (user_id, tg_id, max_id) VALUES ($1, $2, NULL)
+         ON CONFLICT (tg_id) DO NOTHING`,
+        [user_id, tg_id]
+      );
+    }
+    if (max_id) {
+      await pool.query(
+        `INSERT INTO users (user_id, tg_id, max_id) VALUES ($1, NULL, $2)
+         ON CONFLICT (max_id) DO NOTHING`,
+        [user_id, max_id]
+      );
+    }
   }
 
   async function projectPlan(event: PlanCreatedEvent | PlanUpdatedEvent): Promise<void> {

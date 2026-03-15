@@ -34,6 +34,6 @@ export interface SessionData {
 export type BotContext = Context & SessionFlavor<SessionData>;
 
 /** Ensures session object exists. Use in handlers that mutate session. */
-export function ensureSession(ctx: BotContext): void {
+export function ensureSession(ctx: BotContext | { session?: SessionData }): void {
   ctx.session ??= {};
 }

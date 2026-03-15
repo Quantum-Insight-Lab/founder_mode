@@ -1,0 +1,35 @@
+{
+    "day_range": {
+        "start": "YYYY-MM-DD",
+        "end": "YYYY-MM-DD"
+    },
+    "weekly_plan": {
+        "current_state": "string",
+        "main_focus": "string",
+        "weekly_result": "string",
+        "why_now": "string",
+        "distractions": "string",
+        "main_risk": "string"
+    },
+    "daily_reflections": [
+        {
+            "day": "Понедельник",
+            "had_movement": true,
+            "movement_branch": "yes",
+            "what_moved": "string",
+            "attention_sink": "string",
+            "tomorrow_step": "string",
+            "thought_of_day": "string"
+        },
+        {
+            "day": "Вторник",
+            "had_movement": false,
+            "movement_branch": "no",
+            "what_stopped": "string",
+            "attention_sink": "string",
+            "tomorrow_step": "string",
+            "thought_of_day": "string"
+        }
+    ],
+    "optional_user_note": "string"
+}

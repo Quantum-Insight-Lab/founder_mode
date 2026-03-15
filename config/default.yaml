@@ -1,0 +1,11 @@
+product:
+  min_reflections_for_review: 4
+
+reliability:
+  llm_request_timeout_ms: 30000
+  llm_max_retries: 2
+  idempotency_key_ttl_hours: 24
+
+observability:
+  token_spike_threshold: 100000
+  token_spike_window_minutes: 60

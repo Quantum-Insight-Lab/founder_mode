@@ -1,0 +1,18 @@
+[Unit]
+Description=Founder Mode Telegram Bot
+After=docker.service
+# Ждём готовности Postgres перед стартом приложения
+Wants=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/founder_mode
+EnvironmentFile=/opt/founder_mode/.env
+# Сначала ждём, пока БД начнёт принимать соединения (порт из DATABASE_URL)
+ExecStartPre=/usr/bin/node /opt/founder_mode/scripts/wait-for-db.js 60
+ExecStart=/usr/bin/node /opt/founder_mode/dist/index.js
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

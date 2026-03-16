@@ -96,8 +96,8 @@ export async function handleSettingsReflect(ctx: AppContext, deps: HandlerDeps):
   ctx.session.settingsData = { editing: 'reflect' };
   await ctx.reply('Дни рефлексии:', {
     reply_markup: [[
-      { text: '5 дней (пн–пт)', callback_data: 'settings_reflect_days_12345' },
-      { text: '6 дней (пн–сб)', callback_data: 'settings_reflect_days_123456' },
+      { text: '5 дн. (пн–пт)', callback_data: 'settings_reflect_days_12345' },
+      { text: '6 дн. (пн–сб)', callback_data: 'settings_reflect_days_123456' },
       { text: 'Ежедневно', callback_data: 'settings_reflect_days_0123456' },
     ]],
   });

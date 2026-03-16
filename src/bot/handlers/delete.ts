@@ -44,7 +44,7 @@ export async function handleDeleteConfirmYes(ctx: AppContext, deps: HandlerDeps)
   try {
     await deleteUserData(pool, userId);
     logger.info({ userId }, 'User deletion confirmed');
-    await ctx.reply('❗️ Данные удалены.');
+    await ctx.reply('❗️ Данные удалены. Начать заново командой /start');
   } catch (err) {
     logger.error({ err, userId }, 'User deletion failed');
     ctx.alertError?.(err, 'delete', userId);

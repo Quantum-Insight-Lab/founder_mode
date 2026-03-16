@@ -8,7 +8,8 @@ import { validateReviewMinData } from '../db/review-validation.js';
 import { config } from '../config/index.js';
 import { getWeekId, getWeekStartEnd } from './plan-service.js';
 import { dateStrToWeekRef } from '../domain/timezone.js';
-import { getUserLocalDate } from '../db/user-timezone.js';
+import { formatDayFull } from '../domain/date-format.js';
+import { getProductLocalDate } from '../db/user-timezone.js';
 import { InvariantViolationError } from '../domain/errors.js';
 import { logger } from '../observability/logger.js';
 import { getTraceId } from '../observability/trace.js';
@@ -24,7 +25,7 @@ export function createReviewService(eventStore: EventStore, deps: ServiceDeps) {
       optionalUserNote = '',
       prevalidated = false
     ): Promise<{ content: string }> {
-      const userDateStr = await getUserLocalDate(userId, pool);
+      const userDateStr = await getProductLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const targetWeekId = weekId ?? getWeekId(weekRef);
       const weekRefForRange = weekId
@@ -88,8 +89,11 @@ export function createReviewService(eventStore: EventStore, deps: ServiceDeps) {
       const noteSuffix = optionalUserNote
         ? `:n${createHash('sha256').update(optionalUserNote).digest('hex').slice(0, 12)}`
         : '';
+      const dayName = formatDayFull(new Date(`${userDateStr}T12:00:00Z`).getUTCDay());
       const idempotencyKey = `review:${userId}:${targetWeekId}${useSoftPrompt ? ':soft' : ''}${noteSuffix}`;
-      const systemPrompt = useSoftPrompt ? prompts.weeklyReviewSoft() : prompts.weeklyReview();
+      const systemPrompt = useSoftPrompt
+        ? prompts.weeklyReviewSoft(dayName)
+        : prompts.weeklyReview(dayName);
       const response = await llm.complete(systemPrompt, userMessage, {
         idempotencyKey,
         userId,

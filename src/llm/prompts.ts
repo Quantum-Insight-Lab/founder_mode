@@ -10,8 +10,14 @@ function loadPrompt(name: string): string {
 }
 
 export const prompts = {
-  weeklyPlan: () => loadPrompt('WEEKLY_PLAN_SYSTEM_PROMPT'),
-  dailyReflection: () => loadPrompt('DAILY_REFLECTION_SYSTEM_PROMPT'),
-  weeklyReview: () => loadPrompt('WEEKLY_REVIEW_SYSTEM_PROMPT'),
-  weeklyReviewSoft: () => loadPrompt('WEEKLY_REVIEW_SOFT_PROMPT'),
+  weeklyPlan: (dayName: string) =>
+    loadPrompt('WEEKLY_PLAN_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
+  dailyReflection: (dayName: string) =>
+    loadPrompt('DAILY_REFLECTION_SYSTEM_PROMPT')
+      .replace(/<День недели>/g, dayName)
+      .replace(/<day>/g, dayName),
+  weeklyReview: (dayName: string) =>
+    loadPrompt('WEEKLY_REVIEW_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
+  weeklyReviewSoft: (dayName: string) =>
+    loadPrompt('WEEKLY_REVIEW_SOFT_PROMPT').replace(/<День недели>/g, dayName),
 };

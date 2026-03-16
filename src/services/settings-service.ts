@@ -73,7 +73,23 @@ export function createSettingsService(pool: Pool) {
     async updatePlanNotify(userId: string, day: number | null, time: string | null): Promise<void> {
       await pool.query(
         `INSERT INTO user_settings (user_id, plan_notify_day, plan_notify_time, updated_at) VALUES ($1, $2, $3, NOW())
-         ON CONFLICT (user_id) DO UPDATE SET plan_notify_day = $2, plan_notify_time = $3, updated_at = NOW()`,
+         ON CONFLICT (user_id) DO UPDATE SET
+           plan_notify_day = $2,
+           plan_notify_time = $3,
+           updated_at = NOW(),
+           notifications_enabled = CASE
+             WHEN notifications_enabled = false
+               AND plan_notify_day IS NULL
+               AND plan_notify_time IS NULL
+               AND reflect_notify_days IS NULL
+               AND reflect_notify_time IS NULL
+               AND review_notify_day IS NULL
+               AND review_notify_time IS NULL
+               AND $2 IS NOT NULL
+               AND $3 IS NOT NULL
+             THEN true
+             ELSE notifications_enabled
+           END`,
         [userId, day, time]
       );
       logger.debug({ userId, day, time }, 'Settings: plan notify updated');
@@ -82,7 +98,23 @@ export function createSettingsService(pool: Pool) {
     async updateReflectNotify(userId: string, days: string | null, time: string | null): Promise<void> {
       await pool.query(
         `INSERT INTO user_settings (user_id, reflect_notify_days, reflect_notify_time, updated_at) VALUES ($1, $2, $3, NOW())
-         ON CONFLICT (user_id) DO UPDATE SET reflect_notify_days = $2, reflect_notify_time = $3, updated_at = NOW()`,
+         ON CONFLICT (user_id) DO UPDATE SET
+           reflect_notify_days = $2,
+           reflect_notify_time = $3,
+           updated_at = NOW(),
+           notifications_enabled = CASE
+             WHEN notifications_enabled = false
+               AND plan_notify_day IS NULL
+               AND plan_notify_time IS NULL
+               AND reflect_notify_days IS NULL
+               AND reflect_notify_time IS NULL
+               AND review_notify_day IS NULL
+               AND review_notify_time IS NULL
+               AND $2 IS NOT NULL
+               AND $3 IS NOT NULL
+             THEN true
+             ELSE notifications_enabled
+           END`,
         [userId, days, time]
       );
       logger.debug({ userId, days, time }, 'Settings: reflect notify updated');
@@ -91,7 +123,23 @@ export function createSettingsService(pool: Pool) {
     async updateReviewNotify(userId: string, day: number | null, time: string | null): Promise<void> {
       await pool.query(
         `INSERT INTO user_settings (user_id, review_notify_day, review_notify_time, updated_at) VALUES ($1, $2, $3, NOW())
-         ON CONFLICT (user_id) DO UPDATE SET review_notify_day = $2, review_notify_time = $3, updated_at = NOW()`,
+         ON CONFLICT (user_id) DO UPDATE SET
+           review_notify_day = $2,
+           review_notify_time = $3,
+           updated_at = NOW(),
+           notifications_enabled = CASE
+             WHEN notifications_enabled = false
+               AND plan_notify_day IS NULL
+               AND plan_notify_time IS NULL
+               AND reflect_notify_days IS NULL
+               AND reflect_notify_time IS NULL
+               AND review_notify_day IS NULL
+               AND review_notify_time IS NULL
+               AND $2 IS NOT NULL
+               AND $3 IS NOT NULL
+             THEN true
+             ELSE notifications_enabled
+           END`,
         [userId, day, time]
       );
       logger.debug({ userId, day, time }, 'Settings: review notify updated');

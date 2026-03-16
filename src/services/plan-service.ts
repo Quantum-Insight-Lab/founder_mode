@@ -6,7 +6,8 @@ import { EVENT_TYPES } from '../events/types.js';
 import { prompts } from '../llm/prompts.js';
 import type { ServiceDeps } from './deps.js';
 import { dateStrToWeekRef } from '../domain/timezone.js';
-import { getUserLocalDate } from '../db/user-timezone.js';
+import { formatDayFull } from '../domain/date-format.js';
+import { getProductLocalDate } from '../db/user-timezone.js';
 
 export function getWeekId(date: Date): string {
   const d = new Date(date);
@@ -42,10 +43,11 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
         main_risk: string;
       }
     ): Promise<string> {
-      const userDateStr = await getUserLocalDate(userId, pool);
+      const userDateStr = await getProductLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const weekId = getWeekId(weekRef);
-      logger.debug({ userId, weekId }, 'createPlan');
+      const dayName = formatDayFull(new Date(`${userDateStr}T12:00:00Z`).getUTCDay());
+      logger.debug({ userId, weekId, dayName }, 'createPlan');
       const { start, end } = getWeekStartEnd(weekRef);
 
       const userMessage = [
@@ -58,7 +60,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
       ].join('\n\n');
 
       const idempotencyKey = `plan:${userId}:${weekId}`;
-      const response = await llm.complete(prompts.weeklyPlan(), userMessage, {
+      const response = await llm.complete(prompts.weeklyPlan(dayName), userMessage, {
         idempotencyKey,
         userId,
         traceId: getTraceId(),
@@ -103,7 +105,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
         main_risk: string;
       }
     ): Promise<string> {
-      const userDateStr = await getUserLocalDate(userId, pool);
+      const userDateStr = await getProductLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const weekId = getWeekId(weekRef);
       logger.debug({ userId, weekId }, 'updatePlanManual');

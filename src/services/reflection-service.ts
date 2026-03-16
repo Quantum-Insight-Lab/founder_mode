@@ -5,7 +5,7 @@ import type { DomainEvent, ReflectionSubmittedPayload, ReflectionMovementBranch 
 import { EVENT_TYPES } from '../events/types.js';
 import { prompts } from '../llm/prompts.js';
 import { validateReflectionDate, validateReflectionBranch } from '../domain/validators.js';
-import { getUserLocalDate } from '../db/user-timezone.js';
+import { getProductLocalDate } from '../db/user-timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
 import type { ServiceDeps } from './deps.js';
 
@@ -31,7 +31,7 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
       logger.debug({ userId, date: data.date }, 'submitReflection');
       const had_movement = data.movement_branch === 'yes';
       validateReflectionBranch(data);
-      const todayStr = await getUserLocalDate(userId, pool);
+      const todayStr = await getProductLocalDate(userId, pool);
       validateReflectionDate(data.date, todayStr);
       const date = new Date(data.date + 'T12:00:00Z');
       const day = formatDayFull(date.getUTCDay());
@@ -76,7 +76,7 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
       }
 
       const idempotencyKey = `reflection:${userId}:${data.date}`;
-      const response = await llm.complete(prompts.dailyReflection(), userMessage, {
+      const response = await llm.complete(prompts.dailyReflection(day), userMessage, {
         idempotencyKey,
         userId,
         traceId: getTraceId(),
@@ -120,7 +120,7 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
       logger.debug({ userId, date: data.date }, 'updateReflectionManual');
       const had_movement = data.movement_branch === 'yes';
       validateReflectionBranch(data);
-      const todayStr = await getUserLocalDate(userId, pool);
+      const todayStr = await getProductLocalDate(userId, pool);
       validateReflectionDate(data.date, todayStr);
       const date = new Date(data.date + 'T12:00:00Z');
       const day = formatDayFull(date.getUTCDay());

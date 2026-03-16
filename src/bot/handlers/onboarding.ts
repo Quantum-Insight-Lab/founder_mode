@@ -51,8 +51,9 @@ export async function handleOnboardTimezone(ctx: AppContext, text: string, deps:
   ctx.session.step = 'onboard_cta';
 
   let saved = false;
+  let tz: string | null = null;
   if (match) {
-    const tz = userTimeToTimezone(parseInt(match[1], 10), parseInt(match[2], 10));
+    tz = userTimeToTimezone(parseInt(match[1], 10), parseInt(match[2], 10));
     if (tz) {
       await settingsService.updateTimezone(userId, tz);
       saved = true;
@@ -64,6 +65,7 @@ export async function handleOnboardTimezone(ctx: AppContext, text: string, deps:
     await ctx.reply(ONBOARDING_TIMEZONE_INVALID);
   } else {
     logger.info({ userId }, 'Onboarding timezone saved');
+    await ctx.reply(`Таймзона установлена: <b>${tz}</b>`, { parse_mode: 'HTML' });
   }
 
   await ctx.reply(ONBOARDING_CTA_QUESTION, {

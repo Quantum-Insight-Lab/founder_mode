@@ -83,7 +83,7 @@ export const REFLECTION_QUESTIONS_WEEK_CLOSED = [
 export const REVIEW_USER_NOTE_QUESTION = 'Что ты считаешь главным итогом недели, если сказать одной строкой?';
 
 /** Time options for notification settings */
-export const NOTIFICATION_TIMES = ['18:00', '19:00', '20:00', '21:00', '22:00'] as const;
+export const NOTIFICATION_TIMES = ['08:00', '14:00', '20:00'] as const;
 
 /** Settings */
 export const SETTINGS_NOTIFICATIONS = 'Уведомления';

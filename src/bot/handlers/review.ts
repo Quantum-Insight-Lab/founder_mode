@@ -3,7 +3,11 @@ import type { BotContext } from '../context.js';
 import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
-import { REVIEW_USER_NOTE_QUESTION } from '../conversations.js';
+import {
+  REVIEW_USER_NOTE_QUESTION,
+  ONBOARDING_AFTER_REVIEW_1,
+  ONBOARDING_AFTER_REVIEW_QUESTION,
+} from '../conversations.js';
 import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { validateReviewMinDataFromMeta } from '../../domain/validators.js';
@@ -19,9 +23,11 @@ async function runReviewWithNote(
   prevalidated: boolean,
   deps: HandlerDeps
 ): Promise<void> {
-  const { handleLlmReply, formatErrorForUser, reviewService } = deps;
+  const { pool, countRows, handleLlmReply, formatErrorForUser, reviewService } = deps;
   const userId = ctx.userId;
   ensureSession(ctx);
+  const wasFirstReview =
+    (await countRows(pool, 'SELECT COUNT(*)::int AS c FROM weekly_reviews WHERE user_id = $1', [userId])) === 0;
   ctx.session.step = undefined;
   await ctx.reply('🟢 Готовлю обзор...');
   try {
@@ -29,6 +35,16 @@ async function runReviewWithNote(
     funnelCompleted.inc({ type: 'review' });
     logger.info({ userId }, 'Review generated');
     await handleLlmReply(ctx, result.content ?? '', userId, 'review');
+    if (wasFirstReview) {
+      await ctx.reply(ONBOARDING_AFTER_REVIEW_1);
+      await ctx.reply(ONBOARDING_AFTER_REVIEW_QUESTION, {
+        reply_markup: [[
+          { text: 'Да', callback_data: 'onboard_review_cta_yes' },
+          { text: 'Позже', callback_data: 'onboard_review_cta_later' },
+        ]],
+      });
+      ctx.session.step = 'onboard_review_cta';
+    }
   } catch (err) {
     logger.error({ err, userId }, 'Review generation failed');
     ctx.alertError?.(err, 'review', userId);

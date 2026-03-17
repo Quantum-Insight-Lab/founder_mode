@@ -1,11 +1,19 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
+
+function getMigrationFiles(): string[] {
+  const dir = resolve(process.cwd(), 'migrations');
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+}
 
 async function migrate(dbUrl: string, label: string) {
   const pool = new Pool({ connectionString: dbUrl });
-  for (const name of ['001_init.sql']) {
+  const names = getMigrationFiles();
+  for (const name of names) {
     const sql = readFileSync(resolve(process.cwd(), 'migrations', name), 'utf-8');
     await pool.query(sql);
     console.log(`Migration ${name} applied to ${label}`);

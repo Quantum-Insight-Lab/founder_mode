@@ -1,13 +1,16 @@
 /**
  * Notification scheduler: sends "Время X" + [Продолжить] at configured day+time per user.
- * Sends to Telegram and/or MAX per user (tg_id / max_id).
+ * Also sends onboarding first-Saturday review invite (no notification settings required).
  */
 import cron from 'node-cron';
 import type { Pool } from 'pg';
 import { logger } from '../observability/logger.js';
 import { parseTimezoneOffset } from '../domain/timezone.js';
-import { getWeekId } from '../services/plan-service.js';
+import { getWeekId, getWeekStartEnd } from '../services/plan-service.js';
 import type { InlineButton } from '../bot/transport/types.js';
+
+const ONBOARDING_REVIEW_INVITE = 'Неделя подходит к концу.\n\nДавай соберём короткий обзор: что получилось, и куда двигаться дальше. Напиши (нажми) /review';
+const ONBOARDING_REVIEW_INVITE_HINT = '💡 Если неделя получилась короткой, обзор будет в режиме "мало данных". Это нормально';
 
 const NOTIFY_WINDOW_MIN = 7;
 
@@ -150,6 +153,81 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
             );
             logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify review sent');
           });
+        }
+      }
+
+      const onboardingRows = await pool.query<{
+        user_id: string;
+        tg_id: string | null;
+        max_id: string | null;
+        timezone: string | null;
+        onboarding_review_invite_sent_at: Date | null;
+      }>(
+        `SELECT u.user_id, u.tg_id, u.max_id, s.timezone, s.onboarding_review_invite_sent_at
+         FROM users u
+         JOIN user_settings s ON s.user_id = u.user_id
+         WHERE u.onboarding_completed_at IS NULL
+           AND s.timezone IS NOT NULL
+           AND s.onboarding_review_invite_sent_at IS NULL
+           AND (SELECT COUNT(*)::int FROM weekly_reviews w WHERE w.user_id = u.user_id) = 0`
+      );
+      const reviewButtonsOnboard: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_review' }]];
+      for (const r of onboardingRows.rows) {
+        const offsetMin = r.timezone ? parseTimezoneOffset(r.timezone) : null;
+        if (offsetMin === null) continue;
+        const off = offsetMin;
+        let totalMins = utcMins + off;
+        let dayOffset = 0;
+        if (totalMins < 0) {
+          totalMins += 1440;
+          dayOffset = -1;
+        } else if (totalMins >= 1440) {
+          totalMins -= 1440;
+          dayOffset = 1;
+        }
+        const userDay = (utcDay + dayOffset + 7) % 7;
+        const userMins = totalMins;
+        const userLocalMs = now.getTime() + off * 60 * 1000;
+        const userDateStr = new Date(userLocalMs).toISOString().slice(0, 10);
+        if (userDay !== 6) continue;
+        const targetMins = 20 * 60 + 0;
+        if (userMins < targetMins - NOTIFY_WINDOW_MIN || userMins > targetMins + NOTIFY_WINDOW_MIN) continue;
+        const weekRef = new Date(userDateStr + 'T12:00:00Z');
+        const { start: weekStart, end: weekEnd } = getWeekStartEnd(weekRef);
+        const refCount = await pool.query<{ c: number }>(
+          'SELECT COUNT(*)::int AS c FROM daily_reflections WHERE user_id = $1 AND date >= $2 AND date <= $3',
+          [r.user_id, weekStart, weekEnd]
+        );
+        if ((refCount.rows[0]?.c ?? 0) === 0) continue;
+        const sendOnboard = async (text: string): Promise<boolean> => {
+          let ok = false;
+          if (r.tg_id) {
+            try {
+              await sender.sendToTelegram(r.tg_id, text, reviewButtonsOnboard);
+              ok = true;
+            } catch (e) {
+              logger.warn({ err: e, userId: r.user_id }, 'Onboarding review invite Telegram send failed');
+            }
+          }
+          if (r.max_id && sender.sendToMax) {
+            try {
+              await sender.sendToMax(r.max_id, text, reviewButtonsOnboard);
+              ok = true;
+            } catch (e) {
+              logger.warn({ err: e, userId: r.user_id }, 'Onboarding review invite MAX send failed');
+            }
+          }
+          return ok;
+        };
+        const ok1 = await sendOnboard(ONBOARDING_REVIEW_INVITE);
+        const ok2 = await sendOnboard(ONBOARDING_REVIEW_INVITE_HINT);
+        if (ok1 || ok2) {
+          await pool.query(
+            `INSERT INTO user_settings (user_id, onboarding_review_invite_sent_at) VALUES ($1, NOW())
+             ON CONFLICT (user_id) DO UPDATE SET onboarding_review_invite_sent_at = NOW(), updated_at = NOW()`,
+            [r.user_id]
+          );
+          logger.debug({ userId: r.user_id }, 'Onboarding review invite sent');
         }
       }
     } catch (err) {

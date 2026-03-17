@@ -11,6 +11,10 @@ import {
   REFLECTION_QUESTIONS_NO_MOVEMENT,
   REFLECTION_QUESTIONS_PARTIAL,
   REFLECTION_QUESTIONS_WEEK_CLOSED,
+  ONBOARDING_FIRST_REFLECT_INTRO,
+  ONBOARDING_NEXT_REFLECT_INTRO,
+  ONBOARDING_AFTER_REFLECT,
+  ONBOARDING_AFTER_REFLECT_HINT,
 } from '../conversations.js';
 import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
@@ -49,6 +53,20 @@ async function proceedWithReflectionDate(ctx: AppContext, date: string, userId: 
 
   ctx.session.step = 'reflect_movement';
   ctx.session.reflectionEditMode = false;
+
+  const meta = await pool.query<{ total: number; review_count: number }>(
+    `SELECT
+       (SELECT COUNT(*)::int FROM daily_reflections WHERE user_id = $1) AS total,
+       (SELECT COUNT(*)::int FROM weekly_reviews WHERE user_id = $1) AS review_count`,
+    [userId]
+  );
+  const totalReflections = meta.rows[0]?.total ?? 0;
+  const reviewCount = meta.rows[0]?.review_count ?? 0;
+  if (totalReflections === 0) {
+    await ctx.reply(ONBOARDING_FIRST_REFLECT_INTRO);
+  } else if (reviewCount === 0) {
+    await ctx.reply(ONBOARDING_NEXT_REFLECT_INTRO);
+  }
   await ctx.reply(REFLECTION_MOVEMENT_QUESTION, {
     reply_markup: MOVEMENT_MARKUP,
   });
@@ -231,7 +249,7 @@ const branchToQuestions = {
 } as const;
 
 export async function handleReflectionMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
-  const { reflectionService, handleLlmReply, formatErrorForUser } = deps;
+  const { pool, reflectionService, handleLlmReply, formatErrorForUser } = deps;
   const userId = ctx.userId;
   const m = ctx.session!.step!.match(reflectionStepRe)!;
   const branch = m[1] as keyof typeof branchToQuestions;
@@ -250,7 +268,7 @@ export async function handleReflectionMessage(ctx: AppContext, text: string, dep
     ctx.session!.reflectionData = undefined;
     ctx.session!.reflectionEditMode = undefined;
 
-    const thoughtOfDay = movementBranch === 'week_closed' ? '' : String(data.thought_of_day ?? '');
+    const thoughtOfDay = String(data.thought_of_day ?? '');
     const payload = {
       date: data.date!,
       movement_branch: movementBranch,
@@ -276,6 +294,19 @@ export async function handleReflectionMessage(ctx: AppContext, text: string, dep
         funnelCompleted.inc({ type: 'reflect' });
         logger.info({ userId, date: data.date }, 'Reflection submitted');
         await handleLlmReply(ctx, rawPost ?? '', userId, 'reflect');
+        await ctx.reply(ONBOARDING_AFTER_REFLECT);
+        const hintRow = await pool.query<{ reflection_onboarding_hint_shown_at: Date | null }>(
+          'SELECT reflection_onboarding_hint_shown_at FROM user_settings WHERE user_id = $1',
+          [userId]
+        );
+        if (hintRow.rows[0]?.reflection_onboarding_hint_shown_at == null) {
+          await ctx.reply(`<i>${ONBOARDING_AFTER_REFLECT_HINT}</i>`, { parse_mode: 'HTML' });
+          await pool.query(
+            `INSERT INTO user_settings (user_id, reflection_onboarding_hint_shown_at) VALUES ($1, NOW())
+             ON CONFLICT (user_id) DO UPDATE SET reflection_onboarding_hint_shown_at = NOW(), updated_at = NOW()`,
+            [userId]
+          );
+        }
       }
     } catch (err) {
       logger.error({ err, userId }, isEdit ? 'Reflection manual update failed' : 'Reflection submission failed');

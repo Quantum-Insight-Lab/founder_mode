@@ -6,7 +6,14 @@ import { logger } from '../observability/logger.js';
 import type { AppContext } from './transport/types.js';
 import type { IncomingEvent } from './transport/types.js';
 import type { HandlerDeps } from './handlers/deps.js';
-import { handleStart, handleOnboardContinue, handleOnboardTimezone, handleOnboardCtaYes, handleOnboardCtaLater } from './handlers/onboarding.js';
+import {
+  handleStart,
+  handleOnboardTimezone,
+  handleOnboardCtaYes,
+  handleOnboardCtaLater,
+  handleOnboardReviewCtaYes,
+  handleOnboardReviewCtaLater,
+} from './handlers/onboarding.js';
 import {
   handlePlanCommand,
   handlePlanShow,
@@ -84,12 +91,14 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
     const data = event.data;
     logger.debug({ channel: ctx.channel, userId: ctx.userId, callback: data }, 'Dispatch callback');
     switch (data) {
-      case 'onboard_continue':
-        return handleOnboardContinue(ctx, deps);
       case 'onboard_cta_yes':
         return handleOnboardCtaYes(ctx, deps);
       case 'onboard_cta_later':
         return handleOnboardCtaLater(ctx, deps);
+      case 'onboard_review_cta_yes':
+        return handleOnboardReviewCtaYes(ctx, deps);
+      case 'onboard_review_cta_later':
+        return handleOnboardReviewCtaLater(ctx, deps);
       case 'plan_show':
         return handlePlanShow(ctx, deps);
       case 'plan_edit':

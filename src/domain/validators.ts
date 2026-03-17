@@ -64,8 +64,11 @@ export function validateReflectionBranch(data: {
     );
   } else if (branch === 'week_closed') {
     invariant(
-      filled(data.new_focus) && filled(data.what_moved) && filled(data.tomorrow_step),
-      'В ветке «Результат недели закрыт» заполни: новый фокус, что сделано, следующий шаг',
+      filled(data.new_focus) &&
+        filled(data.what_moved) &&
+        filled(data.tomorrow_step) &&
+        filled(data.thought_of_day),
+      'В ветке «Результат недели закрыт» заполни: новый фокус, что сделано, следующий шаг, что стало понятнее',
       '008'
     );
   } else {

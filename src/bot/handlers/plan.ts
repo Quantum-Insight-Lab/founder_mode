@@ -6,6 +6,8 @@ import type { AppContext } from '../transport/types.js';
 import {
   PLANNING_QUESTIONS,
   MAIN_FOCUS_FIRST_PLANNING_HINT,
+  ONBOARDING_AFTER_PLAN_1,
+  ONBOARDING_AFTER_PLAN_2,
   type PlanningAnswerKey,
 } from '../conversations.js';
 import { logger } from '../../observability/logger.js';
@@ -118,6 +120,7 @@ export async function handlePlanningMessage(ctx: AppContext, text: string, deps:
   const record = answers as Record<PlanningAnswerKey, string>;
 
   if (idx >= PLANNING_QUESTIONS.length - 1) {
+    const isFirstPlanning = ctx.session?.isFirstPlanning ?? false;
     ctx.session!.step = undefined;
     ctx.session!.planningAnswers = undefined;
     const isEdit = ctx.session!.planEditMode ?? false;
@@ -135,6 +138,10 @@ export async function handlePlanningMessage(ctx: AppContext, text: string, deps:
         funnelCompleted.inc({ type: 'plan' });
         logger.info({ userId }, 'Plan created');
         await handleLlmReply(ctx, rawPost ?? '', userId, 'plan');
+        if (isFirstPlanning) {
+          await ctx.reply(ONBOARDING_AFTER_PLAN_1);
+          await ctx.reply(ONBOARDING_AFTER_PLAN_2);
+        }
       }
     } catch (err) {
       logger.error({ err, userId }, isEdit ? 'Plan manual update failed' : 'Plan creation failed');

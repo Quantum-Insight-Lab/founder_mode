@@ -72,7 +72,7 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
       } else if (data.movement_branch === 'partial') {
         userMessage = `День недели: ${day}\nДвижение: Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
       } else {
-        userMessage = `День недели: ${day}\nРезультат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}`;
+        userMessage = `День недели: ${day}\nРезультат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day ?? ''}`;
       }
 
       const idempotencyKey = `reflection:${userId}:${data.date}`;

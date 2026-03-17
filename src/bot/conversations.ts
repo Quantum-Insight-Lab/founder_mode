@@ -1,8 +1,8 @@
 /**
- * Онбординг: первое сообщение (что делает бот, цикл, польза, команды, когда использовать)
+ * Онбординг завершён: при /start показываем цикл и команды (без кнопок).
  */
 export const ONBOARDING_INTRO =
-  `Добро пожаловать в Founder Mode.\n\n` +
+  `Добро пожаловать в Founder Mode 👋\n\n` +
   `Режим планирования и рефлексии.\n\n` +
   `<b>Цикл:</b>\n` +
   `план недели → рефлексия дня → обзор недели\n\n` +
@@ -16,11 +16,102 @@ export const ONBOARDING_INTRO =
   `/settings\n` +
   `/delete`;
 
-export const ONBOARDING_TIMEZONE_QUESTION = 'Для корректной работы потребуется таймзона.\n\nКакое у тебя сейчас время? (например, 14:30)';
+/** Первый /start: сообщения 1–3, затем CTA */
+export const ONBOARDING_MSG_1 =
+  'Добро пожаловать 👋\n\nFounder Mode — это простой недельный цикл фокуса.\n\n' +
+  'Ты выбираешь вектор.\n' +
+  'Каждый вечер фиксируешь, было ли движение.\n' +
+  'В конце получаешь сжатый обзор недели.\n\n' +
+  'Это занимает около минуты в день.';
+
+export const ONBOARDING_MSG_2 =
+  'Большинство людей не стоят на месте.\n\n' +
+  'Они либо откладывают главное,\n' +
+  'либо распыляются на второстепенное.\n\n' +
+  'Founder Mode нужен, чтобы увидеть, куда реально уходит внимание и есть ли движение по главному.';
+
+export const ONBOARDING_MSG_3 =
+  'Предлагаю попробовать эксперимент на текущую неделю.\n\n' +
+  'Главное правило:\n' +
+  'не пропускать вечера.\n\n' +
+  'Если пропустишь — ничего страшного.\n' +
+  'Просто продолжим дальше.';
+
+export const ONBOARDING_CTA_QUESTION = 'Начать эксперимент?';
+
+export const ONBOARDING_AFTER_CTA_YES =
+  'Отлично.\n\nЭксперимент Founder Mode запущен.';
+
+export const ONBOARDING_TIMEZONE_QUESTION =
+  'Для корректной работы потребуется таймзона.\n\nКакое у тебя сейчас время? (например, 14:30)';
 
 export const ONBOARDING_TIMEZONE_INVALID =
   '⚠️ Формат некорректен. Будет использоваться таймзона сервера. Изменить можно в /settings.';
-export const ONBOARDING_CTA_QUESTION = 'Начать планирование недели?';
+
+export const ONBOARDING_AFTER_TZ_PROMPT_PLAN =
+  'Сейчас зафиксируем вектор текущей недели. Напиши (нажми) /plan';
+
+export const ONBOARDING_AFTER_PLAN_1 =
+  'План зафиксирован.\n\n' +
+  'Теперь просто проживи рабочий день.\n\n' +
+  'Вечером вернёмся и посмотрим, было ли движение по главному.\n\n' +
+  'Напиши (нажми) /reflect когда придет время или поставь напоминание в /settings';
+
+export const ONBOARDING_AFTER_PLAN_2 =
+  'Иногда уже через 2–3 дня становится видно,\nкуда на самом деле уходит энергия.';
+
+export const ONBOARDING_FIRST_REFLECT_INTRO =
+  'Давай быстро посмотрим,\nчто на самом деле произошло сегодня.\n\nЭто займёт около минуты.';
+
+export const ONBOARDING_NEXT_REFLECT_INTRO =
+  'Время коротко зафиксировать день.\nПосмотрим, было ли движение по главному.';
+
+export const ONBOARDING_AFTER_REFLECT =
+  'День зафиксирован.\n\nЗавтра проверим,\nполучится ли сделать следующий шаг.';
+
+export const ONBOARDING_AFTER_REFLECT_HINT = '💡 Часть эксперимента завершена.';
+
+export const ONBOARDING_SATURDAY_REVIEW_INVITE =
+  'Неделя подходит к концу.\n\n' +
+  'Давай соберём короткий обзор: что получилось, и куда двигаться дальше. Напиши (нажми) /review';
+
+export const ONBOARDING_REVIEW_INVITE_HINT =
+  '💡 Если неделя получилась короткой, обзор будет в режиме "мало данных". Это нормально';
+
+export const ONBOARDING_AFTER_REVIEW_1 =
+  'Эксперимент завершён.\n\n' +
+  'Теперь у тебя есть:\n' +
+  'вектор недели,\n' +
+  'история ежедневного движения\n' +
+  'и сжатый обзор результата.\n\n' +
+  'Если захочешь очистить историю,\nможно удалить данные командой /delete.';
+
+export const ONBOARDING_AFTER_REVIEW_QUESTION = 'Хочешь продолжить следующий недельный цикл?';
+
+export const ONBOARDING_CTA_LATER_MSG =
+  'Хорошо.\n\n' +
+  'Когда захочешь вернуться,\nмы начнём новый цикл с нового фокуса.\n\n' +
+  'Founder Mode работает по календарной неделе\n(воскресенье → воскресенье).\n\n' +
+  'Обзор недели собирается по этому периоду.\n\n' +
+  'Команды:\n' +
+  '/plan\n' +
+  '/reflect\n' +
+  '/review\n' +
+  '/settings\n' +
+  '/delete';
+
+export const ONBOARDING_CTA_YES_FINAL_MSG =
+  'Отлично.\n\n' +
+  'Founder Mode работает по календарной неделе\n(воскресенье → воскресенье).\n\n' +
+  'Обзор недели собирается по этому периоду.\n\n' +
+  'Команды:\n' +
+  '/plan\n' +
+  '/reflect\n' +
+  '/review\n' +
+  '/settings\n' +
+  '/delete';
+
+export const ONBOARDING_CTA_LATER_FIRST_MSG = 'Хорошо. Когда захочешь — /start';
 
 /**
  * Planning: 6 questions flow
@@ -53,7 +144,7 @@ export const REFLECTION_MOVEMENT_QUESTION = 'Было ли движение по
 
 export const REFLECTION_QUESTIONS_MOVEMENT = [
   { key: 'what_moved', text: 'Расскажи о прогрессе:' },
-  { key: 'attention_sink', text: 'Какое было движение вне фокуса?' },
+  { key: 'attention_sink', text: 'Что ещё заняло внимание?' },
   { key: 'tomorrow_step', text: 'Какой следующий шаг?' },
   { key: 'thought_of_day', text: 'Что стало понятнее к концу дня?' },
 ] as const;
@@ -77,6 +168,7 @@ export const REFLECTION_QUESTIONS_WEEK_CLOSED = [
   { key: 'new_focus', text: 'Какой новый фокус выбран?' },
   { key: 'what_moved', text: 'Что удалось сделать по нему?' },
   { key: 'tomorrow_step', text: 'Какой следующий шаг?' },
+  { key: 'thought_of_day', text: 'Что стало понятнее к концу дня?' },
 ] as const;
 
 /** Вопрос перед генерацией обзора — усилитель смысла для LLM */

@@ -85,6 +85,7 @@ describe('validators', () => {
           new_focus: 'f',
           what_moved: 'd',
           tomorrow_step: 's',
+          thought_of_day: 'x',
         })
       ).not.toThrow();
     });

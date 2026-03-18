@@ -6,6 +6,9 @@ import { logger } from '../observability/logger.js';
 import type { AppContext } from './transport/types.js';
 import type { IncomingEvent } from './transport/types.js';
 import type { HandlerDeps } from './handlers/deps.js';
+import { getProductLocalDate } from '../db/user-timezone.js';
+import { dateStrToWeekRef } from '../domain/timezone.js';
+import { getWeekId } from '../services/plan-service.js';
 import {
   handleStart,
   handleOnboardTimezone,
@@ -63,6 +66,52 @@ import { handleDeleteCommand, handleDeleteConfirmYes, handleDeleteConfirmNo } fr
 function timeFromCallbackData(data: string): string {
   const m = data.match(/^settings_(?:plan|reflect|review)_time_([\d-]+)$/);
   return String(m?.[1] ?? '').replace('-', ':');
+}
+
+async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
+  const t = text.trim().toLowerCase();
+  const isAffirmativeOrNext =
+    /^(ок|okay|окей|да|понял|поняла|готов|готово|дальше|что дальше|что делать)\b/.test(t) ||
+    /\b(что дальше|что делать)\b/.test(t);
+  const wantsPlan = /\b(plan|план|вектор|фокус)\b/.test(t);
+  const wantsReflect = /\b(reflect|рефлекс)\b/.test(t);
+  const wantsReview = /\b(review|обзор|недел)\b/.test(t);
+  const wantsSettings = /\b(settings|настрой|уведом)\b/.test(t);
+  const wantsDelete = /\b(delete|удал|стер|очист)\b/.test(t);
+
+  if (wantsPlan) return ctx.reply('Ок. Чтобы зафиксировать вектор недели — /plan');
+  if (wantsReflect) return ctx.reply('Ок. Чтобы зафиксировать день — /reflect');
+  if (wantsReview) return ctx.reply('Ок. Чтобы собрать обзор недели — /review');
+  if (wantsSettings) return ctx.reply('Настройки — /settings');
+  if (wantsDelete) return ctx.reply('Удаление данных — /delete');
+
+  if (!isAffirmativeOrNext) {
+    return ctx.reply('Команды: /plan /reflect /review /settings /delete');
+  }
+
+  const { pool } = deps;
+  const userId = ctx.userId;
+  const userDateStr = await getProductLocalDate(userId, pool);
+  const weekRef = dateStrToWeekRef(userDateStr);
+  const weekId = getWeekId(weekRef);
+
+  const planExists = await pool.query(
+    'SELECT 1 FROM weekly_plans WHERE user_id = $1 AND week_id = $2 LIMIT 1',
+    [userId, weekId]
+  );
+  if (planExists.rows.length === 0) {
+    return ctx.reply('Давай начнём с вектора недели. Напиши (нажми) /plan');
+  }
+
+  const todayReflectionExists = await pool.query(
+    'SELECT 1 FROM daily_reflections WHERE user_id = $1 AND date = $2::date LIMIT 1',
+    [userId, userDateStr]
+  );
+  if (todayReflectionExists.rows.length === 0) {
+    return ctx.reply('Время коротко зафиксировать день. Напиши (нажми) /reflect');
+  }
+
+  return ctx.reply('Команды: /plan /reflect /review /settings /delete');
 }
 
 export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: HandlerDeps): Promise<void> {
@@ -188,6 +237,7 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
       return handleSettingsTimeInput(ctx, text, deps);
     }
     if (step === 'settings_tz_input') return handleSettingsTzInput(ctx, text, deps);
+    if (!text.startsWith('/')) return handleIdleMessage(ctx, text, deps);
     logger.debug({ channel: ctx.channel, userId: ctx.userId, step }, 'Message not for any step, skip');
   }
 }

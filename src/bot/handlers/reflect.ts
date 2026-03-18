@@ -109,9 +109,10 @@ export async function handleReflectCommand(ctx: AppContext, deps: HandlerDeps): 
 
   const s = r;
   const showSkipHint = !s?.notifications_enabled && s?.skip_hint_shown_at == null;
-  const questionText = showSkipHint
-    ? `${REFLECTION_DATE_QUESTION}\n\n<i>${REFLECTION_SKIP_HINT}</i>`
-    : REFLECTION_DATE_QUESTION;
+  if (showSkipHint) {
+    await ctx.reply(REFLECTION_SKIP_HINT);
+  }
+  const questionText = REFLECTION_DATE_QUESTION;
   const rows: import('../transport/types.js').InlineButton[][] = [
     [
       { text: 'Вчера', callback_data: 'reflect_date_yesterday' },
@@ -123,7 +124,7 @@ export async function handleReflectCommand(ctx: AppContext, deps: HandlerDeps): 
   }
 
   ctx.session.step = 'reflect_date';
-  await ctx.reply(questionText, { parse_mode: 'HTML', reply_markup: rows });
+  await ctx.reply(questionText, { reply_markup: rows });
 }
 
 export async function handleReflectSkipEnableNotif(ctx: AppContext, deps: HandlerDeps): Promise<void> {

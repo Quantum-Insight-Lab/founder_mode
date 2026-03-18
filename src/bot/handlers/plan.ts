@@ -152,10 +152,10 @@ export async function handlePlanningMessage(ctx: AppContext, text: string, deps:
     ctx.session!.step = `planning_${idx + 1}`;
     const nextIdx = idx + 1;
     let questionText = PLANNING_QUESTIONS[nextIdx].text;
+    await ctx.reply(questionText);
     if (nextIdx === 1 && ctx.session?.isFirstPlanning) {
-      questionText += `\n\n<i>${MAIN_FOCUS_FIRST_PLANNING_HINT}</i>`;
+      await ctx.reply(MAIN_FOCUS_FIRST_PLANNING_HINT);
     }
-    await ctx.reply(questionText, nextIdx === 1 ? { parse_mode: 'HTML' } : undefined);
   }
 }
 

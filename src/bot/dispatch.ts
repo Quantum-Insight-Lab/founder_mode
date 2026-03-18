@@ -6,7 +6,7 @@ import { logger } from '../observability/logger.js';
 import type { AppContext } from './transport/types.js';
 import type { IncomingEvent } from './transport/types.js';
 import type { HandlerDeps } from './handlers/deps.js';
-import { getProductLocalDate } from '../db/user-timezone.js';
+import { getUserLocalDate } from '../db/user-timezone.js';
 import { dateStrToWeekRef } from '../domain/timezone.js';
 import { getWeekId } from '../services/plan-service.js';
 import {
@@ -91,7 +91,7 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
 
   const { pool } = deps;
   const userId = ctx.userId;
-  const userDateStr = await getProductLocalDate(userId, pool);
+  const userDateStr = await getUserLocalDate(userId, pool);
   const weekRef = dateStrToWeekRef(userDateStr);
   const weekId = getWeekId(weekRef);
 

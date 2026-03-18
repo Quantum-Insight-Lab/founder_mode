@@ -14,7 +14,7 @@ import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { formatLlmResponse } from '../../domain/html.js';
 import { dateStrToWeekRef } from '../../domain/timezone.js';
-import { getProductLocalDate } from '../../db/user-timezone.js';
+import { getUserLocalDate } from '../../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from '../../services/plan-service.js';
 import type { HandlerDeps } from './deps.js';
 
@@ -25,7 +25,7 @@ export async function handlePlanCommand(ctx: AppContext, deps: HandlerDeps): Pro
   ensureSession(ctx);
   ctx.session.planEditMode = false;
 
-  const userDateStr = await getProductLocalDate(userId, pool);
+  const userDateStr = await getUserLocalDate(userId, pool);
   const weekRef = dateStrToWeekRef(userDateStr);
   const weekId = getWeekId(weekRef);
   const existing = await pool.query(
@@ -58,7 +58,7 @@ export async function handlePlanShow(ctx: AppContext, deps: HandlerDeps): Promis
   ensureSession(ctx);
   ctx.session.step = undefined;
 
-  const userDateStr = await getProductLocalDate(userId, pool);
+  const userDateStr = await getUserLocalDate(userId, pool);
   const weekId = getWeekId(dateStrToWeekRef(userDateStr));
   const row = await pool.query<{ raw_post: string }>(
     'SELECT raw_post FROM weekly_plans WHERE user_id = $1 AND week_id = $2',
@@ -76,7 +76,7 @@ export async function handlePlanEdit(ctx: AppContext, deps: HandlerDeps): Promis
   ensureSession(ctx);
   await ctx.answerCallbackQuery();
 
-  const userDateStr = await getProductLocalDate(userId, pool);
+  const userDateStr = await getUserLocalDate(userId, pool);
   const { start, end } = getWeekStartEnd(dateStrToWeekRef(userDateStr));
   const hasReflections = (await countRows(pool, 'SELECT COUNT(*)::int AS c FROM daily_reflections WHERE user_id = $1 AND date >= $2 AND date <= $3', [userId, start, end])) > 0;
 
@@ -168,7 +168,7 @@ export async function handleNotifyPlan(ctx: AppContext, deps: HandlerDeps): Prom
   ctx.session.step = 'planning_0';
   ctx.session.planningAnswers = {};
   ctx.session.planEditMode = false;
-  const userDateStr = await getProductLocalDate(userId, pool);
+  const userDateStr = await getUserLocalDate(userId, pool);
   const weekRef = dateStrToWeekRef(userDateStr);
   const weekId = getWeekId(weekRef);
   const existing = await pool.query('SELECT 1 FROM weekly_plans WHERE user_id = $1 AND week_id = $2', [userId, weekId]);

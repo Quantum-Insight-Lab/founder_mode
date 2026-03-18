@@ -19,7 +19,7 @@ import {
 import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { formatLlmResponse } from '../../domain/html.js';
-import { getProductLocalDate } from '../../db/user-timezone.js';
+import { getUserLocalDate } from '../../db/user-timezone.js';
 import { dateStrToWeekRef } from '../../domain/timezone.js';
 import { getWeekId } from '../../services/plan-service.js';
 import type { HandlerDeps } from './deps.js';
@@ -38,7 +38,7 @@ async function proceedWithReflectionDate(ctx: AppContext, date: string, userId: 
   ensureSession(ctx);
   ctx.session.reflectionData = { date };
 
-  const userDateStr = await getProductLocalDate(userId, pool);
+  const userDateStr = await getUserLocalDate(userId, pool);
   const weekRef = dateStrToWeekRef(userDateStr);
   const weekId = getWeekId(weekRef);
   const plan = await pool.query('SELECT 1 FROM weekly_plans WHERE user_id = $1 AND week_id = $2 LIMIT 1', [userId, weekId]);

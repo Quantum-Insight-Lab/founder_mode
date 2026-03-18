@@ -9,7 +9,7 @@ import { createReflectionService } from '../src/services/reflection-service.js';
 import { createReviewService } from '../src/services/review-service.js';
 import { getWeekId, getWeekStartEnd } from '../src/services/plan-service.js';
 
-const dbUrl = process.env.DATABASE_URL ?? process.env.TEST_DATABASE_URL;
+const dbUrl = process.env.TEST_DATABASE_URL;
 
 const mockComplete = vi.fn().mockResolvedValue({ content: 'Fake LLM response', usage: { prompt_tokens: 0, completion_tokens: 0 }, model: 'test', latencyMs: 0 });
 const mockLlm = { complete: mockComplete };

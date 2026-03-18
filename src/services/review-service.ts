@@ -9,7 +9,7 @@ import { config } from '../config/index.js';
 import { getWeekId, getWeekStartEnd } from './plan-service.js';
 import { dateStrToWeekRef } from '../domain/timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
-import { getProductLocalDate } from '../db/user-timezone.js';
+import { getUserLocalDate } from '../db/user-timezone.js';
 import { InvariantViolationError } from '../domain/errors.js';
 import { logger } from '../observability/logger.js';
 import { getTraceId } from '../observability/trace.js';
@@ -25,7 +25,7 @@ export function createReviewService(eventStore: EventStore, deps: ServiceDeps) {
       optionalUserNote = '',
       prevalidated = false
     ): Promise<{ content: string }> {
-      const userDateStr = await getProductLocalDate(userId, pool);
+      const userDateStr = await getUserLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const targetWeekId = weekId ?? getWeekId(weekRef);
       const weekRefForRange = weekId

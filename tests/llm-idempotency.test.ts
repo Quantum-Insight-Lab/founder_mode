@@ -6,7 +6,7 @@ import { Pool } from 'pg';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-const dbUrl = process.env.DATABASE_URL ?? process.env.TEST_DATABASE_URL;
+const dbUrl = process.env.TEST_DATABASE_URL;
 
 const mockCreate = vi.fn().mockResolvedValue({
   choices: [{ message: { content: 'cached response' } }],

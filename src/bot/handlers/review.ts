@@ -12,7 +12,7 @@ import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { validateReviewMinDataFromMeta } from '../../domain/validators.js';
 import { dateStrToWeekRef } from '../../domain/timezone.js';
-import { getProductLocalDate } from '../../db/user-timezone.js';
+import { getUserLocalDate } from '../../db/user-timezone.js';
 import { config } from '../../config/index.js';
 import { getWeekId, getWeekStartEnd } from '../../services/plan-service.js';
 import type { HandlerDeps } from './deps.js';
@@ -56,7 +56,7 @@ export async function handleReviewCommand(ctx: AppContext, deps: HandlerDeps): P
   const { pool, formatErrorForUser } = deps;
   const userId = ctx.userId;
   logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /review');
-  const userDateStr = await getProductLocalDate(userId, pool);
+  const userDateStr = await getUserLocalDate(userId, pool);
   const weekRef = dateStrToWeekRef(userDateStr);
   const weekId = getWeekId(weekRef);
   const { start, end } = getWeekStartEnd(weekRef);
@@ -103,7 +103,7 @@ export async function handleNotifyReview(ctx: AppContext, deps: HandlerDeps): Pr
   const userId = ctx.userId;
   logger.info({ channel: ctx.channel, externalId: ctx.externalId, userId }, 'Notify review');
   await ctx.answerCallbackQuery();
-  const userDateStr = await getProductLocalDate(userId, pool);
+  const userDateStr = await getUserLocalDate(userId, pool);
   const weekRef = dateStrToWeekRef(userDateStr);
   const weekId = getWeekId(weekRef);
   const { start, end } = getWeekStartEnd(weekRef);

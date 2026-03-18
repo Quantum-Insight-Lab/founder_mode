@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { deleteUserData } from '../src/services/user-deletion.js';
 
-const dbUrl = process.env.DATABASE_URL ?? process.env.TEST_DATABASE_URL;
+const dbUrl = process.env.TEST_DATABASE_URL;
 
 describe.skipIf(!dbUrl)('user-deletion', () => {
   let pool: Pool;

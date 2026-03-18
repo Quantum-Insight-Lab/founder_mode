@@ -42,8 +42,7 @@ function getMaxUserId(u: MaxUpdate): string | null {
     u.user?.user_id ??
     (u.callback as { user_id?: number; user?: { user_id?: number } } | undefined)?.user_id ??
     (u.callback as { user?: { user_id?: number } } | undefined)?.user?.user_id ??
-    u.message?.sender?.user_id ??
-    u.message?.recipient?.user_id;
+    u.message?.sender?.user_id;
   if (uid != null) return String(uid);
   return null;
 }

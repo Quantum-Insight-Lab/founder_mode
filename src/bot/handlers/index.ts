@@ -5,7 +5,7 @@ import { InvariantViolationError } from '../../domain/errors.js';
 import { invariantViolations } from '../../observability/metrics.js';
 import { logger } from '../../observability/logger.js';
 import { formatLlmResponse } from '../../domain/html.js';
-import { getProductLocalDate } from '../../db/user-timezone.js';
+import { getUserLocalDate } from '../../db/user-timezone.js';
 import { createEventStore } from '../../events/event-store.js';
 import { EVENT_TYPES } from '../../events/types.js';
 import { createProjectors } from '../../projectors/index.js';
@@ -83,7 +83,7 @@ export function createAppDeps(): HandlerDeps {
   }
 
   async function getReflectDate(userId: string, choice: 'yesterday' | 'today'): Promise<string> {
-    const todayStr = await getProductLocalDate(userId, pool);
+    const todayStr = await getUserLocalDate(userId, pool);
     if (choice === 'today') return todayStr;
     const d = new Date(todayStr + 'T12:00:00Z');
     d.setUTCDate(d.getUTCDate() - 1);

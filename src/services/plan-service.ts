@@ -7,7 +7,7 @@ import { prompts } from '../llm/prompts.js';
 import type { ServiceDeps } from './deps.js';
 import { dateStrToWeekRef } from '../domain/timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
-import { getProductLocalDate } from '../db/user-timezone.js';
+import { getUserLocalDate } from '../db/user-timezone.js';
 
 export function getWeekId(date: Date): string {
   const d = new Date(date);
@@ -43,7 +43,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
         main_risk: string;
       }
     ): Promise<string> {
-      const userDateStr = await getProductLocalDate(userId, pool);
+      const userDateStr = await getUserLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const weekId = getWeekId(weekRef);
       const dayName = formatDayFull(new Date(`${userDateStr}T12:00:00Z`).getUTCDay());
@@ -105,7 +105,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
         main_risk: string;
       }
     ): Promise<string> {
-      const userDateStr = await getProductLocalDate(userId, pool);
+      const userDateStr = await getUserLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const weekId = getWeekId(weekRef);
       logger.debug({ userId, weekId }, 'updatePlanManual');

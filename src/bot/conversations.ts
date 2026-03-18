@@ -143,9 +143,9 @@ export const REFLECTION_SKIP_HINT =
 export const REFLECTION_MOVEMENT_QUESTION = 'Было ли движение по главному фокусу?';
 
 export const REFLECTION_QUESTIONS_MOVEMENT = [
-  { key: 'what_moved', text: 'Расскажи о прогрессе:' },
+  { key: 'what_moved', text: 'Расскажи о прогрессе по главному:' },
   { key: 'attention_sink', text: 'Что ещё заняло внимание?' },
-  { key: 'tomorrow_step', text: 'Какой следующий шаг?' },
+  { key: 'tomorrow_step', text: 'Какой следующий шаг по главному фокусу?' },
   { key: 'thought_of_day', text: 'Что стало понятнее к концу дня?' },
 ] as const;
 
@@ -157,7 +157,7 @@ export const REFLECTION_QUESTIONS_NO_MOVEMENT = [
 ] as const;
 
 export const REFLECTION_QUESTIONS_PARTIAL = [
-  { key: 'what_moved', text: 'Что удалось сделать?' },
+  { key: 'what_moved', text: 'Что удалось сделать по главному?' },
   { key: 'why_partial', text: 'Почему движение осталось частичным?' },
   { key: 'attention_sink', text: 'Что ещё заняло внимание?' },
   { key: 'tomorrow_step', text: 'Следующий шаг по главному фокусу:' },

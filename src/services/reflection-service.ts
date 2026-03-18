@@ -7,6 +7,8 @@ import { prompts } from '../llm/prompts.js';
 import { validateReflectionDate, validateReflectionBranch } from '../domain/validators.js';
 import { getProductLocalDate } from '../db/user-timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
+import { getWeekId } from './plan-service.js';
+import { InvariantViolationError } from '../domain/errors.js';
 import type { ServiceDeps } from './deps.js';
 
 export function createReflectionService(eventStore: EventStore, deps: ServiceDeps) {
@@ -35,6 +37,15 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
       validateReflectionDate(data.date, todayStr);
       const date = new Date(data.date + 'T12:00:00Z');
       const day = formatDayFull(date.getUTCDay());
+      const weekId = getWeekId(date);
+      const planRow = await pool.query<{ main_focus: string }>(
+        'SELECT main_focus FROM weekly_plans WHERE user_id = $1 AND week_id = $2',
+        [userId, weekId]
+      );
+      const mainFocus = planRow.rows[0]?.main_focus;
+      if (!mainFocus) {
+        throw new InvariantViolationError('Нужен план недели для рефлексии', 'NOT_FOUND');
+      }
 
       const payload: ReflectionSubmittedPayload = {
         user_id: userId,
@@ -66,13 +77,13 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
 
       let userMessage: string;
       if (data.movement_branch === 'yes') {
-        userMessage = `День недели: ${day}\nДвижение: Да\nЧто продвинуло: ${data.what_moved ?? ''}\nДвижение вне фокуса: ${data.attention_sink ?? ''}\nШаг на завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
+        userMessage = `День недели: ${day}\nДвижение по главному фокусу («${mainFocus}»): Да\nЧто продвинуло: ${data.what_moved ?? ''}\nДвижение вне фокуса: ${data.attention_sink ?? ''}\nШаг на завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
       } else if (data.movement_branch === 'no') {
-        userMessage = `День недели: ${day}\nДвижение: Нет\nЧто остановило: ${data.what_stopped ?? ''}\nЧто заняло внимание: ${data.attention_sink ?? ''}\nКак вернуть вектор завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
+        userMessage = `День недели: ${day}\nДвижение по главному фокусу («${mainFocus}»): Нет\nЧто остановило: ${data.what_stopped ?? ''}\nЧто заняло внимание: ${data.attention_sink ?? ''}\nКак вернуть вектор завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
       } else if (data.movement_branch === 'partial') {
-        userMessage = `День недели: ${day}\nДвижение: Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
+        userMessage = `День недели: ${day}\nДвижение по главному фокусу («${mainFocus}»): Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
       } else {
-        userMessage = `День недели: ${day}\nРезультат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day ?? ''}`;
+        userMessage = `День недели: ${day}\nДвижение по главному фокусу («${mainFocus}»): Результат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day ?? ''}`;
       }
 
       const idempotencyKey = `reflection:${userId}:${data.date}`;

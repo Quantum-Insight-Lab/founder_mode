@@ -19,6 +19,9 @@ import {
 import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { formatLlmResponse } from '../../domain/html.js';
+import { getProductLocalDate } from '../../db/user-timezone.js';
+import { dateStrToWeekRef } from '../../domain/timezone.js';
+import { getWeekId } from '../../services/plan-service.js';
 import type { HandlerDeps } from './deps.js';
 
 const MOVEMENT_MARKUP: import('../transport/types.js').InlineButton[][] = [
@@ -34,6 +37,16 @@ async function proceedWithReflectionDate(ctx: AppContext, date: string, userId: 
   const { pool } = deps;
   ensureSession(ctx);
   ctx.session.reflectionData = { date };
+
+  const userDateStr = await getProductLocalDate(userId, pool);
+  const weekRef = dateStrToWeekRef(userDateStr);
+  const weekId = getWeekId(weekRef);
+  const plan = await pool.query('SELECT 1 FROM weekly_plans WHERE user_id = $1 AND week_id = $2 LIMIT 1', [userId, weekId]);
+  if (plan.rows.length === 0) {
+    ctx.session.step = undefined;
+    await ctx.reply('Сначала нужно зафиксировать вектор недели. Напиши (нажми) /plan');
+    return;
+  }
 
   const existing = await pool.query(
     'SELECT 1 FROM daily_reflections WHERE user_id = $1 AND date = $2',

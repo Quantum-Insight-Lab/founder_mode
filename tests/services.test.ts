@@ -82,6 +82,18 @@ describe.skipIf(!dbUrl)('services', () => {
   });
 
   describe('reflectionService', () => {
+    beforeEach(async () => {
+      await planService.createPlan(userId, {
+        current_state: 's',
+        main_focus: 'f',
+        weekly_result: 'r',
+        why_now: 'n',
+        distractions: 'd',
+        main_risk: 'k',
+      });
+      mockComplete.mockClear();
+    });
+
     it('INV-001: second reflection same day overwrites (upsert), one row per user/date', async () => {
       const today = new Date().toISOString().slice(0, 10);
       const data1 = {

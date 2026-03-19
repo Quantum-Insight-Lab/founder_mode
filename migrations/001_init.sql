@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
   user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tg_id VARCHAR(64) UNIQUE NULL,
   max_id VARCHAR(64) UNIQUE NULL,
-  onboarded_at TIMESTAMPTZ,
+  onboarding_completed_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT users_at_least_one_channel CHECK (tg_id IS NOT NULL OR max_id IS NOT NULL)
 );
@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   last_reflect_notify_date DATE,
   last_review_notify_week_id VARCHAR(32),
   skip_hint_shown_at TIMESTAMPTZ,
+  reflection_onboarding_hint_shown_at TIMESTAMPTZ NULL,
+  onboarding_review_invite_sent_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -68,9 +70,7 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
   current_state TEXT,
   main_focus TEXT NOT NULL,
   weekly_result TEXT NOT NULL,
-  why_now TEXT,
-  distractions TEXT,
-  main_risk TEXT,
+  week_failure TEXT,
   raw_post TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

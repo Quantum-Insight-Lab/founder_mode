@@ -38,7 +38,6 @@
 
 weekly_plan
 daily_reflections[]
-optional_user_note (если есть)
 
 Задача:
 

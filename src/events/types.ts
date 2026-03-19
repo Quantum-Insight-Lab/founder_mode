@@ -38,9 +38,7 @@ export interface PlanCreatedPayload {
   current_state: string;
   main_focus: string;
   weekly_result: string;
-  why_now: string;
-  distractions: string;
-  main_risk: string;
+  week_failure: string;
   raw_post: string;
 }
 

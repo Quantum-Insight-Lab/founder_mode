@@ -38,9 +38,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
         current_state: string;
         main_focus: string;
         weekly_result: string;
-        why_now: string;
-        distractions: string;
-        main_risk: string;
+        week_failure: string;
       }
     ): Promise<string> {
       const userDateStr = await getUserLocalDate(userId, pool);
@@ -54,9 +52,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
         `Где я сейчас: ${answers.current_state}`,
         `Главный фокус недели: ${answers.main_focus}`,
         `Конкретный результат недели: ${answers.weekly_result}`,
-        `Почему это важно сейчас: ${answers.why_now}`,
-        `Что ты точно не будешь делать: ${answers.distractions}`,
-        `Главный риск: ${answers.main_risk}`,
+        `Что будет считаться провалом недели: ${answers.week_failure}`,
       ].join('\n\n');
 
       const idempotencyKey = `plan:${userId}:${weekId}`;
@@ -77,9 +73,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
           current_state: answers.current_state,
           main_focus: answers.main_focus,
           weekly_result: answers.weekly_result,
-          why_now: answers.why_now,
-          distractions: answers.distractions,
-          main_risk: answers.main_risk,
+          week_failure: answers.week_failure,
           raw_post: response.content,
         },
         causation_id: null,
@@ -100,9 +94,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
         current_state: string;
         main_focus: string;
         weekly_result: string;
-        why_now: string;
-        distractions: string;
-        main_risk: string;
+        week_failure: string;
       }
     ): Promise<string> {
       const userDateStr = await getUserLocalDate(userId, pool);
@@ -121,9 +113,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
         `• Где ты сейчас: ${answers.current_state}`,
         `• Главный фокус: ${answers.main_focus}`,
         `• Результат недели: ${answers.weekly_result}`,
-        `• Почему важно сейчас: ${answers.why_now}`,
-        `• Что ты точно не будешь делать: ${answers.distractions}`,
-        `• Главный риск: ${answers.main_risk}`,
+        `• Провал недели: ${answers.week_failure}`,
       ].join('\n');
       const newRawPost = originalRawPost + appendix;
 
@@ -138,9 +128,7 @@ export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
           current_state: answers.current_state,
           main_focus: answers.main_focus,
           weekly_result: answers.weekly_result,
-          why_now: answers.why_now,
-          distractions: answers.distractions,
-          main_risk: answers.main_risk,
+          week_failure: answers.week_failure,
           raw_post: newRawPost,
         },
         causation_id: null,

@@ -20,9 +20,7 @@ export interface WeeklyPlanRow {
   current_state: string | null;
   main_focus: string;
   weekly_result: string;
-  why_now: string | null;
-  distractions: string | null;
-  main_risk: string | null;
+  week_failure: string | null;
   raw_post: string;
 }
 

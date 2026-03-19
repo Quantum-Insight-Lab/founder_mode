@@ -46,7 +46,7 @@ describe.skipIf(!dbUrl)('services', () => {
 
   describe('planService', () => {
     it('INV-002: second plan same week overwrites (upsert), one row per user/week', async () => {
-      const answers = { current_state: 's', main_focus: 'f', weekly_result: 'r', why_now: 'n', distractions: 'd', main_risk: 'k' };
+      const answers = { current_state: 's', main_focus: 'f', weekly_result: 'r', week_failure: 'fail' };
       await planService.createPlan(userId, answers);
       mockComplete.mockClear();
       await planService.createPlan(userId, { ...answers, main_focus: 'f2' });
@@ -61,9 +61,7 @@ describe.skipIf(!dbUrl)('services', () => {
         current_state: 'test state',
         main_focus: 'focus',
         weekly_result: 'result',
-        why_now: 'now',
-        distractions: 'none',
-        main_risk: 'risk',
+        week_failure: 'no sales',
       };
 
       const result = await planService.createPlan(userId, answers);
@@ -87,9 +85,7 @@ describe.skipIf(!dbUrl)('services', () => {
         current_state: 's',
         main_focus: 'f',
         weekly_result: 'r',
-        why_now: 'n',
-        distractions: 'd',
-        main_risk: 'k',
+        week_failure: 'f',
       });
       mockComplete.mockClear();
     });

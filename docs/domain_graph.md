@@ -11,7 +11,7 @@
 |----------|----------|---------------|---------|----------------------------|
 | **User** | Фаундер, использующий бота. Внутренний ID + связь с платформой (Telegram) | user_id (UUID), tg_id, created_at | user_id (внутр.), tg_id (платф.) | Identity |
 | **Week** | Временной интервал недели (цикл планирования) | start, end (date) | (start, end) или week_id | Planning |
-| **WeeklyPlan** | Недельный план. Эталон для обзора | current_state, main_focus, weekly_result, why_now, distractions, main_risk, raw_post | (user_id, week_id) | Planning |
+| **WeeklyPlan** | Недельный план. Эталон для обзора | current_state, main_focus, weekly_result, week_failure, raw_post | (user_id, week_id) | Planning |
 | **DailyReflection** | Рефлексия за один день | date, day, had_movement, what_moved/what_stopped, sensitive_moment/body_state, tomorrow_step/return_step, thought_of_day, raw_post | (user_id, date) | Reflection |
 | **WeeklyReview** | Сгенерированный обзор недели | focus, result_status, what_worked, bottleneck, conclusion (или raw_text) | (user_id, week_id) | Review |
 | **LLMCall** | Запись вызова GPT (аудит) | event_type (plan/reflection/review), model, tokens_in, tokens_out, latency_ms, trace_id, idempotency_key | event_id | Observability |
@@ -61,7 +61,7 @@
 Временной интервал (day_range). Обычно Пн–Вс или Вс–Сб. Идентифицируется парой (start, end) или week_id. Задаёт границы цикла: план и рефлексии должны относиться к одной неделе.
 
 ### WeeklyPlan
-Структурированный план недели. Создаётся в воскресенье через ответы на 6 вопросов. GPT возвращает raw_post. Сохраняется как эталон для обзора. Поля: current_state, main_focus, weekly_result, why_now, distractions, main_risk.
+Структурированный план недели. Создаётся в воскресенье через ответы на 4 вопроса. GPT возвращает raw_post. Сохраняется как эталон для обзора. Поля: current_state, main_focus, weekly_result, week_failure.
 
 ### DailyReflection
 Рефлексия за конкретный день. Две ветки: had_movement=true (what_moved, sensitive_moment, tomorrow_step) или had_movement=false (what_stopped, body_state, attention_sink, return_step). Поле thought_of_day в обеих. raw_post — ответ GPT. Одна рефлексия на пользователя на день (идемпотентность).

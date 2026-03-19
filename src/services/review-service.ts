@@ -66,9 +66,7 @@ export function createReviewService(eventStore: EventStore, deps: ServiceDeps) {
           current_state: plan.current_state,
           main_focus: plan.main_focus,
           weekly_result: plan.weekly_result,
-          why_now: plan.why_now,
-          distractions: plan.distractions,
-          main_risk: plan.main_risk,
+          week_failure: plan.week_failure,
         },
         daily_reflections: reflections.map((r) => ({
           day: r.day,

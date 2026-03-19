@@ -13,7 +13,7 @@ export async function getUserByMaxId(p: Pool, maxId: string): Promise<{ user_id:
 }
 
 export async function markOnboarded(p: Pool, userId: string): Promise<void> {
-  await p.query('UPDATE users SET onboarded_at = NOW() WHERE user_id = $1', [userId]);
+  await p.query('UPDATE users SET onboarding_completed_at = NOW() WHERE user_id = $1', [userId]);
 }
 
 export async function countRows(

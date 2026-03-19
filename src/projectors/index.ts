@@ -58,15 +58,13 @@ export function createProjectors(pool: Pool) {
     await pool.query(
       `INSERT INTO weekly_plans (
         user_id, week_id, current_state, main_focus, weekly_result,
-        why_now, distractions, main_risk, raw_post, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        week_failure, raw_post, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
       ON CONFLICT (user_id, week_id) DO UPDATE SET
         current_state = EXCLUDED.current_state,
         main_focus = EXCLUDED.main_focus,
         weekly_result = EXCLUDED.weekly_result,
-        why_now = EXCLUDED.why_now,
-        distractions = EXCLUDED.distractions,
-        main_risk = EXCLUDED.main_risk,
+        week_failure = EXCLUDED.week_failure,
         raw_post = EXCLUDED.raw_post,
         updated_at = NOW()`,
       [
@@ -75,9 +73,7 @@ export function createProjectors(pool: Pool) {
         p.current_state,
         p.main_focus,
         p.weekly_result,
-        p.why_now,
-        p.distractions,
-        p.main_risk,
+        p.week_failure,
         p.raw_post,
       ]
     );

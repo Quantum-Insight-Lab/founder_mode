@@ -2,6 +2,8 @@
  * Event types per PDA 4.4 and domain_graph.md
  */
 export const EVENT_TYPES = {
+  DeclarationCreated: 'DeclarationCreated',
+  DeclarationUpdated: 'DeclarationUpdated',
   PlanCreated: 'PlanCreated',
   PlanUpdated: 'PlanUpdated',
   ReflectionSubmitted: 'ReflectionSubmitted',
@@ -42,6 +44,15 @@ export interface PlanCreatedPayload {
   raw_post: string;
 }
 
+export interface DeclarationCreatedPayload {
+  user_id: string;
+  week_id: string;
+  main_focus: string;
+  win_result: string;
+  week_failure: string;
+  raw_post: string;
+}
+
 export type ReflectionMovementBranch = 'yes' | 'no' | 'partial' | 'week_closed';
 
 export interface ReflectionSubmittedPayload {
@@ -78,6 +89,14 @@ export interface PlanCreatedEvent extends BaseEvent {
   event_type: 'PlanCreated';
   payload: PlanCreatedPayload;
 }
+export interface DeclarationCreatedEvent extends BaseEvent {
+  event_type: 'DeclarationCreated';
+  payload: DeclarationCreatedPayload;
+}
+export interface DeclarationUpdatedEvent extends BaseEvent {
+  event_type: 'DeclarationUpdated';
+  payload: DeclarationCreatedPayload;
+}
 export interface PlanUpdatedEvent extends BaseEvent {
   event_type: 'PlanUpdated';
   payload: PlanCreatedPayload;
@@ -96,6 +115,8 @@ export interface UserRegisteredEvent extends BaseEvent {
 }
 
 export type DomainEvent =
+  | DeclarationCreatedEvent
+  | DeclarationUpdatedEvent
   | PlanCreatedEvent
   | PlanUpdatedEvent
   | ReflectionSubmittedEvent

@@ -15,9 +15,10 @@ export interface HandlerDeps {
     ctx: AppContext,
     rawPost: string,
     userId: string,
-    context: 'plan' | 'reflect' | 'review'
+    context: 'declaration' | 'plan' | 'reflect' | 'review'
   ) => Promise<void>;
   countRows: (p: Pool, query: string, params?: unknown[]) => Promise<number>;
+  declarationService: ReturnType<typeof import('../../services/declaration-service.js').createDeclarationService>;
   planService: ReturnType<typeof import('../../services/plan-service.js').createPlanService>;
   reflectionService: ReturnType<typeof import('../../services/reflection-service.js').createReflectionService>;
   reviewService: ReturnType<typeof import('../../services/review-service.js').createReviewService>;

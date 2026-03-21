@@ -10,6 +10,7 @@ import { createEventStore } from '../../events/event-store.js';
 import { EVENT_TYPES } from '../../events/types.js';
 import { createProjectors } from '../../projectors/index.js';
 import { createPlanService, getWeekId, getWeekStartEnd } from '../../services/plan-service.js';
+import { createDeclarationService } from '../../services/declaration-service.js';
 import { createReflectionService } from '../../services/reflection-service.js';
 import { createReviewService } from '../../services/review-service.js';
 import { createSettingsService, formatDay, formatDays, formatTime } from '../../services/settings-service.js';
@@ -25,6 +26,7 @@ import {
 } from '../conversations.js';
 import type { HandlerDeps } from './deps.js';
 import { registerOnboardingHandlers } from './onboarding.js';
+import { registerDeclarationHandlers } from './declaration.js';
 import { registerPlanHandlers } from './plan.js';
 import { registerReflectHandlers } from './reflect.js';
 import { registerReviewHandlers } from './review.js';
@@ -51,6 +53,7 @@ export function createAppDeps(): HandlerDeps {
   const llm = createLLMClient();
   const serviceDeps = { pool, projectors, llm };
   const planService = createPlanService(eventStore, serviceDeps);
+  const declarationService = createDeclarationService(eventStore, serviceDeps);
   const reflectionService = createReflectionService(eventStore, serviceDeps);
   const reviewService = createReviewService(eventStore, serviceDeps);
   const settingsService = createSettingsService(pool);
@@ -94,7 +97,7 @@ export function createAppDeps(): HandlerDeps {
     ctx: import('../transport/types.js').AppContext,
     rawPost: string,
     userId: string,
-    context: 'plan' | 'reflect' | 'review'
+    context: 'declaration' | 'plan' | 'reflect' | 'review'
   ): Promise<void> {
     const formatted = formatLlmResponse(rawPost?.trim() || '');
     if (!formatted) {
@@ -155,6 +158,7 @@ export function createAppDeps(): HandlerDeps {
     formatErrorForUser,
     handleLlmReply,
     countRows,
+    declarationService,
     planService,
     reflectionService,
     reviewService,
@@ -166,6 +170,7 @@ export function createAppDeps(): HandlerDeps {
 export function registerHandlers(bot: Bot<BotContext>, deps: HandlerDeps) {
   initTokenSpikeChecker(deps.pool, bot.api);
   registerOnboardingHandlers(bot, deps);
+  registerDeclarationHandlers(bot, deps);
   registerPlanHandlers(bot, deps);
   registerReflectHandlers(bot, deps);
   registerReviewHandlers(bot, deps);

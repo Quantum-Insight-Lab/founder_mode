@@ -42,7 +42,17 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
         'SELECT main_focus FROM weekly_plans WHERE user_id = $1 AND week_id = $2',
         [userId, weekId]
       );
-      const mainFocus = planRow.rows[0]?.main_focus;
+      let mainFocus = planRow.rows[0]?.main_focus;
+      if (!mainFocus) {
+        // Если пользователь выбрал дату из “пограничной” недели (когда план для этой недели
+        // ещё не создан), не блокируем сбор рефлексии: используем план текущей локальной недели.
+        const todayWeekId = getWeekId(new Date(todayStr + 'T12:00:00Z'));
+        const fallbackPlanRow = await pool.query<{ main_focus: string }>(
+          'SELECT main_focus FROM weekly_plans WHERE user_id = $1 AND week_id = $2',
+          [userId, todayWeekId]
+        );
+        mainFocus = fallbackPlanRow.rows[0]?.main_focus;
+      }
       if (!mainFocus) {
         throw new InvariantViolationError('Нужен план недели для рефлексии', 'NOT_FOUND');
       }

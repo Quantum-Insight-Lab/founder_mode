@@ -24,6 +24,15 @@ export interface WeeklyPlanRow {
   raw_post: string;
 }
 
+export interface WeeklyDeclarationRow {
+  user_id: string;
+  week_id: string;
+  main_focus: string;
+  win_result: string;
+  week_failure: string;
+  raw_post: string;
+}
+
 export interface DailyReflectionRow {
   user_id: string;
   date: string;

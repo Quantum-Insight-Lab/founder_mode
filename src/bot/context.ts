@@ -17,6 +17,8 @@ export interface ReflectionSessionData {
 
 export interface SessionData {
   step?: string;
+  declarationEditMode?: boolean; // true = ручное редактирование declaration, без LLM
+  declarationAnswers?: Record<string, string>;
   planEditMode?: boolean; // true = ручное редактирование, без LLM
   planningAnswers?: Record<string, string>;
   isFirstPlanning?: boolean; // true = первый план пользователя, показываем подсказку у main_focus

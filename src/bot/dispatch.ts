@@ -18,6 +18,12 @@ import {
   handleOnboardReviewCtaLater,
 } from './handlers/onboarding.js';
 import {
+  handleDeclarationCommand,
+  handleDeclarationEdit,
+  handleDeclarationMessage,
+  handleDeclarationShow,
+} from './handlers/declaration.js';
+import {
   handlePlanCommand,
   handlePlanShow,
   handlePlanEdit,
@@ -74,11 +80,13 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
     /^(ок|okay|окей|да|понял|поняла|готов|готово|дальше|что дальше|что делать)\b/.test(t) ||
     /\b(что дальше|что делать)\b/.test(t);
   const wantsPlan = /\b(plan|план|вектор|фокус)\b/.test(t);
+  const wantsDeclaration = /\b(declaration|деклар)\b/.test(t);
   const wantsReflect = /\b(reflect|рефлекс)\b/.test(t);
   const wantsReview = /\b(review|обзор|недел)\b/.test(t);
   const wantsSettings = /\b(settings|настрой|уведом)\b/.test(t);
   const wantsDelete = /\b(delete|удал|стер|очист)\b/.test(t);
 
+  if (wantsDeclaration) return ctx.reply('Ок. Чтобы зафиксировать declaration недели — /declaration');
   if (wantsPlan) return ctx.reply('Ок. Чтобы зафиксировать вектор недели — /plan');
   if (wantsReflect) return ctx.reply('Ок. Чтобы зафиксировать день — /reflect');
   if (wantsReview) return ctx.reply('Ок. Чтобы собрать обзор недели — /review');
@@ -86,7 +94,7 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
   if (wantsDelete) return ctx.reply('Удаление данных — /delete');
 
   if (!isAffirmativeOrNext) {
-    return ctx.reply('Команды: /plan /reflect /review /settings /delete');
+    return ctx.reply('Команды: /declaration /plan /reflect /review /settings /delete');
   }
 
   const { pool } = deps;
@@ -111,7 +119,7 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
     return ctx.reply('Время коротко зафиксировать день. Напиши (нажми) /reflect');
   }
 
-  return ctx.reply('Команды: /plan /reflect /review /settings /delete');
+  return ctx.reply('Команды: /declaration /plan /reflect /review /settings /delete');
 }
 
 export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: HandlerDeps): Promise<void> {
@@ -122,6 +130,8 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleStart(ctx, deps);
       case 'plan':
         return handlePlanCommand(ctx, deps);
+      case 'declaration':
+        return handleDeclarationCommand(ctx, deps);
       case 'reflect':
         return handleReflectCommand(ctx, deps);
       case 'review':
@@ -150,6 +160,10 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleOnboardReviewCtaLater(ctx, deps);
       case 'plan_show':
         return handlePlanShow(ctx, deps);
+      case 'declaration_show':
+        return handleDeclarationShow(ctx, deps);
+      case 'declaration_edit':
+        return handleDeclarationEdit(ctx);
       case 'plan_edit':
         return handlePlanEdit(ctx, deps);
       case 'plan_edit_confirm_yes':
@@ -230,6 +244,7 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
     if (!text) return;
 
     if (step === 'onboard_timezone') return handleOnboardTimezone(ctx, text, deps);
+    if (step?.startsWith('declaration_')) return handleDeclarationMessage(ctx, text, deps);
     if (step?.startsWith('planning_')) return handlePlanningMessage(ctx, text, deps);
     if (step?.match(/^reflect_(movement|nomovement|partial|weekclosed)_\d+$/)) return handleReflectionMessage(ctx, text, deps);
     if (step === 'review_user_note') return handleReviewUserNote(ctx, text, deps);

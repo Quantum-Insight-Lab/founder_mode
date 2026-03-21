@@ -4,6 +4,8 @@
 import type { Pool } from 'pg';
 import { EVENT_TYPES } from '../events/types.js';
 import type {
+  DeclarationCreatedEvent,
+  DeclarationUpdatedEvent,
   DomainEvent,
   PlanCreatedEvent,
   PlanUpdatedEvent,
@@ -16,6 +18,10 @@ export function createProjectors(pool: Pool) {
   return {
     async handleEvent(event: DomainEvent): Promise<void> {
       switch (event.event_type) {
+        case EVENT_TYPES.DeclarationCreated:
+        case EVENT_TYPES.DeclarationUpdated:
+          await projectDeclaration(event);
+          break;
         case EVENT_TYPES.PlanCreated:
         case EVENT_TYPES.PlanUpdated:
           await projectPlan(event);
@@ -76,6 +82,22 @@ export function createProjectors(pool: Pool) {
         p.week_failure,
         p.raw_post,
       ]
+    );
+  }
+
+  async function projectDeclaration(event: DeclarationCreatedEvent | DeclarationUpdatedEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO weekly_declarations (
+        user_id, week_id, main_focus, win_result, week_failure, raw_post, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      ON CONFLICT (user_id, week_id) DO UPDATE SET
+        main_focus = EXCLUDED.main_focus,
+        win_result = EXCLUDED.win_result,
+        week_failure = EXCLUDED.week_failure,
+        raw_post = EXCLUDED.raw_post,
+        updated_at = NOW()`,
+      [p.user_id, p.week_id, p.main_focus, p.win_result, p.week_failure, p.raw_post]
     );
   }
 

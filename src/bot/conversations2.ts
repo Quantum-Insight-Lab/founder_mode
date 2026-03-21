@@ -7,7 +7,7 @@
 export const WEEKLY_DECLARATION_QUESTIONS = [
   { key: 'main_focus', text: 'Один главный приоритет на неделю?' },
   { key: 'win_result', text: 'Какой артефакт или результат должен появиться к концу недели?' },
-  { key: 'week_failure', text: 'Что на этой неделе вторично и сознательно не в фокусе?' },
+  { key: 'week_failure', text: 'Что будет считаться провалом недели?' },
 ] as const;
 
 export type WeeklyDeclarationAnswerKey = (typeof WEEKLY_DECLARATION_QUESTIONS)[number]['key'];

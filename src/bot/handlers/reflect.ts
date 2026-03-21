@@ -113,7 +113,9 @@ export async function handleReflectCommand(ctx: AppContext, deps: HandlerDeps): 
     [userId, yesterday, today]
   );
   const r = reflectMeta.rows[0];
-  const skipDateQuestion = (r?.total ?? 0) === 0 || r?.has_yesterday || r?.has_today;
+  // Вопрос "Вчера/Сегодня" показываем только если за обе даты ещё нет рефлексий.
+  // Если есть хотя бы за одну дату — идём напрямую (по текущей логике берём today).
+  const skipDateQuestion = r?.has_yesterday || r?.has_today;
 
   if (skipDateQuestion) {
     await proceedWithReflectionDate(ctx, today, userId, deps);

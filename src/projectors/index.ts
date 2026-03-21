@@ -10,6 +10,8 @@ import type {
   PlanCreatedEvent,
   PlanUpdatedEvent,
   ReflectionSubmittedEvent,
+  ResultReportCreatedEvent,
+  ResultReportUpdatedEvent,
   ReviewGeneratedEvent,
   UserRegisteredEvent,
 } from '../events/types.js';
@@ -21,6 +23,10 @@ export function createProjectors(pool: Pool) {
         case EVENT_TYPES.DeclarationCreated:
         case EVENT_TYPES.DeclarationUpdated:
           await projectDeclaration(event);
+          break;
+        case EVENT_TYPES.ResultReportCreated:
+        case EVENT_TYPES.ResultReportUpdated:
+          await projectResultReport(event);
           break;
         case EVENT_TYPES.PlanCreated:
         case EVENT_TYPES.PlanUpdated:
@@ -98,6 +104,26 @@ export function createProjectors(pool: Pool) {
         raw_post = EXCLUDED.raw_post,
         updated_at = NOW()`,
       [p.user_id, p.week_id, p.main_focus, p.win_result, p.week_failure, p.raw_post]
+    );
+  }
+
+  async function projectResultReport(
+    event: ResultReportCreatedEvent | ResultReportUpdatedEvent
+  ): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO weekly_result_reports (
+        user_id, week_id, result_status, result_fact, main_gap,
+        next_step, raw_post, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      ON CONFLICT (user_id, week_id) DO UPDATE SET
+        result_status = EXCLUDED.result_status,
+        result_fact = EXCLUDED.result_fact,
+        main_gap = EXCLUDED.main_gap,
+        next_step = EXCLUDED.next_step,
+        raw_post = EXCLUDED.raw_post,
+        updated_at = NOW()`,
+      [p.user_id, p.week_id, p.result_status, p.result_fact, p.main_gap, p.next_step, p.raw_post]
     );
   }
 

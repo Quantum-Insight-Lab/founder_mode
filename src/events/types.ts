@@ -4,6 +4,8 @@
 export const EVENT_TYPES = {
   DeclarationCreated: 'DeclarationCreated',
   DeclarationUpdated: 'DeclarationUpdated',
+  ResultReportCreated: 'ResultReportCreated',
+  ResultReportUpdated: 'ResultReportUpdated',
   PlanCreated: 'PlanCreated',
   PlanUpdated: 'PlanUpdated',
   ReflectionSubmitted: 'ReflectionSubmitted',
@@ -53,6 +55,16 @@ export interface DeclarationCreatedPayload {
   raw_post: string;
 }
 
+export interface ResultReportCreatedPayload {
+  user_id: string;
+  week_id: string;
+  result_status: string;
+  result_fact: string;
+  main_gap: string;
+  next_step: string;
+  raw_post: string;
+}
+
 export type ReflectionMovementBranch = 'yes' | 'no' | 'partial' | 'week_closed';
 
 export interface ReflectionSubmittedPayload {
@@ -97,6 +109,14 @@ export interface DeclarationUpdatedEvent extends BaseEvent {
   event_type: 'DeclarationUpdated';
   payload: DeclarationCreatedPayload;
 }
+export interface ResultReportCreatedEvent extends BaseEvent {
+  event_type: 'ResultReportCreated';
+  payload: ResultReportCreatedPayload;
+}
+export interface ResultReportUpdatedEvent extends BaseEvent {
+  event_type: 'ResultReportUpdated';
+  payload: ResultReportCreatedPayload;
+}
 export interface PlanUpdatedEvent extends BaseEvent {
   event_type: 'PlanUpdated';
   payload: PlanCreatedPayload;
@@ -117,6 +137,8 @@ export interface UserRegisteredEvent extends BaseEvent {
 export type DomainEvent =
   | DeclarationCreatedEvent
   | DeclarationUpdatedEvent
+  | ResultReportCreatedEvent
+  | ResultReportUpdatedEvent
   | PlanCreatedEvent
   | PlanUpdatedEvent
   | ReflectionSubmittedEvent

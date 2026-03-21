@@ -41,10 +41,13 @@ async function proceedWithReflectionDate(ctx: AppContext, date: string, userId: 
   const userDateStr = await getUserLocalDate(userId, pool);
   const weekRef = dateStrToWeekRef(userDateStr);
   const weekId = getWeekId(weekRef);
-  const plan = await pool.query('SELECT 1 FROM weekly_plans WHERE user_id = $1 AND week_id = $2 LIMIT 1', [userId, weekId]);
-  if (plan.rows.length === 0) {
+  const declaration = await pool.query(
+    'SELECT 1 FROM weekly_declarations WHERE user_id = $1 AND week_id = $2 LIMIT 1',
+    [userId, weekId]
+  );
+  if (declaration.rows.length === 0) {
     ctx.session.step = undefined;
-    await ctx.reply('Сначала нужно зафиксировать вектор недели. Напиши (нажми) /plan');
+    await ctx.reply('Сначала нужно зафиксировать declaration недели. Напиши (нажми) /declaration');
     return;
   }
 
@@ -90,6 +93,7 @@ export async function handleReflectCommand(ctx: AppContext, deps: HandlerDeps): 
   const userId = ctx.userId;
   logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /reflect');
   ensureSession(ctx);
+  ctx.session.reflectionPromptVariant ??= 'v1';
   ctx.session.reflectionData = {};
 
   const yesterday = await getReflectDate(userId, 'yesterday');
@@ -140,6 +144,13 @@ export async function handleReflectCommand(ctx: AppContext, deps: HandlerDeps): 
 
   ctx.session.step = 'reflect_date';
   await ctx.reply(questionText, { reply_markup: rows });
+}
+
+export async function handleReflect2Command(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /reflect2');
+  ensureSession(ctx);
+  ctx.session.reflectionPromptVariant = 'v2';
+  await handleReflectCommand(ctx, deps);
 }
 
 export async function handleReflectSkipEnableNotif(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -280,6 +291,7 @@ export async function handleReflectionMessage(ctx: AppContext, text: string, dep
     ctx.session!.step = undefined;
     const data = ctx.session!.reflectionData!;
     const isEdit = ctx.session!.reflectionEditMode ?? false;
+    const variant = ctx.session!.reflectionPromptVariant ?? 'v1';
     const movementBranch = (data.movement_branch ?? (data.had_movement ? 'yes' : 'no')) as 'yes' | 'no' | 'partial' | 'week_closed';
     ctx.session!.reflectionData = undefined;
     ctx.session!.reflectionEditMode = undefined;
@@ -306,7 +318,10 @@ export async function handleReflectionMessage(ctx: AppContext, text: string, dep
         await ctx.reply('❗️ Рефлексия обновлена.\n\n' + formatLlmResponse(rawPost?.trim() || ''), { parse_mode: 'HTML' });
       } else {
         await ctx.reply('🟢 Готовлю рефлексию...');
-        const rawPost = await reflectionService.submitReflection(userId, payload);
+        const rawPost =
+          variant === 'v2'
+            ? await reflectionService.submitReflectionV2(userId, payload)
+            : await reflectionService.submitReflection(userId, payload);
         funnelCompleted.inc({ type: 'reflect' });
         logger.info({ userId, date: data.date }, 'Reflection submitted');
         await handleLlmReply(ctx, rawPost ?? '', userId, 'reflect');
@@ -350,6 +365,10 @@ export function registerReflectHandlers(bot: import('grammy').Bot<BotContext>, d
   bot.command('reflect', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleReflectCommand(appCtx, deps);
+  });
+  bot.command('reflect2', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleReflect2Command(appCtx, deps);
   });
   bot.callbackQuery('reflect_skip_enable_notif', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });

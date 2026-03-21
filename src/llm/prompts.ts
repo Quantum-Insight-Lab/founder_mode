@@ -18,14 +18,20 @@ export const prompts = {
     loadPrompt('DAILY_REFLECTION_SYSTEM_PROMPT')
       .replace(/<День недели>/g, dayName)
       .replace(/<day>/g, dayName),
+  dailyReflectionV2: (dayName: string) =>
+    loadPrompt('DAILY_REFLECTION_V2_SYSTEM_PROMPT')
+      .replace(/<День недели>/g, dayName)
+      .replace(/<day>/g, dayName),
   executionLog: (dayName: string) =>
     loadPrompt('EXECUTION_LOG_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
   weeklyReview: (dayName: string) =>
     loadPrompt('WEEKLY_REVIEW_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
   weeklyReviewSoft: (dayName: string) =>
     loadPrompt('WEEKLY_REVIEW_SOFT_PROMPT').replace(/<День недели>/g, dayName),
-  weeklyResultReport: (dayName: string) =>
-    loadPrompt('WEEKLY_RESULT_REPORT_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
+  weeklyResultReport: (dayName: string, weekId: string) =>
+    loadPrompt('WEEKLY_RESULT_REPORT_SYSTEM_PROMPT')
+      .replace(/<День недели>/g, dayName)
+      .replace(/<week_id>/g, weekId),
   weeklyReset: (dayName: string) =>
     loadPrompt('WEEKLY_RESET_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
 };

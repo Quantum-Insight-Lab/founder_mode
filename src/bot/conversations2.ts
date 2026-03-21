@@ -70,10 +70,6 @@ export type ExecutionLogAnswerKey = (typeof EXECUTION_LOG_QUESTIONS)[number]['ke
 
 export const RESULT_REPORT_QUESTIONS = [
   { key: 'review_user_note', text: 'Что ты считаешь главным итогом недели, если сказать одной строкой?' },
-  { key: 'what_done', text: 'Что готово за неделю?' },
-  { key: 'artifact', text: 'Цифры или артефакт недели:' },
-  { key: 'conclusion', text: 'Главный вывод:' },
-  { key: 'new_focus', text: 'Новый приоритет:' },
 ] as const;
 
 export type ResultReportAnswerKey = (typeof RESULT_REPORT_QUESTIONS)[number]['key'];

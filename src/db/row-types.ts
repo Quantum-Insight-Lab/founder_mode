@@ -33,6 +33,16 @@ export interface WeeklyDeclarationRow {
   raw_post: string;
 }
 
+export interface WeeklyResultReportRow {
+  user_id: string;
+  week_id: string;
+  result_status: string;
+  result_fact: string;
+  main_gap: string;
+  next_step: string;
+  raw_post: string;
+}
+
 export interface DailyReflectionRow {
   user_id: string;
   date: string;

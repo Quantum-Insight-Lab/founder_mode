@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { Pool } from 'pg';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
 import { createEventStore } from '../src/events/event-store.js';
 import { createProjectors } from '../src/projectors/index.js';
 import { createPlanService } from '../src/services/plan-service.js';
 import { createReflectionService } from '../src/services/reflection-service.js';
 import { createReviewService } from '../src/services/review-service.js';
+import { createResultReportService } from '../src/services/result-report-service.js';
 import { getWeekId, getWeekStartEnd } from '../src/services/plan-service.js';
 
 const dbUrl = process.env.TEST_DATABASE_URL;
@@ -20,19 +21,28 @@ describe.skipIf(!dbUrl)('services', () => {
   let planService: ReturnType<typeof createPlanService>;
   let reflectionService: ReturnType<typeof createReflectionService>;
   let reviewService: ReturnType<typeof createReviewService>;
+  let resultReportService: ReturnType<typeof createResultReportService>;
 
   const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
   const tgId = 'test-user-123';
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: dbUrl });
-    const sql = readFileSync(resolve(process.cwd(), 'migrations/001_init.sql'), 'utf-8');
-    await pool.query(sql);
+    const migrationDir = resolve(process.cwd(), 'migrations');
+    const files = readdirSync(migrationDir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
+    for (const file of files) {
+      const sql = readFileSync(resolve(migrationDir, file), 'utf-8');
+      await pool.query(sql);
+    }
   });
 
   beforeEach(async () => {
     mockComplete.mockClear();
-    await pool.query('TRUNCATE events, weekly_plans, daily_reflections, weekly_reviews, idempotency_cache, llm_calls CASCADE');
+    await pool.query(
+      'TRUNCATE events, weekly_declarations, weekly_result_reports, weekly_plans, daily_reflections, weekly_reviews, idempotency_cache, llm_calls CASCADE'
+    );
     await pool.query('DELETE FROM users WHERE tg_id = $1', [tgId]);
     await pool.query('INSERT INTO users (user_id, tg_id) VALUES ($1, $2) ON CONFLICT (tg_id) DO NOTHING', [userId, tgId]);
 
@@ -42,6 +52,7 @@ describe.skipIf(!dbUrl)('services', () => {
     planService = createPlanService(eventStore, serviceDeps);
     reflectionService = createReflectionService(eventStore, serviceDeps);
     reviewService = createReviewService(eventStore, serviceDeps);
+    resultReportService = createResultReportService(eventStore, serviceDeps);
   });
 
   describe('planService', () => {
@@ -310,6 +321,105 @@ describe.skipIf(!dbUrl)('services', () => {
       expect(payload.week_id).toBe(weekId);
       expect(payload.day_range_start).toBe(start);
       expect(payload.day_range_end).toBe(end);
+    });
+  });
+
+  describe('resultReportService', () => {
+    async function seedDeclarationForCurrentWeek() {
+      const weekId = getWeekId(new Date());
+      await pool.query(
+        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, win_result, week_failure, raw_post)
+         VALUES ($1, $2, 'focus', 'result', 'fail', 'raw')
+         ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'focus'`,
+        [userId, weekId]
+      );
+      return weekId;
+    }
+
+    it('renders deterministic card from valid JSON', async () => {
+      const weekId = await seedDeclarationForCurrentWeek();
+      mockComplete.mockResolvedValueOnce({
+        content: JSON.stringify({
+          week_id: weekId,
+          result_status: 'частично',
+          result_fact: 'Продукт запущен',
+          main_gap: 'Нет канала пользователей',
+          next_step: 'Сначала люди, потом развитие',
+        }),
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+
+      const out = await resultReportService.createResultReport(
+        userId,
+        'Главное — запуск и выводы по каналу пользователей'
+      );
+
+      expect(out).toContain(`Неделя ${weekId}`);
+      expect(out).toContain('Результат частично.');
+      expect(out).toContain('Главный разрыв —');
+
+      const rows = await pool.query('SELECT * FROM weekly_result_reports WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
+      expect(rows.rows.length).toBe(1);
+      expect(rows.rows[0]).toMatchObject({
+        result_status: 'частично',
+        result_fact: 'Продукт запущен',
+        main_gap: 'Нет канала пользователей',
+      });
+    });
+
+    it('retries once when first LLM response is invalid JSON', async () => {
+      const weekId = await seedDeclarationForCurrentWeek();
+      mockComplete
+        .mockResolvedValueOnce({
+          content: 'not-json',
+          usage: { prompt_tokens: 0, completion_tokens: 0 },
+          model: 'test',
+          latencyMs: 0,
+        })
+        .mockResolvedValueOnce({
+          content: JSON.stringify({
+            week_id: weekId,
+            result_status: 'достигнут',
+            result_fact: 'Продукт запущен',
+            main_gap: 'Слабый охват',
+            next_step: 'Усилить канал привлечения',
+          }),
+          usage: { prompt_tokens: 0, completion_tokens: 0 },
+          model: 'test',
+          latencyMs: 0,
+        });
+
+      const out = await resultReportService.createResultReport(userId, 'Нужно честно зафиксировать итог недели');
+
+      expect(mockComplete).toHaveBeenCalledTimes(2);
+      expect(out).toContain('Результат достигнут.');
+    });
+
+    it('keeps single event per week with same idempotency key', async () => {
+      await seedDeclarationForCurrentWeek();
+      mockComplete.mockResolvedValue({
+        content: JSON.stringify({
+          week_id: getWeekId(new Date()),
+          result_status: 'достигнут',
+          result_fact: 'Факт',
+          main_gap: 'Разрыв',
+          next_step: 'Шаг',
+        }),
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+
+      await resultReportService.createResultReport(userId, 'Итог недели');
+      await resultReportService.createResultReport(userId, 'Итог недели');
+
+      const events = await pool.query(
+        "SELECT * FROM events WHERE event_type = 'ResultReportCreated' AND (payload->>'user_id') = $1",
+        [userId]
+      );
+      expect(events.rows.length).toBe(1);
     });
   });
 });

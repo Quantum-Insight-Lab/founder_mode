@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 
 type AllowedTable =
   | 'weekly_declarations'
+  | 'weekly_result_reports'
   | 'weekly_plans'
   | 'daily_reflections'
   | 'weekly_reviews'
@@ -10,6 +11,7 @@ type AllowedTable =
 
 const ALLOWED_TABLES: ReadonlySet<string> = new Set([
   'weekly_declarations',
+  'weekly_result_reports',
   'weekly_plans',
   'daily_reflections',
   'weekly_reviews',
@@ -41,7 +43,7 @@ function parseArgs(argv: string[]): { table: AllowedTable; userId?: string; dryR
 
   if (!ALLOWED_TABLES.has(table)) {
     throw new Error(
-      'Invalid --table. Allowed: weekly_declarations, weekly_plans, daily_reflections, weekly_reviews, events'
+      'Invalid --table. Allowed: weekly_declarations, weekly_result_reports, weekly_plans, daily_reflections, weekly_reviews, events'
     );
   }
 

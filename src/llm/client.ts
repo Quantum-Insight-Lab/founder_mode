@@ -16,7 +16,7 @@ export interface LLMResponse {
   latencyMs: number;
 }
 
-export type LLMCallType = 'declaration' | 'plan' | 'reflect' | 'review';
+export type LLMCallType = 'declaration' | 'plan' | 'reflect' | 'review' | 'result_report';
 
 export interface LLMOptions {
   idempotencyKey?: string;
@@ -71,6 +71,10 @@ export function createLLMClient() {
 
       logger.debug({ idempotencyKey, userId: options.userId }, 'LLM API call');
       const start = Date.now();
+      const responseFormat =
+        callType === 'result_report' || callType === 'declaration'
+          ? ({ type: 'json_object' } as const)
+          : ({ type: 'text' } as const);
       const response = await openai.chat.completions.create({
         model,
         messages: [
@@ -78,7 +82,7 @@ export function createLLMClient() {
           { role: 'user', content: userMessage },
         ],
         max_completion_tokens: 4096,
-        response_format: { type: 'text' },
+        response_format: responseFormat,
       });
       const latencyMs = Date.now() - start;
 

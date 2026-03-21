@@ -4,8 +4,15 @@
  */
 import 'dotenv/config';
 import { Pool } from 'pg';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
+
+function getMigrationFiles(): string[] {
+  const dir = resolve(process.cwd(), 'migrations');
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+}
 
 async function resetAndMigrate(dbUrl: string, label: string) {
   const pool = new Pool({ connectionString: dbUrl });
@@ -13,9 +20,11 @@ async function resetAndMigrate(dbUrl: string, label: string) {
   await pool.query('CREATE SCHEMA public');
   console.log(`Schema reset for ${label}`);
 
-  const sql = readFileSync(resolve(process.cwd(), 'migrations', '001_init.sql'), 'utf-8');
-  await pool.query(sql);
-  console.log(`Migration 001_init.sql applied to ${label}`);
+  for (const name of getMigrationFiles()) {
+    const sql = readFileSync(resolve(process.cwd(), 'migrations', name), 'utf-8');
+    await pool.query(sql);
+    console.log(`Migration ${name} applied to ${label}`);
+  }
   await pool.end();
 }
 

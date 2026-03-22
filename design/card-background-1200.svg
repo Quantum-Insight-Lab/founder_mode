@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="canvasGrad1200" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E8E2D8"/>
+      <stop offset="100%" stop-color="#D4CDC2"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1200" height="1200" fill="url(#canvasGrad1200)"/>
+  <rect x="20" y="22" width="1168" height="1168" rx="32" fill="rgba(28, 22, 18, 0.14)"/>
+  <rect x="16" y="16" width="1168" height="1168" rx="32" fill="#FFFDF9" stroke="#C9C2B8" stroke-width="1.5"/>
+</svg>

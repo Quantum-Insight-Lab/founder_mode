@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <defs>
+    <linearGradient id="canvasGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E8E2D8"/>
+      <stop offset="100%" stop-color="#D4CDC2"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1080" fill="url(#canvasGrad)"/>
+  <rect x="20" y="22" width="1048" height="1048" rx="32" fill="rgba(28, 22, 18, 0.14)"/>
+  <rect x="16" y="16" width="1048" height="1048" rx="32" fill="#FFFDF9" stroke="#C9C2B8" stroke-width="1.5"/>
+</svg>

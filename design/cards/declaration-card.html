@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NX Developer Card</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --design-w: 1240px;
+      /* board padding 18+18 + card min-height 1180 */
+      --design-h: 1216px;
+      --pad-x: 48px;
+      --pad-y: 48px;
+      --scale: min(
+        1,
+        (100vw - var(--pad-x)) / var(--design-w),
+        (100vh - var(--pad-y)) / var(--design-h)
+      );
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f3f3f1;
+      font-family: Arial, sans-serif;
+      padding: 24px;
+    }
+
+    .board-wrap {
+      width: calc(var(--design-w) * var(--scale));
+      height: calc(var(--design-h) * var(--scale));
+      overflow: hidden;
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+
+    .board {
+      width: 1240px;
+      background: #d8d4cc;
+      padding: 18px;
+      transform: scale(var(--scale));
+      transform-origin: top left;
+    }
+
+    .card {
+      position: relative;
+      width: 100%;
+      min-height: 1180px;
+      background: #f7f6f2;
+      border: 2px solid #c7c3bc;
+      border-radius: 32px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+      padding: 42px 56px 48px 56px;
+      overflow: hidden;
+    }
+
+    .left-line {
+      position: absolute;
+      left: 26px;
+      top: 86px;
+      bottom: 46px;
+      width: 1px;
+      background: #6e6e6e;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      gap: 32px;
+      margin-left: 0;
+    }
+
+    .avatar {
+      width: 225px;
+      height: 225px;
+      border-radius: 32px;
+      background: #6669c9;
+      flex-shrink: 0;
+    }
+
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      line-height: 0.95;
+      margin-top: 10px;
+    }
+
+    .title-block .nx {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 126px;
+      font-weight: 700;
+      color: #000;
+      margin: 0;
+    }
+
+    .title-block .developer {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 82px;
+      font-weight: 700;
+      color: #000;
+      margin: 10px 0 0 0;
+    }
+
+    .divider {
+      width: calc(100% - 70px);
+      height: 1px;
+      background: #8d8d8d;
+      margin: 42px 0 54px 28px;
+    }
+
+    .content {
+      padding-left: 0;
+    }
+
+    .section-title {
+      font-size: 64px;
+      font-weight: 400;
+      color: #000;
+      margin: 0 0 82px 0;
+    }
+
+    .field {
+      font-size: 62px;
+      font-weight: 400;
+      color: #000;
+      margin: 0 0 78px 0;
+    }
+
+    .time {
+      position: absolute;
+      right: 54px;
+      bottom: 34px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 38px;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="board-wrap">
+  <div class="board">
+    <div class="card">
+      <div class="left-line"></div>
+
+      <div class="header">
+        <div class="avatar"></div>
+
+        <div class="title-block">
+          <h1 class="nx">NX</h1>
+          <div class="developer">Developer</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="content">
+        <h2 class="section-title">Приоритет недели</h2>
+
+        <p class="field">Фокус:</p>
+        <p class="field">Ожидаемый результат:</p>
+        <p class="field">Критерий неудачи:</p>
+      </div>
+
+      <div class="time">12:51</div>
+    </div>
+  </div>
+  </div>
+</body>
+</html>

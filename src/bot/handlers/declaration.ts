@@ -11,7 +11,7 @@ import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { dateStrToWeekRef } from '../../domain/timezone.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
-import { getWeekId } from '../../services/plan-service.js';
+import { getWeekId } from '../../services/week-service.js';
 import { renderDeclarationCardPng } from '../../services/declaration-card-render.js';
 import type { DeclarationStructured } from '../../services/declaration-service.js';
 import type { HandlerDeps } from './deps.js';
@@ -62,7 +62,7 @@ async function sendDeclarationAsCard(
     });
     if (ctx.replyImage) {
       logger.info({ userId, channel: ctx.channel }, 'Declaration card image sent');
-      await ctx.replyImage(png, 'declaration.png', '✅ Declaration зафиксирован.');
+      await ctx.replyImage(png, 'declaration.png');
       return;
     }
     logger.info({ userId, channel: ctx.channel }, 'Declaration card image unsupported in channel, fallback to text');
@@ -170,7 +170,6 @@ export async function handleDeclarationMessage(ctx: AppContext, text: string, de
         await ctx.reply('❗️ Declaration обновлён.');
         await sendDeclarationAsCard(ctx, deps, userId, record, rawPost);
       } else {
-        await ctx.reply('🟢 Готовлю declaration...');
         const { rawPost, structured } = await declarationService.createDeclaration(userId, record);
         funnelCompleted.inc({ type: 'declaration' });
         logger.info({ userId }, 'Declaration created');

@@ -1,6 +1,6 @@
 import type { EventStore } from '../events/event-store.js';
 import type { ReviewGeneratedEvent, ReviewGeneratedPayload } from '../events/types.js';
-import type { WeeklyPlanRow, DailyReflectionRow } from '../db/row-types.js';
+import type { WeeklyPlanRow, DailyFixationRow } from '../db/row-types.js';
 import { EVENT_TYPES } from '../events/types.js';
 import { prompts } from '../llm/prompts.js';
 import type { ServiceDeps } from './deps.js';
@@ -50,15 +50,15 @@ export function createReviewService(eventStore: EventStore, deps: ServiceDeps) {
         throw new InvariantViolationError('План не найден', 'NOT_FOUND');
       }
 
-      const reflectionsResult = await pool.query<DailyReflectionRow>(
-        `SELECT * FROM daily_reflections 
+      const fixationsResult = await pool.query<DailyFixationRow>(
+        `SELECT * FROM daily_fixations 
          WHERE user_id = $1 AND date >= $2 AND date <= $3
          ORDER BY date`,
         [userId, start, end]
       );
-      const reflections = reflectionsResult.rows;
+      const fixations = fixationsResult.rows;
       const minReflections = config().product.min_reflections_for_review;
-      const useSoftPrompt = reflections.length < minReflections;
+      const useSoftPrompt = fixations.length < minReflections;
 
       const input = {
         day_range: { start, end },
@@ -68,7 +68,7 @@ export function createReviewService(eventStore: EventStore, deps: ServiceDeps) {
           weekly_result: plan.weekly_result,
           week_failure: plan.week_failure,
         },
-        daily_reflections: reflections.map((r) => ({
+        daily_fixations: fixations.map((r) => ({
           day: r.day,
           had_movement: r.had_movement,
           movement_branch: r.movement_branch,

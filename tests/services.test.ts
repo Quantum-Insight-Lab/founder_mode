@@ -5,7 +5,7 @@ import { resolve } from 'path';
 import { createEventStore } from '../src/events/event-store.js';
 import { createProjectors } from '../src/projectors/index.js';
 import { createPlanService } from '../src/services/plan-service.js';
-import { createReflectionService } from '../src/services/reflection-service.js';
+import { createFixationService } from '../src/services/fixation-service.js';
 import { createReviewService } from '../src/services/review-service.js';
 import { createReportService } from '../src/services/report-service.js';
 import { getWeekId, getWeekStartEnd } from '../src/services/plan-service.js';
@@ -19,7 +19,7 @@ describe.skipIf(!dbUrl)('services', () => {
   let pool: Pool;
   let eventStore: ReturnType<typeof createEventStore>;
   let planService: ReturnType<typeof createPlanService>;
-  let reflectionService: ReturnType<typeof createReflectionService>;
+  let fixationService: ReturnType<typeof createFixationService>;
   let reviewService: ReturnType<typeof createReviewService>;
   let reportService: ReturnType<typeof createReportService>;
 
@@ -50,7 +50,7 @@ describe.skipIf(!dbUrl)('services', () => {
     const projectors = createProjectors(pool);
     const serviceDeps = { pool, projectors, llm: mockLlm };
     planService = createPlanService(eventStore, serviceDeps);
-    reflectionService = createReflectionService(eventStore, serviceDeps);
+    fixationService = createFixationService(eventStore, serviceDeps);
     reviewService = createReviewService(eventStore, serviceDeps);
     reportService = createReportService(eventStore, serviceDeps);
   });
@@ -90,7 +90,7 @@ describe.skipIf(!dbUrl)('services', () => {
     });
   });
 
-  describe('reflectionService', () => {
+  describe('fixationService', () => {
     beforeEach(async () => {
       const weekId = getWeekId(new Date());
       await pool.query(
@@ -121,9 +121,9 @@ describe.skipIf(!dbUrl)('services', () => {
         thought_of_day: 't2',
       };
 
-      await reflectionService.submitReflection(userId, data1);
+      await fixationService.submitFixation(userId, data1);
       mockComplete.mockClear();
-      await reflectionService.submitReflection(userId, data2);
+      await fixationService.submitFixation(userId, data2);
 
       const rows = await pool.query('SELECT * FROM daily_reflections WHERE user_id = $1 AND date = $2', [userId, today]);
       expect(rows.rows.length).toBe(1);
@@ -139,7 +139,7 @@ describe.skipIf(!dbUrl)('services', () => {
         tomorrow_step: 'z',
         thought_of_day: 't',
       };
-      await expect(reflectionService.submitReflection(userId, data)).rejects.toThrow(
+      await expect(fixationService.submitFixation(userId, data)).rejects.toThrow(
         /Рефлексия только за прошедшие дни/
       );
       expect(mockComplete).not.toHaveBeenCalled();
@@ -156,12 +156,12 @@ describe.skipIf(!dbUrl)('services', () => {
         thought_of_day: 'thought',
       };
 
-      const result = await reflectionService.submitReflection(userId, data);
+      const result = await fixationService.submitFixation(userId, data);
 
       expect(result).toBe('Fake LLM response');
       expect(mockComplete).toHaveBeenCalledTimes(1);
 
-      const events = await pool.query('SELECT * FROM events WHERE event_type = $1', ['ReflectionSubmitted']);
+      const events = await pool.query('SELECT * FROM events WHERE event_type = $1', ['FixationSubmitted']);
       expect(events.rows.length).toBe(1);
       expect(events.rows[0].payload).toMatchObject({ user_id: userId, date: today, movement_branch: 'yes' });
 

@@ -8,7 +8,7 @@ export const EVENT_TYPES = {
   ReportUpdated: 'ReportUpdated',
   PlanCreated: 'PlanCreated',
   PlanUpdated: 'PlanUpdated',
-  ReflectionSubmitted: 'ReflectionSubmitted',
+  FixationSubmitted: 'FixationSubmitted',
   ReviewGenerated: 'ReviewGenerated',
   UserRegistered: 'UserRegistered',
 } as const;
@@ -65,14 +65,14 @@ export interface ReportCreatedPayload {
   raw_post: string;
 }
 
-export type ReflectionMovementBranch = 'yes' | 'no' | 'partial' | 'week_closed';
+export type FixationMovementBranch = 'yes' | 'no' | 'partial' | 'week_closed';
 
-export interface ReflectionSubmittedPayload {
+export interface FixationSubmittedPayload {
   user_id: string;
   date: string; // YYYY-MM-DD
   day: string; // Понедельник, Вторник, ... (рус.)
   had_movement: boolean;
-  movement_branch: ReflectionMovementBranch;
+  movement_branch: FixationMovementBranch;
   what_moved?: string;
   tomorrow_step?: string;
   what_stopped?: string;
@@ -121,9 +121,9 @@ export interface PlanUpdatedEvent extends BaseEvent {
   event_type: 'PlanUpdated';
   payload: PlanCreatedPayload;
 }
-export interface ReflectionSubmittedEvent extends BaseEvent {
-  event_type: 'ReflectionSubmitted';
-  payload: ReflectionSubmittedPayload;
+export interface FixationSubmittedEvent extends BaseEvent {
+  event_type: 'FixationSubmitted';
+  payload: FixationSubmittedPayload;
 }
 export interface ReviewGeneratedEvent extends BaseEvent {
   event_type: 'ReviewGenerated';
@@ -141,6 +141,6 @@ export type DomainEvent =
   | ReportUpdatedEvent
   | PlanCreatedEvent
   | PlanUpdatedEvent
-  | ReflectionSubmittedEvent
+  | FixationSubmittedEvent
   | ReviewGeneratedEvent
   | UserRegisteredEvent;

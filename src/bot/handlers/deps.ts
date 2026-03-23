@@ -9,19 +9,19 @@ export interface HandlerDeps {
   getUserByMaxId: (maxId: string) => Promise<{ user_id: string } | null>;
   markOnboarded: (userId: string) => Promise<void>;
   ensureUser: (channel: Channel, externalId: string) => Promise<string>;
-  getReflectDate: (userId: string, choice: 'yesterday' | 'today') => Promise<string>;
+  getFixationDate: (userId: string, choice: 'yesterday' | 'today') => Promise<string>;
   formatErrorForUser: (err: unknown) => string;
   handleLlmReply: (
     ctx: AppContext,
     rawPost: string,
     userId: string,
-    context: 'declaration' | 'plan' | 'reflect' | 'review' | 'report'
+    context: 'declaration' | 'plan' | 'fixation' | 'review' | 'report'
   ) => Promise<void>;
   countRows: (p: Pool, query: string, params?: unknown[]) => Promise<number>;
   declarationService: ReturnType<typeof import('../../services/declaration-service.js').createDeclarationService>;
   reportService: ReturnType<typeof import('../../services/report-service.js').createReportService>;
   planService: ReturnType<typeof import('../../services/plan-service.js').createPlanService>;
-  reflectionService: ReturnType<typeof import('../../services/reflection-service.js').createReflectionService>;
+  fixationService: ReturnType<typeof import('../../services/fixation-service.js').createFixationService>;
   reviewService: ReturnType<typeof import('../../services/review-service.js').createReviewService>;
   settingsService: ReturnType<typeof import('../../services/settings-service.js').createSettingsService>;
   showSettingsMenu: (ctx: AppContext, userId: string) => Promise<void>;

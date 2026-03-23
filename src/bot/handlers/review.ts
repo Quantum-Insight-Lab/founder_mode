@@ -68,7 +68,7 @@ export async function handleReviewCommand(ctx: AppContext, deps: HandlerDeps): P
   }>(
     `SELECT
        (SELECT EXISTS(SELECT 1 FROM weekly_plans WHERE user_id = $1 AND week_id = $4)) AS plan_exists,
-       (SELECT COUNT(*)::int FROM daily_reflections WHERE user_id = $1 AND date >= $2 AND date <= $3) AS ref_count,
+       (SELECT COUNT(*)::int FROM daily_fixations WHERE user_id = $1 AND date >= $2 AND date <= $3) AS ref_count,
        (SELECT COUNT(*)::int FROM weekly_reviews WHERE user_id = $1) AS review_count
      FROM (SELECT $1::uuid AS uid) u`,
     [userId, start, end, weekId]
@@ -115,7 +115,7 @@ export async function handleNotifyReview(ctx: AppContext, deps: HandlerDeps): Pr
   }>(
     `SELECT
        (SELECT EXISTS(SELECT 1 FROM weekly_plans WHERE user_id = $1 AND week_id = $4)) AS plan_exists,
-       (SELECT COUNT(*)::int FROM daily_reflections WHERE user_id = $1 AND date >= $2 AND date <= $3) AS ref_count,
+       (SELECT COUNT(*)::int FROM daily_fixations WHERE user_id = $1 AND date >= $2 AND date <= $3) AS ref_count,
        (SELECT COUNT(*)::int FROM weekly_reviews WHERE user_id = $1) AS review_count
      FROM (SELECT $1::uuid AS uid) u`,
     [userId, start, end, weekId]

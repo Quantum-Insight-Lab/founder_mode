@@ -78,7 +78,7 @@ export async function handlePlanEdit(ctx: AppContext, deps: HandlerDeps): Promis
 
   const userDateStr = await getUserLocalDate(userId, pool);
   const { start, end } = getWeekStartEnd(dateStrToWeekRef(userDateStr));
-  const hasReflections = (await countRows(pool, 'SELECT COUNT(*)::int AS c FROM daily_reflections WHERE user_id = $1 AND date >= $2 AND date <= $3', [userId, start, end])) > 0;
+  const hasReflections = (await countRows(pool, 'SELECT COUNT(*)::int AS c FROM daily_fixations WHERE user_id = $1 AND date >= $2 AND date <= $3', [userId, start, end])) > 0;
 
   ctx.session.step = 'plan_edit_confirm';
   const message = hasReflections

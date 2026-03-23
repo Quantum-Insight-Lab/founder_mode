@@ -8,25 +8,8 @@ import type { ServiceDeps } from './deps.js';
 import { dateStrToWeekRef } from '../domain/timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
-
-export function getWeekId(date: Date): string {
-  const d = new Date(date);
-  const day = d.getUTCDay();
-  const sunday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
-  return sunday.toISOString().slice(0, 10).replace(/-/g, '');
-}
-
-export function getWeekStartEnd(date: Date): { start: string; end: string } {
-  const d = new Date(date);
-  const day = d.getUTCDay();
-  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
-  const end = new Date(start);
-  end.setUTCDate(start.getUTCDate() + 6);
-  return {
-    start: start.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10),
-  };
-}
+import { getWeekId, getWeekStartEnd } from './week-service.js';
+export { getWeekId, getWeekStartEnd } from './week-service.js';
 
 export function createPlanService(eventStore: EventStore, deps: ServiceDeps) {
   const { pool, projectors, llm } = deps;

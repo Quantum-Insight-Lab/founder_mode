@@ -49,12 +49,12 @@ export async function handleReportCommand(ctx: AppContext, deps: HandlerDeps): P
   }
 
   const reflections = await pool.query<{ total: number }>(
-    'SELECT COUNT(*)::int AS total FROM daily_reflections WHERE user_id = $1 AND date >= $2 AND date <= $3',
+    'SELECT COUNT(*)::int AS total FROM daily_fixations WHERE user_id = $1 AND date >= $2 AND date <= $3',
     [userId, start, end]
   );
   const reflectionsCount = reflections.rows[0]?.total ?? 0;
   if (reflectionsCount === 0) {
-    await ctx.reply('Сначала нужно зафиксировать хотя бы одну рефлексию недели. Напиши (нажми) /reflect');
+    await ctx.reply('Сначала нужно зафиксировать хотя бы одну фиксацию недели. Напиши (нажми) /fixation');
     return;
   }
 

@@ -8,7 +8,7 @@ import type { ServiceDeps } from './deps.js';
 import { dateStrToWeekRef } from '../domain/timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
-import { getWeekId } from './plan-service.js';
+import { getWeekId } from './week-service.js';
 
 interface DeclarationAnswers {
   main_focus: string;

@@ -15,7 +15,7 @@
 Входные данные:
 
 WEEKLY_DECLARATION
-daily_reflections[]
+daily_fixations[]
 optional_user_note
 
 Задача:

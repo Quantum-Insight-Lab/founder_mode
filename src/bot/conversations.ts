@@ -11,7 +11,7 @@ export const ONBOARDING_INTRO =
   `Обзор собирает всё в один срез.\n\n` +
   `<b>Команды:</b>\n` +
   `/plan\n` +
-  `/reflect\n` +
+  `/fixation\n` +
   `/review\n` +
   `/settings\n` +
   `/delete`;
@@ -55,7 +55,7 @@ export const ONBOARDING_AFTER_PLAN_1 =
   '💡 План зафиксирован.\n\n' +
   'Теперь просто проживи рабочий день.\n\n' +
   'Вечером вернёмся и посмотрим, было ли движение по главному.\n\n' +
-  'Напиши (нажми) /reflect когда придет время или поставь напоминание в /settings';
+  'Напиши (нажми) /fixation когда придет время или поставь напоминание в /settings';
 
 export const ONBOARDING_AFTER_PLAN_2 =
   '💡 Иногда уже через 2–3 дня становится видно,\nкуда на самом деле уходит энергия.';
@@ -95,7 +95,7 @@ export const ONBOARDING_CTA_LATER_MSG =
   'Обзор недели собирается по этому периоду.\n\n' +
   'Команды:\n' +
   '/plan\n' +
-  '/reflect\n' +
+  '/fixation\n' +
   '/review\n' +
   '/settings\n' +
   '/delete';
@@ -106,7 +106,7 @@ export const ONBOARDING_CTA_YES_FINAL_MSG =
   'Обзор недели собирается по этому периоду.\n\n' +
   'Команды:\n' +
   '/plan\n' +
-  '/reflect\n' +
+  '/fixation\n' +
   '/review\n' +
   '/settings\n' +
   '/delete';
@@ -178,7 +178,7 @@ export const NOTIFICATION_TIMES = ['08:00', '14:00', '20:00'] as const;
 /** Settings */
 export const SETTINGS_NOTIFICATIONS = 'Уведомления';
 export const SETTINGS_PLAN = 'План';
-export const SETTINGS_REFLECT = 'Рефлексия';
+export const SETTINGS_FIXATION = 'Фиксация';
 export const SETTINGS_REVIEW = 'Обзор';
 export const SETTINGS_TIMEZONE = 'Таймзона';
 export const SETTINGS_TIME_INPUT_QUESTION = 'Введите время (ЧЧ:ММ), например 14:30:';

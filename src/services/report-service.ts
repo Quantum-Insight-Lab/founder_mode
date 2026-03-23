@@ -157,7 +157,7 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
     }>(
       `SELECT day, had_movement, movement_branch, what_moved, tomorrow_step, what_stopped,
               attention_sink, thought_of_day, why_partial, new_focus
-       FROM daily_reflections
+       FROM daily_fixations
        WHERE user_id = $1 AND date >= $2 AND date <= $3
        ORDER BY date`,
       [userId, start, end]
@@ -165,7 +165,7 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
 
     const input = {
       WEEKLY_DECLARATION: declaration,
-      daily_reflections: reflectionsRow.rows,
+      daily_fixations: reflectionsRow.rows,
       optional_user_note: optionalUserNote,
     };
     const userMessage = JSON.stringify(input, null, 2);

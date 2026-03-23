@@ -1,27 +1,22 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
-import { readdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 
-function getMigrationFiles(): string[] {
-  const dir = resolve(process.cwd(), 'migrations');
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
-}
-
-async function resetAndMigrate(dbUrl: string): Promise<void> {
+async function clearFixationData(dbUrl: string): Promise<void> {
   const pool = new Pool({ connectionString: dbUrl });
+  const client = await pool.connect();
   try {
-    await pool.query('DROP SCHEMA IF EXISTS public CASCADE');
-    await pool.query('CREATE SCHEMA public');
-    for (const name of getMigrationFiles()) {
-      const sql = readFileSync(resolve(process.cwd(), 'migrations', name), 'utf-8');
-      await pool.query(sql);
-      console.log(`Migration applied: ${name}`);
-    }
+    await client.query('BEGIN');
+    await client.query("DELETE FROM fixations");
+    await client.query("DELETE FROM events WHERE event_type = 'FixationSubmitted' AND idempotency_key ~ '^fixation:'");
+    await client.query("DELETE FROM idempotency_cache WHERE idempotency_key ~ '^fixation:'");
+    await client.query("DELETE FROM llm_calls WHERE event_type = 'fixation'");
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
   } finally {
+    client.release();
     await pool.end();
   }
 }
@@ -55,9 +50,9 @@ async function main(): Promise<void> {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) throw new Error('DATABASE_URL is required');
 
-  console.log('1/3 Reset DB schema + run migrations...');
-  await resetAndMigrate(dbUrl);
-  console.log('Database reset completed.');
+  console.log('1/3 Clear fixation data...');
+  await clearFixationData(dbUrl);
+  console.log('Fixation cleanup completed.');
 
   console.log('2/3 Build project...');
   execSync('npm run build', { stdio: 'inherit' });
@@ -65,7 +60,7 @@ async function main(): Promise<void> {
   console.log('3/3 Restart founder-mode service...');
   restartService();
 
-  console.log('Done: DB reset, build, and service restart completed.');
+  console.log('Done: fixation cleanup, build, and service restart completed.');
 }
 
 main().catch((err) => {

@@ -11,8 +11,8 @@ export interface UserSettingsRow {
   notifications_enabled: boolean;
   plan_notify_day: number | null;
   plan_notify_time: string | null;
-  reflect_notify_days: string | null;
-  reflect_notify_time: string | null;
+  fixation_notify_days: string | null;
+  fixation_notify_time: string | null;
   review_notify_day: number | null;
   review_notify_time: string | null;
 }
@@ -25,7 +25,7 @@ export function createSettingsService(pool: Pool) {
       const row = await pool.query<UserSettingsRow>(
         `SELECT user_id, header_role, timezone, COALESCE(skip_review_user_note, false) AS skip_review_user_note,
                 COALESCE(notifications_enabled, false) AS notifications_enabled,
-                plan_notify_day, plan_notify_time, reflect_notify_days, reflect_notify_time,
+                plan_notify_day, plan_notify_time, fixation_notify_days, fixation_notify_time,
                 review_notify_day, review_notify_time
          FROM user_settings WHERE user_id = $1`,
         [userId]
@@ -83,8 +83,8 @@ export function createSettingsService(pool: Pool) {
              WHEN notifications_enabled = false
                AND plan_notify_day IS NULL
                AND plan_notify_time IS NULL
-               AND reflect_notify_days IS NULL
-               AND reflect_notify_time IS NULL
+               AND fixation_notify_days IS NULL
+               AND fixation_notify_time IS NULL
                AND review_notify_day IS NULL
                AND review_notify_time IS NULL
                AND $2 IS NOT NULL
@@ -97,19 +97,19 @@ export function createSettingsService(pool: Pool) {
       logger.debug({ userId, day, time }, 'Settings: plan notify updated');
     },
 
-    async updateReflectNotify(userId: string, days: string | null, time: string | null): Promise<void> {
+    async updateFixationNotify(userId: string, days: string | null, time: string | null): Promise<void> {
       await pool.query(
-        `INSERT INTO user_settings (user_id, reflect_notify_days, reflect_notify_time, updated_at) VALUES ($1, $2, $3, NOW())
+        `INSERT INTO user_settings (user_id, fixation_notify_days, fixation_notify_time, updated_at) VALUES ($1, $2, $3, NOW())
          ON CONFLICT (user_id) DO UPDATE SET
-           reflect_notify_days = $2,
-           reflect_notify_time = $3,
+          fixation_notify_days = $2,
+          fixation_notify_time = $3,
            updated_at = NOW(),
            notifications_enabled = CASE
              WHEN notifications_enabled = false
                AND plan_notify_day IS NULL
                AND plan_notify_time IS NULL
-               AND reflect_notify_days IS NULL
-               AND reflect_notify_time IS NULL
+              AND fixation_notify_days IS NULL
+              AND fixation_notify_time IS NULL
                AND review_notify_day IS NULL
                AND review_notify_time IS NULL
                AND $2 IS NOT NULL
@@ -119,7 +119,7 @@ export function createSettingsService(pool: Pool) {
            END`,
         [userId, days, time]
       );
-      logger.debug({ userId, days, time }, 'Settings: reflect notify updated');
+      logger.debug({ userId, days, time }, 'Settings: fixation notify updated');
     },
 
     async updateReviewNotify(userId: string, day: number | null, time: string | null): Promise<void> {
@@ -133,8 +133,8 @@ export function createSettingsService(pool: Pool) {
              WHEN notifications_enabled = false
                AND plan_notify_day IS NULL
                AND plan_notify_time IS NULL
-               AND reflect_notify_days IS NULL
-               AND reflect_notify_time IS NULL
+               AND fixation_notify_days IS NULL
+               AND fixation_notify_time IS NULL
                AND review_notify_day IS NULL
                AND review_notify_time IS NULL
                AND $2 IS NOT NULL

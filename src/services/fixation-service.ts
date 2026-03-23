@@ -1,24 +1,24 @@
 import type { EventStore } from '../events/event-store.js';
 import { logger } from '../observability/logger.js';
 import { getTraceId } from '../observability/trace.js';
-import type { DomainEvent, ReflectionSubmittedPayload, ReflectionMovementBranch } from '../events/types.js';
+import type { DomainEvent, FixationSubmittedPayload, FixationMovementBranch } from '../events/types.js';
 import { EVENT_TYPES } from '../events/types.js';
 import { prompts } from '../llm/prompts.js';
-import { validateReflectionDate, validateReflectionBranch } from '../domain/validators.js';
+import { validateFixationDate, validateFixationBranch } from '../domain/validators.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
 import { getWeekId } from './plan-service.js';
 import { InvariantViolationError } from '../domain/errors.js';
 import type { ServiceDeps } from './deps.js';
 
-export function createReflectionService(eventStore: EventStore, deps: ServiceDeps) {
+export function createFixationService(eventStore: EventStore, deps: ServiceDeps) {
   const { pool, projectors, llm } = deps;
 
-  async function submitReflectionBase(
+  async function submitFixationBase(
     userId: string,
     data: {
       date: string;
-      movement_branch: ReflectionMovementBranch;
+      movement_branch: FixationMovementBranch;
       had_movement?: boolean;
       what_moved?: string;
       tomorrow_step?: string;
@@ -30,11 +30,11 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
     },
     variant: 'v1' | 'v2'
   ): Promise<string> {
-    logger.debug({ userId, date: data.date, variant }, 'submitReflection');
+    logger.debug({ userId, date: data.date, variant }, 'submitFixation');
     const had_movement = data.movement_branch === 'yes';
-    validateReflectionBranch(data);
+    validateFixationBranch(data);
     const todayStr = await getUserLocalDate(userId, pool);
-    validateReflectionDate(data.date, todayStr);
+    validateFixationDate(data.date, todayStr);
     const date = new Date(data.date + 'T12:00:00Z');
     const day = formatDayFull(date.getUTCDay());
     const weekId = getWeekId(date);
@@ -45,7 +45,7 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
     let mainFocus = declarationRow.rows[0]?.main_focus;
     if (!mainFocus) {
       // Если пользователь выбрал дату из “пограничной” недели (когда declaration для этой недели
-      // ещё не создан), не блокируем сбор рефлексии: используем declaration текущей локальной недели.
+      // ещё не создан), не блокируем сбор фиксации: используем declaration текущей локальной недели.
       const todayWeekId = getWeekId(new Date(todayStr + 'T12:00:00Z'));
       const fallbackDeclarationRow = await pool.query<{ main_focus: string }>(
         'SELECT main_focus FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
@@ -54,10 +54,10 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
       mainFocus = fallbackDeclarationRow.rows[0]?.main_focus;
     }
     if (!mainFocus) {
-      throw new InvariantViolationError('Нужна declaration недели для рефлексии', 'NOT_FOUND');
+      throw new InvariantViolationError('Нужна declaration недели для фиксации', 'NOT_FOUND');
     }
 
-    const payload: ReflectionSubmittedPayload = {
+    const payload: FixationSubmittedPayload = {
       user_id: userId,
       date: data.date,
       day,
@@ -96,22 +96,21 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
       userMessage = `День недели: ${day}\nДвижение по главному фокусу («${mainFocus}»): Результат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day ?? ''}`;
     }
 
-    const idempotencyKey =
-      variant === 'v2' ? `reflection_v2:${userId}:${data.date}` : `reflection:${userId}:${data.date}`;
-    const prompt = variant === 'v2' ? prompts.dailyReflectionV2(day) : prompts.dailyReflection(day);
+    const idempotencyKey = `fixation:${userId}:${data.date}`;
+    const prompt = variant === 'v2' ? prompts.dailyFixationV2(day) : prompts.dailyFixation(day);
     const response = await llm.complete(prompt, userMessage, {
       idempotencyKey,
       userId,
       traceId: getTraceId(),
-      callType: 'reflect',
+      callType: 'fixation',
     });
 
     payload.raw_post = response.content;
 
     const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
-      event_type: EVENT_TYPES.ReflectionSubmitted,
+      event_type: EVENT_TYPES.FixationSubmitted,
       actor: { id: userId, role: 'user' },
-      subject: { entity: 'DailyReflection', id: `${userId}:${data.date}` },
+      subject: { entity: 'DailyFixation', id: `${userId}:${data.date}` },
       payload,
       causation_id: null,
       correlation_id: null,
@@ -126,11 +125,11 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
   }
 
   return {
-    async submitReflection(
+    async submitFixation(
       userId: string,
       data: {
         date: string;
-        movement_branch: ReflectionMovementBranch;
+        movement_branch: FixationMovementBranch;
         had_movement?: boolean;
         what_moved?: string;
         tomorrow_step?: string;
@@ -141,14 +140,14 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
         new_focus?: string;
       }
     ): Promise<string> {
-      return submitReflectionBase(userId, data, 'v1');
+      return submitFixationBase(userId, data, 'v1');
     },
 
-    async submitReflectionV2(
+    async submitFixationV2(
       userId: string,
       data: {
         date: string;
-        movement_branch: ReflectionMovementBranch;
+        movement_branch: FixationMovementBranch;
         had_movement?: boolean;
         what_moved?: string;
         tomorrow_step?: string;
@@ -159,14 +158,14 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
         new_focus?: string;
       }
     ): Promise<string> {
-      return submitReflectionBase(userId, data, 'v2');
+      return submitFixationBase(userId, data, 'v2');
     },
 
-    async updateReflectionManual(
+    async updateFixationManual(
       userId: string,
       data: {
         date: string;
-        movement_branch: ReflectionMovementBranch;
+        movement_branch: FixationMovementBranch;
         had_movement?: boolean;
         what_moved?: string;
         tomorrow_step?: string;
@@ -177,16 +176,16 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
         new_focus?: string;
       }
     ): Promise<string> {
-      logger.debug({ userId, date: data.date }, 'updateReflectionManual');
+      logger.debug({ userId, date: data.date }, 'updateFixationManual');
       const had_movement = data.movement_branch === 'yes';
-      validateReflectionBranch(data);
+      validateFixationBranch(data);
       const todayStr = await getUserLocalDate(userId, pool);
-      validateReflectionDate(data.date, todayStr);
+      validateFixationDate(data.date, todayStr);
       const date = new Date(data.date + 'T12:00:00Z');
       const day = formatDayFull(date.getUTCDay());
 
       const existing = await pool.query<{ raw_post: string }>(
-        'SELECT raw_post FROM daily_reflections WHERE user_id = $1 AND date = $2',
+        'SELECT raw_post FROM daily_fixations WHERE user_id = $1 AND date = $2',
         [userId, data.date]
       );
       const originalRawPost = existing.rows[0]?.raw_post ?? '';
@@ -226,7 +225,7 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
       lines.push(`• Что стало понятнее / мысль дня: ${data.thought_of_day}`);
       const newRawPost = originalRawPost + lines.join('\n');
 
-      const payload: ReflectionSubmittedPayload = {
+      const payload: FixationSubmittedPayload = {
         user_id: userId,
         date: data.date,
         day,
@@ -254,11 +253,11 @@ export function createReflectionService(eventStore: EventStore, deps: ServiceDep
         payload.tomorrow_step = data.tomorrow_step;
       }
 
-      const idempotencyKey = `reflection:${userId}:${data.date}:manual`;
+      const idempotencyKey = `fixation:${userId}:${data.date}:manual`;
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
-        event_type: EVENT_TYPES.ReflectionSubmitted,
+        event_type: EVENT_TYPES.FixationSubmitted,
         actor: { id: userId, role: 'user' },
-        subject: { entity: 'DailyReflection', id: `${userId}:${data.date}` },
+        subject: { entity: 'DailyFixation', id: `${userId}:${data.date}` },
         payload,
         causation_id: null,
         correlation_id: null,

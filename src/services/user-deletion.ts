@@ -8,7 +8,7 @@ export async function deleteUserData(pool: Pool, userId: string): Promise<void> 
     await client.query('DELETE FROM weekly_declarations WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM weekly_reports WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM weekly_plans WHERE user_id = $1', [userId]);
-    await client.query('DELETE FROM daily_reflections WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM daily_fixations WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM weekly_reviews WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM user_settings WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM events WHERE actor_id = $1', [userId]);
@@ -19,8 +19,8 @@ export async function deleteUserData(pool: Pool, userId: string): Promise<void> 
         `declaration:${userId}:%`,
         `report:${userId}:%`,
         `plan:${userId}:%`,
-        `reflection:${userId}:%`,
         `review:${userId}:%`,
+        `fixation:${userId}:%`,
       ]
     );
     await client.query('DELETE FROM users WHERE user_id = $1', [userId]);

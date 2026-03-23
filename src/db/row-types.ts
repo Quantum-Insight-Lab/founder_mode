@@ -43,7 +43,7 @@ export interface WeeklyReportRow {
   raw_post: string;
 }
 
-export interface DailyReflectionRow {
+export interface DailyFixationRow {
   user_id: string;
   date: string;
   day: string;

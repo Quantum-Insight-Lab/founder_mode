@@ -39,21 +39,20 @@ import {
   handleNotifyPlan,
 } from './handlers/plan.js';
 import {
-  handleReflectCommand,
-  handleReflectSkipEnableNotif,
-  handleReflectDateChoice,
-  handleReflectShow,
-  handleReflectEdit,
-  handleReflectEditConfirmYes,
-  handleReflectEditConfirmNo,
-  handleReflectNo,
-  handleReflectPartial,
-  handleReflectWeekClosed,
-  handleReflectYes,
-  handleReflectionMessage,
-  handleNotifyReflect,
-} from './handlers/reflect.js';
-import { handleReflect2Command } from './handlers/reflect2.js';
+  handleFixationSkipEnableNotif,
+  handleFixationDateChoice,
+  handleFixationShow,
+  handleFixationEdit,
+  handleFixationEditConfirmYes,
+  handleFixationEditConfirmNo,
+  handleFixationNo,
+  handleFixationPartial,
+  handleFixationWeekClosed,
+  handleFixationYes,
+  handleFixationCommand,
+  handleFixationMessage,
+  handleNotifyFixation,
+} from './handlers/fixation.js';
 import { handleReviewCommand, handleReviewUserNote, handleNotifyReview } from './handlers/review.js';
 import {
   handleSettingsCommand,
@@ -62,10 +61,10 @@ import {
   handleSettingsPlanDay,
   handleSettingsPlanTimeCustom,
   handleSettingsPlanTime,
-  handleSettingsReflect,
-  handleSettingsReflectDays,
-  handleSettingsReflectTimeCustom,
-  handleSettingsReflectTime,
+  handleSettingsFixation,
+  handleSettingsFixationDays,
+  handleSettingsFixationTimeCustom,
+  handleSettingsFixationTime,
   handleSettingsReview,
   handleSettingsReviewDay,
   handleSettingsReviewTimeCustom,
@@ -77,7 +76,7 @@ import {
 import { handleDeleteCommand, handleDeleteConfirmYes, handleDeleteConfirmNo } from './handlers/delete.js';
 
 function timeFromCallbackData(data: string): string {
-  const m = data.match(/^settings_(?:plan|reflect|review)_time_([\d-]+)$/);
+  const m = data.match(/^settings_(?:plan|fixation|review)_time_([\d-]+)$/);
   return String(m?.[1] ?? '').replace('-', ':');
 }
 
@@ -89,7 +88,7 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
   const wantsPlan = /\b(plan|план|вектор|фокус)\b/.test(t);
   const wantsDeclaration = /\b(declaration|деклар)\b/.test(t);
   const wantsReport = /\b(report|отчет|итог недели|итог)\b/.test(t);
-  const wantsReflect = /\b(reflect|рефлекс)\b/.test(t);
+  const wantsFixation = /\b(fixation|фиксац|рефлекс|reflect)\b/.test(t);
   const wantsReview = /\b(review|обзор|недел)\b/.test(t);
   const wantsSettings = /\b(settings|настрой|уведом)\b/.test(t);
   const wantsDelete = /\b(delete|удал|стер|очист)\b/.test(t);
@@ -97,13 +96,13 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
   if (wantsDeclaration) return ctx.reply('Ок. Чтобы зафиксировать declaration недели — /declaration');
   if (wantsReport) return ctx.reply('Ок. Чтобы зафиксировать итог недели — /report');
   if (wantsPlan) return ctx.reply('Ок. Для нового флоу начни с declaration недели — /declaration');
-  if (wantsReflect) return ctx.reply('Ок. Чтобы зафиксировать день — /reflect (или /reflect2 для нового формата)');
+  if (wantsFixation) return ctx.reply('Ок. Чтобы зафиксировать день — /fixation');
   if (wantsReview) return ctx.reply('Ок. Чтобы собрать обзор недели — /review');
   if (wantsSettings) return ctx.reply('Настройки — /settings');
   if (wantsDelete) return ctx.reply('Удаление данных — /delete');
 
   if (!isAffirmativeOrNext) {
-    return ctx.reply('Команды: /declaration /report /plan /reflect /reflect2 /review /settings /delete');
+    return ctx.reply('Команды: /declaration /report /plan /fixation /review /settings /delete');
   }
 
   const { pool } = deps;
@@ -120,12 +119,12 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
     return ctx.reply('Давай начнём с declaration недели. Напиши (нажми) /declaration');
   }
 
-  const todayReflectionExists = await pool.query(
-    'SELECT 1 FROM daily_reflections WHERE user_id = $1 AND date = $2::date LIMIT 1',
+  const todayFixationExists = await pool.query(
+    'SELECT 1 FROM daily_fixations WHERE user_id = $1 AND date = $2::date LIMIT 1',
     [userId, userDateStr]
   );
-  if (todayReflectionExists.rows.length === 0) {
-    return ctx.reply('Время коротко зафиксировать день. Напиши (нажми) /reflect');
+  if (todayFixationExists.rows.length === 0) {
+    return ctx.reply('Время коротко зафиксировать день. Напиши (нажми) /fixation');
   }
 
   const reportExists = await pool.query(
@@ -136,7 +135,7 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
     return ctx.reply('Осталось зафиксировать итог недели. Напиши (нажми) /report');
   }
 
-  return ctx.reply('Команды: /declaration /report /plan /reflect /reflect2 /review /settings /delete');
+  return ctx.reply('Команды: /declaration /report /plan /fixation /review /settings /delete');
 }
 
 export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: HandlerDeps): Promise<void> {
@@ -151,10 +150,8 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleDeclarationCommand(ctx, deps);
       case 'report':
         return handleReportCommand(ctx, deps);
-      case 'reflect':
-        return handleReflectCommand(ctx, deps);
-      case 'reflect2':
-        return handleReflect2Command(ctx, deps);
+      case 'fixation':
+        return handleFixationCommand(ctx, deps);
       case 'review':
         return handleReviewCommand(ctx, deps);
       case 'settings':
@@ -197,30 +194,30 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handlePlanEditConfirmNo(ctx, deps);
       case 'notify_plan':
         return handleNotifyPlan(ctx, deps);
-      case 'reflect_skip_enable_notif':
-        return handleReflectSkipEnableNotif(ctx, deps);
-      case 'reflect_date_yesterday':
-        return handleReflectDateChoice(ctx, 'yesterday', deps);
-      case 'reflect_date_today':
-        return handleReflectDateChoice(ctx, 'today', deps);
-      case 'reflect_show':
-        return handleReflectShow(ctx, deps);
-      case 'reflect_edit':
-        return handleReflectEdit(ctx, deps);
-      case 'reflect_edit_confirm_yes':
-        return handleReflectEditConfirmYes(ctx, deps);
-      case 'reflect_edit_confirm_no':
-        return handleReflectEditConfirmNo(ctx, deps);
-      case 'reflect_no':
-        return handleReflectNo(ctx, deps);
-      case 'reflect_partial':
-        return handleReflectPartial(ctx, deps);
-      case 'reflect_week_closed':
-        return handleReflectWeekClosed(ctx, deps);
-      case 'reflect_yes':
-        return handleReflectYes(ctx, deps);
-      case 'notify_reflect':
-        return handleNotifyReflect(ctx, deps);
+      case 'fixation_skip_enable_notif':
+        return handleFixationSkipEnableNotif(ctx, deps);
+      case 'fixation_date_yesterday':
+        return handleFixationDateChoice(ctx, 'yesterday', deps);
+      case 'fixation_date_today':
+        return handleFixationDateChoice(ctx, 'today', deps);
+      case 'fixation_show':
+        return handleFixationShow(ctx, deps);
+      case 'fixation_edit':
+        return handleFixationEdit(ctx, deps);
+      case 'fixation_edit_confirm_yes':
+        return handleFixationEditConfirmYes(ctx, deps);
+      case 'fixation_edit_confirm_no':
+        return handleFixationEditConfirmNo(ctx, deps);
+      case 'fixation_no':
+        return handleFixationNo(ctx, deps);
+      case 'fixation_partial':
+        return handleFixationPartial(ctx, deps);
+      case 'fixation_week_closed':
+        return handleFixationWeekClosed(ctx, deps);
+      case 'fixation_yes':
+        return handleFixationYes(ctx, deps);
+      case 'notify_fixation':
+        return handleNotifyFixation(ctx, deps);
       case 'notify_review':
         return handleNotifyReview(ctx, deps);
       case 'settings_notif_toggle':
@@ -229,10 +226,10 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleSettingsPlan(ctx, deps);
       case 'settings_plan_time_custom':
         return handleSettingsPlanTimeCustom(ctx, deps);
-      case 'settings_reflect':
-        return handleSettingsReflect(ctx, deps);
-      case 'settings_reflect_time_custom':
-        return handleSettingsReflectTimeCustom(ctx, deps);
+      case 'settings_fixation':
+        return handleSettingsFixation(ctx, deps);
+      case 'settings_fixation_time_custom':
+        return handleSettingsFixationTimeCustom(ctx, deps);
       case 'settings_review':
         return handleSettingsReview(ctx, deps);
       case 'settings_review_time_custom':
@@ -248,10 +245,10 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         if (planDay) return handleSettingsPlanDay(ctx, parseInt(planDay[1], 10), deps);
         const planTime = data.match(/^settings_plan_time_([\d-]+)$/);
         if (planTime) return handleSettingsPlanTime(ctx, timeFromCallbackData(data), deps);
-        const reflectDays = data.match(/^settings_reflect_days_(.+)$/);
-        if (reflectDays) return handleSettingsReflectDays(ctx, reflectDays[1], deps);
-        const reflectTime = data.match(/^settings_reflect_time_([\d-]+)$/);
-        if (reflectTime) return handleSettingsReflectTime(ctx, timeFromCallbackData(data), deps);
+        const fixationDays = data.match(/^settings_fixation_days_(.+)$/);
+        if (fixationDays) return handleSettingsFixationDays(ctx, fixationDays[1], deps);
+        const fixationTime = data.match(/^settings_fixation_time_([\d-]+)$/);
+        if (fixationTime) return handleSettingsFixationTime(ctx, timeFromCallbackData(data), deps);
         const reviewDay = data.match(/^settings_review_day_(\d)$/);
         if (reviewDay) return handleSettingsReviewDay(ctx, parseInt(reviewDay[1], 10), deps);
         const reviewTime = data.match(/^settings_review_time_([\d-]+)$/);
@@ -272,9 +269,9 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
     if (step?.startsWith('declaration_')) return handleDeclarationMessage(ctx, text, deps);
     if (step?.startsWith('report_')) return handleReportMessage(ctx, text, deps);
     if (step?.startsWith('planning_')) return handlePlanningMessage(ctx, text, deps);
-    if (step?.match(/^reflect_(movement|nomovement|partial|weekclosed)_\d+$/)) return handleReflectionMessage(ctx, text, deps);
+    if (step?.match(/^fixation_(movement|nomovement|partial|weekclosed)_\d+$/)) return handleFixationMessage(ctx, text, deps);
     if (step === 'review_user_note') return handleReviewUserNote(ctx, text, deps);
-    if (step === 'settings_plan_time_input' || step === 'settings_reflect_time_input' || step === 'settings_review_time_input') {
+    if (step === 'settings_plan_time_input' || step === 'settings_fixation_time_input' || step === 'settings_review_time_input') {
       return handleSettingsTimeInput(ctx, text, deps);
     }
     if (step === 'settings_tz_input') return handleSettingsTzInput(ctx, text, deps);

@@ -1,7 +1,7 @@
 import type { Bot, Context, SessionFlavor } from 'grammy';
 
 /** Данные сессии рефлексии при заполнении по веткам movement_branch */
-export interface ReflectionSessionData {
+export interface FixationSessionData {
   date?: string;
   had_movement?: boolean;
   movement_branch?: 'yes' | 'no' | 'partial' | 'week_closed';
@@ -24,13 +24,13 @@ export interface SessionData {
   planEditMode?: boolean; // true = ручное редактирование, без LLM
   planningAnswers?: Record<string, string>;
   isFirstPlanning?: boolean; // true = первый план пользователя, показываем подсказку у main_focus
-  reflectionEditMode?: boolean; // true = ручное редактирование, без LLM
-  reflectionPromptVariant?: 'v1' | 'v2';
-  reflectionData?: ReflectionSessionData;
+  fixationEditMode?: boolean; // true = ручное редактирование, без LLM
+  fixationPromptVariant?: 'v1' | 'v2';
+  fixationData?: FixationSessionData;
   settingsData?: {
-    editing?: 'plan' | 'reflect' | 'review';
+    editing?: 'plan' | 'fixation' | 'review';
     plan_day?: number;
-    reflect_days?: string;
+    fixation_days?: string;
     review_day?: number;
     [key: string]: unknown;
   };

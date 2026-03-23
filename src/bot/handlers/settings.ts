@@ -89,45 +89,45 @@ export async function handleSettingsPlanTime(ctx: AppContext, time: string, deps
   await deps.showSettingsMenu(ctx, userId);
 }
 
-export async function handleSettingsReflect(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsFixation(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
-  ctx.session.step = 'settings_reflect_days';
-  ctx.session.settingsData = { editing: 'reflect' };
-  await ctx.reply('Дни рефлексии:', {
+  ctx.session.step = 'settings_fixation_days';
+  ctx.session.settingsData = { editing: 'fixation' };
+  await ctx.reply('Дни фиксации:', {
     reply_markup: [[
-      { text: '5 дн. (пн–пт)', callback_data: 'settings_reflect_days_12345' },
-      { text: '6 дн. (пн–сб)', callback_data: 'settings_reflect_days_123456' },
-      { text: 'Ежедневно', callback_data: 'settings_reflect_days_0123456' },
+      { text: '5 дн. (пн–пт)', callback_data: 'settings_fixation_days_12345' },
+      { text: '6 дн. (пн–сб)', callback_data: 'settings_fixation_days_123456' },
+      { text: 'Ежедневно', callback_data: 'settings_fixation_days_0123456' },
     ]],
   });
 }
 
-export async function handleSettingsReflectDays(ctx: AppContext, raw: string, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsFixationDays(ctx: AppContext, raw: string, deps: HandlerDeps): Promise<void> {
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
   const days = raw.split('').map((c) => parseInt(c, 10)).filter((n) => !isNaN(n) && n >= 0 && n <= 6).join(',');
-  ctx.session.settingsData = { ...ctx.session.settingsData, reflect_days: days };
-  ctx.session.step = 'settings_reflect_time';
-  await ctx.reply('Время:', { reply_markup: getTimePickerRows('settings_reflect_time') });
+  ctx.session.settingsData = { ...ctx.session.settingsData, fixation_days: days };
+  ctx.session.step = 'settings_fixation_time';
+  await ctx.reply('Время:', { reply_markup: getTimePickerRows('settings_fixation_time') });
 }
 
-export async function handleSettingsReflectTimeCustom(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsFixationTimeCustom(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
-  ctx.session.step = 'settings_reflect_time_input';
-  logger.debug({ userId: ctx.userId }, 'Settings reflect: custom time input');
+  ctx.session.step = 'settings_fixation_time_input';
+  logger.debug({ userId: ctx.userId }, 'Settings fixation: custom time input');
   await ctx.reply(SETTINGS_TIME_INPUT_QUESTION);
 }
 
-export async function handleSettingsReflectTime(ctx: AppContext, time: string, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsFixationTime(ctx: AppContext, time: string, deps: HandlerDeps): Promise<void> {
   const { settingsService } = deps;
   const userId = ctx.userId;
-  const raw = ctx.session?.settingsData?.reflect_days ?? '12345';
+  const raw = ctx.session?.settingsData?.fixation_days ?? '12345';
   const days = raw.split('').map((c) => parseInt(c, 10)).filter((n) => !isNaN(n) && n >= 0 && n <= 6).join(',');
   await ctx.answerCallbackQuery();
-  await settingsService.updateReflectNotify(userId, days, time);
-  logger.info({ userId, days, time }, 'Settings reflect notify updated');
+  await settingsService.updateFixationNotify(userId, days, time);
+  logger.info({ userId, days, time }, 'Settings fixation notify updated');
   ensureSession(ctx);
   ctx.session.step = undefined;
   ctx.session.settingsData = undefined;
@@ -195,10 +195,10 @@ export async function handleSettingsTimeInput(ctx: AppContext, text: string, dep
         await settingsService.updatePlanNotify(userId, data.plan_day, time);
         logger.info({ userId, day: data.plan_day, time }, 'Settings plan notify updated (custom)');
         saved = true;
-      } else if (step === 'settings_reflect_time_input' && data?.reflect_days) {
-        const days = String(data.reflect_days);
-        await settingsService.updateReflectNotify(userId, days, time);
-        logger.info({ userId, days, time }, 'Settings reflect notify updated (custom)');
+      } else if (step === 'settings_fixation_time_input' && data?.fixation_days) {
+        const days = String(data.fixation_days);
+        await settingsService.updateFixationNotify(userId, days, time);
+        logger.info({ userId, days, time }, 'Settings fixation notify updated (custom)');
         saved = true;
       } else if (step === 'settings_review_time_input' && typeof data?.review_day === 'number') {
         await settingsService.updateReviewNotify(userId, data.review_day, time);
@@ -265,21 +265,21 @@ export function registerSettingsHandlers(bot: import('grammy').Bot<BotContext>, 
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleSettingsPlanTime(appCtx, timeFromCallback(ctx.match), deps);
   });
-  bot.callbackQuery(/^settings_reflect$/, async (ctx) => {
+  bot.callbackQuery(/^settings_fixation$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsReflect(appCtx, deps);
+    await handleSettingsFixation(appCtx, deps);
   });
-  bot.callbackQuery(/^settings_reflect_days_(.+)$/, async (ctx) => {
+  bot.callbackQuery(/^settings_fixation_days_(.+)$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsReflectDays(appCtx, ctx.match[1], deps);
+    await handleSettingsFixationDays(appCtx, ctx.match[1], deps);
   });
-  bot.callbackQuery(/^settings_reflect_time_custom$/, async (ctx) => {
+  bot.callbackQuery(/^settings_fixation_time_custom$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsReflectTimeCustom(appCtx, deps);
+    await handleSettingsFixationTimeCustom(appCtx, deps);
   });
-  bot.callbackQuery(/^settings_reflect_time_([\d-]+)$/, async (ctx) => {
+  bot.callbackQuery(/^settings_fixation_time_([\d-]+)$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsReflectTime(appCtx, timeFromCallback(ctx.match), deps);
+    await handleSettingsFixationTime(appCtx, timeFromCallback(ctx.match), deps);
   });
   bot.callbackQuery(/^settings_review$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
@@ -306,7 +306,7 @@ export function registerSettingsHandlers(bot: import('grammy').Bot<BotContext>, 
       const step = ctx.session?.step;
       return (
         (step === 'settings_plan_time_input' ||
-          step === 'settings_reflect_time_input' ||
+          step === 'settings_fixation_time_input' ||
           step === 'settings_review_time_input') &&
         !ctx.message.text?.trim().startsWith('/')
       );

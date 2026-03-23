@@ -12,7 +12,7 @@ import { createProjectors } from '../../projectors/index.js';
 import { createPlanService, getWeekId, getWeekStartEnd } from '../../services/plan-service.js';
 import { createDeclarationService } from '../../services/declaration-service.js';
 import { createReportService } from '../../services/report-service.js';
-import { createReflectionService } from '../../services/reflection-service.js';
+import { createFixationService } from '../../services/fixation-service.js';
 import { createReviewService } from '../../services/review-service.js';
 import { createSettingsService, formatDay, formatDays, formatTime } from '../../services/settings-service.js';
 import { createLLMClient } from '../../llm/client.js';
@@ -21,7 +21,7 @@ import { initTokenSpikeChecker } from '../../observability/token-spike.js';
 import {
   SETTINGS_NOTIFICATIONS,
   SETTINGS_PLAN,
-  SETTINGS_REFLECT,
+  SETTINGS_FIXATION,
   SETTINGS_REVIEW,
   SETTINGS_TIMEZONE,
 } from '../conversations.js';
@@ -30,8 +30,7 @@ import { registerOnboardingHandlers } from './onboarding.js';
 import { registerDeclarationHandlers } from './declaration.js';
 import { registerReportHandlers } from './report.js';
 import { registerPlanHandlers } from './plan.js';
-import { registerReflectHandlers } from './reflect.js';
-import { registerReflect2Handlers } from './reflect2.js';
+import { registerFixationHandlers } from './fixation.js';
 import { registerReviewHandlers } from './review.js';
 import { registerSettingsHandlers } from './settings.js';
 import { registerDeleteHandlers } from './delete.js';
@@ -58,7 +57,7 @@ export function createAppDeps(): HandlerDeps {
   const planService = createPlanService(eventStore, serviceDeps);
   const declarationService = createDeclarationService(eventStore, serviceDeps);
   const reportService = createReportService(eventStore, serviceDeps);
-  const reflectionService = createReflectionService(eventStore, serviceDeps);
+  const fixationService = createFixationService(eventStore, serviceDeps);
   const reviewService = createReviewService(eventStore, serviceDeps);
   const settingsService = createSettingsService(pool);
 
@@ -89,7 +88,7 @@ export function createAppDeps(): HandlerDeps {
     return userId;
   }
 
-  async function getReflectDate(userId: string, choice: 'yesterday' | 'today'): Promise<string> {
+  async function getFixationDate(userId: string, choice: 'yesterday' | 'today'): Promise<string> {
     const todayStr = await getUserLocalDate(userId, pool);
     if (choice === 'today') return todayStr;
     const d = new Date(todayStr + 'T12:00:00Z');
@@ -101,7 +100,7 @@ export function createAppDeps(): HandlerDeps {
     ctx: import('../transport/types.js').AppContext,
     rawPost: string,
     userId: string,
-    context: 'declaration' | 'plan' | 'reflect' | 'review' | 'report'
+    context: 'declaration' | 'plan' | 'fixation' | 'review' | 'report'
   ): Promise<void> {
     const formatted = formatLlmResponse(rawPost?.trim() || '');
     if (!formatted) {
@@ -120,8 +119,8 @@ export function createAppDeps(): HandlerDeps {
     const planStr = settings.plan_notify_day != null
       ? `${formatDay(settings.plan_notify_day)} ${formatTime(settings.plan_notify_time)}`
       : '—';
-    const reflectStr = settings.reflect_notify_days
-      ? `${formatDays(settings.reflect_notify_days)} ${formatTime(settings.reflect_notify_time)}`
+    const reflectStr = settings.fixation_notify_days
+      ? `${formatDays(settings.fixation_notify_days)} ${formatTime(settings.fixation_notify_time)}`
       : '—';
     const reviewStr = settings.review_notify_day != null
       ? `${formatDay(settings.review_notify_day)} ${formatTime(settings.review_notify_time)}`
@@ -131,7 +130,7 @@ export function createAppDeps(): HandlerDeps {
     const text =
       `<b>${SETTINGS_NOTIFICATIONS}</b>: ${notif}\n` +
       `<b>${SETTINGS_PLAN}</b>: ${planStr}\n` +
-      `<b>${SETTINGS_REFLECT}</b>: ${reflectStr}\n` +
+      `<b>${SETTINGS_FIXATION}</b>: ${reflectStr}\n` +
       `<b>${SETTINGS_REVIEW}</b>: ${reviewStr}\n` +
       `<b>${SETTINGS_TIMEZONE}</b>: ${tzStr}`;
 
@@ -144,7 +143,7 @@ export function createAppDeps(): HandlerDeps {
       ],
       [
         { text: 'План', callback_data: 'settings_plan' },
-        { text: 'Рефлексия', callback_data: 'settings_reflect' },
+        { text: 'Фиксация', callback_data: 'settings_fixation' },
         { text: 'Обзор', callback_data: 'settings_review' },
       ],
       [{ text: 'Таймзона', callback_data: 'settings_tz' }],
@@ -158,14 +157,14 @@ export function createAppDeps(): HandlerDeps {
     getUserByMaxId: (maxId) => getUserByMaxId(pool, maxId),
     markOnboarded: (userId) => markOnboarded(pool, userId),
     ensureUser,
-    getReflectDate,
+    getFixationDate,
     formatErrorForUser,
     handleLlmReply,
     countRows,
     declarationService,
     reportService,
     planService,
-    reflectionService,
+    fixationService,
     reviewService,
     settingsService,
     showSettingsMenu,
@@ -178,8 +177,7 @@ export function registerHandlers(bot: Bot<BotContext>, deps: HandlerDeps) {
   registerDeclarationHandlers(bot, deps);
   registerReportHandlers(bot, deps);
   registerPlanHandlers(bot, deps);
-  registerReflectHandlers(bot, deps);
-  registerReflect2Handlers(bot, deps);
+  registerFixationHandlers(bot, deps);
   registerReviewHandlers(bot, deps);
   registerSettingsHandlers(bot, deps);
   registerDeleteHandlers(bot, deps);

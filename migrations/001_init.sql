@@ -41,15 +41,15 @@ CREATE TABLE IF NOT EXISTS user_settings (
   notifications_enabled BOOLEAN NOT NULL DEFAULT false,
   plan_notify_day INT,
   plan_notify_time VARCHAR(5),
-  reflect_notify_days VARCHAR(32),
-  reflect_notify_time VARCHAR(5),
+  fixation_notify_days VARCHAR(32),
+  fixation_notify_time VARCHAR(5),
   review_notify_day INT,
   review_notify_time VARCHAR(5),
   last_plan_notify_week_id VARCHAR(32),
-  last_reflect_notify_date DATE,
+  last_fixation_notify_date DATE,
   last_review_notify_week_id VARCHAR(32),
   skip_hint_shown_at TIMESTAMPTZ,
-  reflection_onboarding_hint_shown_at TIMESTAMPTZ NULL,
+  fixation_onboarding_hint_shown_at TIMESTAMPTZ NULL,
   onboarding_review_invite_sent_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -77,9 +77,56 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
   PRIMARY KEY (user_id, week_id)
 );
 
--- Daily reflections (read model, INV-001: unique user_id, date)
-CREATE TABLE IF NOT EXISTS daily_reflections (
+-- Weekly declarations (read model)
+CREATE TABLE IF NOT EXISTS weekly_declarations (
   user_id UUID NOT NULL REFERENCES users(user_id),
+  week_id VARCHAR(32) NOT NULL,
+  main_focus TEXT NOT NULL,
+  win_result TEXT NOT NULL,
+  week_failure TEXT NOT NULL,
+  raw_post TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, week_id)
+);
+
+-- Weekly reports (read model)
+CREATE TABLE IF NOT EXISTS weekly_reports (
+  user_id UUID NOT NULL REFERENCES users(user_id),
+  week_id VARCHAR(32) NOT NULL,
+  result_status TEXT NOT NULL,
+  result_fact TEXT NOT NULL,
+  main_gap TEXT NOT NULL,
+  next_step TEXT NOT NULL,
+  raw_post TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, week_id)
+);
+
+-- Daily fixations (read model, INV-001: unique user_id, date)
+CREATE TABLE IF NOT EXISTS daily_fixations (
+  user_id UUID NOT NULL REFERENCES users(user_id),
+  date DATE NOT NULL,
+  day VARCHAR(16) NOT NULL,
+  had_movement BOOLEAN NOT NULL,
+  movement_branch VARCHAR(32),
+  what_moved TEXT,
+  tomorrow_step TEXT,
+  what_stopped TEXT,
+  attention_sink TEXT,
+  thought_of_day TEXT NOT NULL,
+  raw_post TEXT NOT NULL,
+  why_partial TEXT,
+  new_focus TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, date)
+);
+
+-- Fixations mirror (current source for fixation flow)
+CREATE TABLE IF NOT EXISTS fixations (
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   date DATE NOT NULL,
   day VARCHAR(16) NOT NULL,
   had_movement BOOLEAN NOT NULL,

@@ -14,11 +14,11 @@ export const prompts = {
     loadPrompt('WEEKLY_PLAN_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
   weeklyDeclaration: (dayName: string) =>
     loadPrompt('WEEKLY_DECLARATION_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
-  dailyReflection: (dayName: string) =>
+  dailyFixation: (dayName: string) =>
     loadPrompt('DAILY_REFLECTION_SYSTEM_PROMPT')
       .replace(/<День недели>/g, dayName)
       .replace(/<day>/g, dayName),
-  dailyReflectionV2: (dayName: string) =>
+  dailyFixationV2: (dayName: string) =>
     loadPrompt('DAILY_REFLECTION_V2_SYSTEM_PROMPT')
       .replace(/<День недели>/g, dayName)
       .replace(/<day>/g, dayName),

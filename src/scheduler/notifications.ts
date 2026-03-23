@@ -33,23 +33,23 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
         timezone: string | null;
         plan_notify_day: number | null;
         plan_notify_time: string | null;
-        reflect_notify_days: string | null;
-        reflect_notify_time: string | null;
+        fixation_notify_days: string | null;
+        fixation_notify_time: string | null;
         review_notify_day: number | null;
         review_notify_time: string | null;
         last_plan_notify_week_id: string | null;
-        last_reflect_notify_date: string | null;
+        last_fixation_notify_date: string | null;
         last_review_notify_week_id: string | null;
       }>(
         `SELECT s.user_id, u.tg_id, u.max_id, s.timezone,
                 s.plan_notify_day, s.plan_notify_time,
-                s.reflect_notify_days, s.reflect_notify_time,
+                s.fixation_notify_days, s.fixation_notify_time,
                 s.review_notify_day, s.review_notify_time,
-                s.last_plan_notify_week_id, s.last_reflect_notify_date, s.last_review_notify_week_id
+                s.last_plan_notify_week_id, s.last_fixation_notify_date, s.last_review_notify_week_id
          FROM user_settings s
          JOIN users u ON u.user_id = s.user_id
          WHERE s.notifications_enabled = true
-           AND (s.plan_notify_day IS NOT NULL OR s.reflect_notify_days IS NOT NULL OR s.review_notify_day IS NOT NULL)`
+           AND (s.plan_notify_day IS NOT NULL OR s.fixation_notify_days IS NOT NULL OR s.review_notify_day IS NOT NULL)`
       );
 
       const now = new Date();
@@ -86,11 +86,11 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           );
         };
 
-        const checkReflect = () => {
-          if (!r.reflect_notify_days || !r.reflect_notify_time) return false;
-          const days = r.reflect_notify_days.split(',').map((x) => parseInt(x.trim(), 10));
+        const checkFixation = () => {
+          if (!r.fixation_notify_days || !r.fixation_notify_time) return false;
+          const days = r.fixation_notify_days.split(',').map((x) => parseInt(x.trim(), 10));
           if (!days.includes(userDay)) return false;
-          const [th, tm] = r.reflect_notify_time.split(':').map((x) => parseInt(x, 10));
+          const [th, tm] = r.fixation_notify_time.split(':').map((x) => parseInt(x, 10));
           const targetMins = th * 60 + tm;
           return (
             userMins >= targetMins - NOTIFY_WINDOW_MIN &&
@@ -99,7 +99,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
         };
 
         const planButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_plan' }]];
-        const reflectButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_reflect' }]];
+        const reflectButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_fixation' }]];
         const reviewButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_review' }]];
 
         const sendToUserChannels = async (
@@ -136,13 +136,13 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
             logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify plan sent');
           });
         }
-        if (checkReflect() && r.last_reflect_notify_date !== userDateStr) {
-          await sendToUserChannels('⏰ Время рефлексии', reflectButtons, async () => {
+        if (checkFixation() && r.last_fixation_notify_date !== userDateStr) {
+          await sendToUserChannels('⏰ Время фиксации', reflectButtons, async () => {
             await pool.query(
-              'UPDATE user_settings SET last_reflect_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',
+              'UPDATE user_settings SET last_fixation_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',
               [userDateStr, r.user_id]
             );
-            logger.debug({ userId: r.user_id, date: userDateStr }, 'Notify reflect sent');
+            logger.debug({ userId: r.user_id, date: userDateStr }, 'Notify fixation sent');
           });
         }
         if (check(r.review_notify_day, r.review_notify_time, 'review') && r.last_review_notify_week_id !== userWeekId) {
@@ -195,7 +195,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
         const weekRef = new Date(userDateStr + 'T12:00:00Z');
         const { start: weekStart, end: weekEnd } = getWeekStartEnd(weekRef);
         const refCount = await pool.query<{ c: number }>(
-          'SELECT COUNT(*)::int AS c FROM daily_reflections WHERE user_id = $1 AND date >= $2 AND date <= $3',
+          'SELECT COUNT(*)::int AS c FROM daily_fixations WHERE user_id = $1 AND date >= $2 AND date <= $3',
           [r.user_id, weekStart, weekEnd]
         );
         if ((refCount.rows[0]?.c ?? 0) === 0) continue;

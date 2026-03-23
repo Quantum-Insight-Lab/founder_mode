@@ -19,13 +19,13 @@ export async function validateReviewMinData(
     'SELECT 1 FROM weekly_plans WHERE user_id = $1 AND week_id = $2 LIMIT 1',
     [userId, weekId]
   );
-  const reflectionsResult = await pool.query(
-    `SELECT 1 FROM daily_reflections 
+  const fixationsResult = await pool.query(
+    `SELECT 1 FROM daily_fixations 
      WHERE user_id = $1 AND date >= $2 AND date <= $3`,
     [userId, dayRangeStart, dayRangeEnd]
   );
   validateReviewMinDataFromMeta({
     plan_exists: (planResult.rowCount ?? 0) >= 1,
-    ref_count: reflectionsResult.rowCount ?? 0,
+    ref_count: fixationsResult.rowCount ?? 0,
   });
 }

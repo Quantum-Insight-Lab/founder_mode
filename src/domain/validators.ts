@@ -4,9 +4,9 @@
 import { invariant } from './errors.js';
 
 /**
- * INV-004: Reflection date cannot be in the future (relative to user's today)
+ * INV-004: Fixation date cannot be in the future (relative to user's today)
  */
-export function validateReflectionDate(dateStr: string, todayStr: string): void {
+export function validateFixationDate(dateStr: string, todayStr: string): void {
   invariant(
     dateStr <= todayStr,
     'Рефлексия только за прошедшие дни',
@@ -21,13 +21,13 @@ export function validateReviewMinDataFromMeta(meta: {
 }): void {
   invariant(Boolean(meta?.plan_exists), 'Нужен план недели для обзора', '003');
   const count = meta?.ref_count ?? 0;
-  invariant(count >= 1, `Нужна хотя бы одна рефлексия для обзора. Сейчас: ${count}.`, '003');
+  invariant(count >= 1, `Нужна хотя бы одна фиксация для обзора. Сейчас: ${count}.`, '003');
 }
 
 /**
- * INV-008: Reflection has valid branch — required fields by movement_branch
+ * INV-008: Fixation has valid branch — required fields by movement_branch
  */
-export function validateReflectionBranch(data: {
+export function validateFixationBranch(data: {
   movement_branch: 'yes' | 'no' | 'partial' | 'week_closed';
   had_movement?: boolean;
   what_moved?: string;
@@ -72,6 +72,6 @@ export function validateReflectionBranch(data: {
       '008'
     );
   } else {
-    invariant(false, 'Недопустимая ветка рефлексии', '008');
+    invariant(false, 'Недопустимая ветка фиксации', '008');
   }
 }

@@ -10,7 +10,6 @@ import { getWeekId, getWeekStartEnd } from '../services/plan-service.js';
 import type { InlineButton } from '../bot/transport/types.js';
 
 const ONBOARDING_REVIEW_INVITE = 'Неделя подходит к концу.\n\nДавай соберём короткий обзор: что получилось, и куда двигаться дальше. Напиши (нажми) /review';
-const ONBOARDING_REVIEW_INVITE_HINT = '💡 Если неделя получилась короткой, обзор будет в режиме "мало данных". Это нормально';
 
 const NOTIFY_WINDOW_MIN = 7;
 
@@ -219,9 +218,8 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           }
           return ok;
         };
-        const ok1 = await sendOnboard(ONBOARDING_REVIEW_INVITE);
-        const ok2 = await sendOnboard(ONBOARDING_REVIEW_INVITE_HINT);
-        if (ok1 || ok2) {
+        const ok = await sendOnboard(ONBOARDING_REVIEW_INVITE);
+        if (ok) {
           await pool.query(
             `INSERT INTO user_settings (user_id, onboarding_review_invite_sent_at) VALUES ($1, NOW())
              ON CONFLICT (user_id) DO UPDATE SET onboarding_review_invite_sent_at = NOW(), updated_at = NOW()`,

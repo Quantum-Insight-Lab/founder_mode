@@ -4,6 +4,10 @@ import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
+  ONBOARDING_AFTER_PLAN_1,
+  ONBOARDING_AFTER_PLAN_2,
+} from '../conversations.js';
+import {
   WEEKLY_DECLARATION_QUESTIONS,
   type WeeklyDeclarationAnswerKey,
 } from '../conversations2.js';
@@ -73,7 +77,7 @@ async function sendDeclarationAsCard(
 }
 
 export async function handleDeclarationCommand(ctx: AppContext, deps: HandlerDeps): Promise<void> {
-  const { pool } = deps;
+  const { pool, countRows } = deps;
   const userId = ctx.userId;
   logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /declaration');
   ensureSession(ctx);
@@ -88,6 +92,7 @@ export async function handleDeclarationCommand(ctx: AppContext, deps: HandlerDep
   );
 
   if (existing.rows.length > 0) {
+    ctx.session.isFirstDeclaration = undefined;
     ctx.session.step = 'declaration_choice';
     await ctx.reply('Declaration на эту неделю уже есть.', {
       reply_markup: [[
@@ -100,6 +105,8 @@ export async function handleDeclarationCommand(ctx: AppContext, deps: HandlerDep
 
   ctx.session.step = 'declaration_0';
   ctx.session.declarationAnswers = {};
+  ctx.session.isFirstDeclaration =
+    (await countRows(pool, 'SELECT COUNT(*)::int AS c FROM weekly_declarations WHERE user_id = $1', [userId])) === 0;
   funnelStarted.inc({ type: 'declaration' });
   await ctx.reply(WEEKLY_DECLARATION_QUESTIONS[0].text);
 }
@@ -140,6 +147,7 @@ export async function handleDeclarationShow(ctx: AppContext, deps: HandlerDeps):
 export async function handleDeclarationEdit(ctx: AppContext): Promise<void> {
   ensureSession(ctx);
   await ctx.answerCallbackQuery();
+  ctx.session.isFirstDeclaration = undefined;
   ctx.session.step = 'declaration_0';
   ctx.session.declarationEditMode = true;
   ctx.session.declarationAnswers = {};
@@ -157,10 +165,12 @@ export async function handleDeclarationMessage(ctx: AppContext, text: string, de
   const record = answers as Record<WeeklyDeclarationAnswerKey, string>;
 
   if (idx >= WEEKLY_DECLARATION_QUESTIONS.length - 1) {
+    const isFirstDeclaration = ctx.session?.isFirstDeclaration ?? false;
     ctx.session!.step = undefined;
     ctx.session!.declarationAnswers = undefined;
     const isEdit = ctx.session!.declarationEditMode ?? false;
     ctx.session!.declarationEditMode = undefined;
+    ctx.session!.isFirstDeclaration = undefined;
 
     try {
       if (isEdit) {
@@ -174,6 +184,10 @@ export async function handleDeclarationMessage(ctx: AppContext, text: string, de
         funnelCompleted.inc({ type: 'declaration' });
         logger.info({ userId }, 'Declaration created');
         await sendDeclarationAsCard(ctx, deps, userId, structured, rawPost);
+        if (isFirstDeclaration) {
+          await ctx.reply(ONBOARDING_AFTER_PLAN_1);
+          await ctx.reply(`<i>${ONBOARDING_AFTER_PLAN_2}</i>`, { parse_mode: 'HTML' });
+        }
       }
     } catch (err) {
       logger.error({ err, userId }, isEdit ? 'Declaration manual update failed' : 'Declaration creation failed');

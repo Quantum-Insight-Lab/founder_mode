@@ -41,7 +41,7 @@ describe.skipIf(!dbUrl)('services', () => {
   beforeEach(async () => {
     mockComplete.mockClear();
     await pool.query(
-      'TRUNCATE events, weekly_declarations, weekly_reports, weekly_plans, daily_reflections, weekly_reviews, idempotency_cache, llm_calls CASCADE'
+      'TRUNCATE events, weekly_declarations, weekly_reports, weekly_plans, daily_fixations, weekly_reviews, idempotency_cache, llm_calls CASCADE'
     );
     await pool.query('DELETE FROM users WHERE tg_id = $1', [tgId]);
     await pool.query('INSERT INTO users (user_id, tg_id) VALUES ($1, $2) ON CONFLICT (tg_id) DO NOTHING', [userId, tgId]);
@@ -125,7 +125,7 @@ describe.skipIf(!dbUrl)('services', () => {
       mockComplete.mockClear();
       await fixationService.submitFixation(userId, data2);
 
-      const rows = await pool.query('SELECT * FROM daily_reflections WHERE user_id = $1 AND date = $2', [userId, today]);
+      const rows = await pool.query('SELECT * FROM daily_fixations WHERE user_id = $1 AND date = $2', [userId, today]);
       expect(rows.rows.length).toBe(1);
     });
 
@@ -145,7 +145,7 @@ describe.skipIf(!dbUrl)('services', () => {
       expect(mockComplete).not.toHaveBeenCalled();
     });
 
-    it('submits reflection and writes to events and daily_reflections', async () => {
+    it('submits reflection and writes to events and daily_fixations', async () => {
       const today = new Date().toISOString().slice(0, 10);
       const data = {
         date: today,
@@ -165,7 +165,7 @@ describe.skipIf(!dbUrl)('services', () => {
       expect(events.rows.length).toBe(1);
       expect(events.rows[0].payload).toMatchObject({ user_id: userId, date: today, movement_branch: 'yes' });
 
-      const reflections = await pool.query('SELECT * FROM daily_reflections WHERE user_id = $1 AND date = $2', [userId, today]);
+      const reflections = await pool.query('SELECT * FROM daily_fixations WHERE user_id = $1 AND date = $2', [userId, today]);
       expect(reflections.rows.length).toBe(1);
     });
   });
@@ -195,7 +195,7 @@ describe.skipIf(!dbUrl)('services', () => {
         const date = d.toISOString().slice(0, 10);
         const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
         await pool.query(
-          `INSERT INTO daily_reflections (user_id, date, day, had_movement, thought_of_day, raw_post)
+          `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
            VALUES ($1, $2, $3, true, 't', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 't'`,
           [userBId, date, day]
         );
@@ -214,7 +214,7 @@ describe.skipIf(!dbUrl)('services', () => {
       );
       // 0 reflections — validation should reject
 
-      await expect(reviewService.generateReview(userId)).rejects.toThrow(/одна рефлексия|Сейчас: 0/);
+      await expect(reviewService.generateReview(userId)).rejects.toThrow(/фиксац|Сейчас: 0/);
     });
 
     it('generates review when plan and 3+ reflections exist', async () => {
@@ -234,7 +234,7 @@ describe.skipIf(!dbUrl)('services', () => {
       for (const date of dates) {
         const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(date).getDay()];
         await pool.query(
-          `INSERT INTO daily_reflections (user_id, date, day, had_movement, thought_of_day, raw_post)
+          `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
            VALUES ($1, $2, $3, true, 't', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 't'`,
           [userId, date, day]
         );
@@ -260,7 +260,7 @@ describe.skipIf(!dbUrl)('services', () => {
         const date = d.toISOString().slice(0, 10);
         const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(date).getDay()];
         await pool.query(
-          `INSERT INTO daily_reflections (user_id, date, day, had_movement, thought_of_day, raw_post)
+          `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
            VALUES ($1, $2, $3, true, 't', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 't'`,
           [userId, date, day]
         );
@@ -271,7 +271,7 @@ describe.skipIf(!dbUrl)('services', () => {
       const outsideStr = outsideDate.toISOString().slice(0, 10);
       const outsideDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][outsideDate.getDay()];
       await pool.query(
-        `INSERT INTO daily_reflections (user_id, date, day, had_movement, thought_of_day, raw_post)
+        `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
          VALUES ($1, $2, $3, true, 'outside', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 'outside'`,
         [userId, outsideStr, outsideDay]
       );
@@ -280,10 +280,10 @@ describe.skipIf(!dbUrl)('services', () => {
 
       const call = mockComplete.mock.calls[0];
       const userMessage = call[1] as string;
-      const input = JSON.parse(userMessage) as { day_range: { start: string; end: string }; daily_reflections: { thought_of_day?: string }[] };
+      const input = JSON.parse(userMessage) as { day_range: { start: string; end: string }; daily_fixations: { thought_of_day?: string }[] };
       expect(input.day_range.start).toBe(start);
       expect(input.day_range.end).toBe(end);
-      expect(input.daily_reflections.map((r) => r.thought_of_day)).not.toContain('outside');
+      expect(input.daily_fixations.map((r) => r.thought_of_day)).not.toContain('outside');
     });
 
     it('INV-010: review uses same week_id and day_range as plan', async () => {
@@ -303,7 +303,7 @@ describe.skipIf(!dbUrl)('services', () => {
       for (const date of dates) {
         const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(date).getDay()];
         await pool.query(
-          `INSERT INTO daily_reflections (user_id, date, day, had_movement, thought_of_day, raw_post)
+          `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
            VALUES ($1, $2, $3, true, 't', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 't'`,
           [userId, date, day]
         );

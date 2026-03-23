@@ -12,6 +12,7 @@ import {
   ONBOARDING_AFTER_CTA_YES,
   ONBOARDING_TIMEZONE_QUESTION,
   ONBOARDING_TIMEZONE_INVALID,
+  ONBOARDING_TIMEZONE_DEFAULT,
   ONBOARDING_AFTER_TZ_PROMPT_PLAN,
   ONBOARDING_CTA_LATER_FIRST_MSG,
   ONBOARDING_CTA_YES_FINAL_MSG,
@@ -58,25 +59,24 @@ export async function handleOnboardTimezone(ctx: AppContext, text: string, deps:
   ensureSession(ctx);
   ctx.session.step = undefined;
 
-  let saved = false;
   let tz: string | null = null;
   if (match) {
     tz = userTimeToTimezone(parseInt(match[1], 10), parseInt(match[2], 10));
-    if (tz) {
-      await settingsService.updateTimezone(userId, tz);
-      saved = true;
-    }
   }
 
-  if (!saved) {
-    ctx.session.step = 'onboard_timezone';
-    logger.debug({ userId, text }, 'Onboarding timezone invalid');
-    await ctx.reply(ONBOARDING_TIMEZONE_INVALID);
-  } else {
-    logger.info({ userId }, 'Onboarding timezone saved');
-    await ctx.reply(`Таймзона установлена: <b>${tz}</b>`, { parse_mode: 'HTML' });
+  if (!tz) {
+    logger.info({ userId, text }, 'Onboarding timezone invalid, using default UTC+0');
+    await settingsService.updateTimezone(userId, ONBOARDING_TIMEZONE_DEFAULT);
+    await ctx.reply(ONBOARDING_TIMEZONE_INVALID, { parse_mode: 'HTML' });
+    await ctx.reply(`Часовой пояс установлен: <b>${ONBOARDING_TIMEZONE_DEFAULT}</b>`, { parse_mode: 'HTML' });
     await ctx.reply(ONBOARDING_AFTER_TZ_PROMPT_PLAN);
+    return;
   }
+
+  await settingsService.updateTimezone(userId, tz);
+  logger.info({ userId }, 'Onboarding timezone saved');
+  await ctx.reply(`Часовой пояс установлен: <b>${tz}</b>`, { parse_mode: 'HTML' });
+  await ctx.reply(ONBOARDING_AFTER_TZ_PROMPT_PLAN);
 }
 
 export async function handleOnboardCtaYes(ctx: AppContext, deps: HandlerDeps): Promise<void> {

@@ -20,7 +20,7 @@ import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { formatLlmResponse } from '../../domain/html.js';
 import { getUserLocalDate } from '../../db/user-timezone.js';
-import { dateStrToWeekRef } from '../../domain/timezone.js';
+import { dateStrToWeekRef, instantToUserLocalDateString, parseTimezoneOffset } from '../../domain/timezone.js';
 import { getWeekId } from '../../services/plan-service.js';
 import type { HandlerDeps } from './deps.js';
 
@@ -113,33 +113,33 @@ export async function handleFixationCommandBase(ctx: AppContext, deps: HandlerDe
     total: number;
     has_yesterday: boolean;
     has_today: boolean;
-    declaration_created_today: boolean;
+    declaration_created_at: string | null;
     notifications_enabled: boolean;
     skip_hint_shown_at: string | null;
+    timezone: string | null;
   }>(
     `SELECT
        (SELECT COUNT(*)::int FROM daily_fixations WHERE user_id = $1) AS total,
        EXISTS(SELECT 1 FROM daily_fixations WHERE user_id = $1 AND date = $2) AS has_yesterday,
        EXISTS(SELECT 1 FROM daily_fixations WHERE user_id = $1 AND date = $3) AS has_today,
-       EXISTS(
-         SELECT 1
-         FROM weekly_declarations
-         WHERE user_id = $1
-           AND week_id = $4
-           AND created_at::date = $3::date
-       ) AS declaration_created_today,
+       (SELECT wd.created_at FROM weekly_declarations wd WHERE wd.user_id = $1 AND wd.week_id = $4) AS declaration_created_at,
        COALESCE(s.notifications_enabled, false) AS notifications_enabled,
-       s.skip_hint_shown_at
+       s.skip_hint_shown_at,
+       s.timezone
      FROM (SELECT $1::uuid AS uid) u
      LEFT JOIN user_settings s ON s.user_id = u.uid`,
     [userId, yesterday, today, weekId]
   );
   const r = fixationMeta.rows[0];
+  const offsetMin = r?.timezone ? parseTimezoneOffset(r.timezone) : null;
+  const declAt = r?.declaration_created_at ? new Date(r.declaration_created_at) : null;
+  const declarationLocalDate = declAt ? instantToUserLocalDateString(declAt, offsetMin) : null;
+  const declaration_created_today = declarationLocalDate === today;
   // Вопрос "Вчера/Сегодня" показываем только если:
   // 1) за вчера/сегодня еще нет фиксаций
-  // 2) declaration не была создана сегодня.
+  // 2) declaration не была создана сегодня (по календарю пользователя, как getUserLocalDate).
   // Если declaration и fixation в один день, сразу идем на today.
-  const skipDateQuestion = r?.has_yesterday || r?.has_today || r?.declaration_created_today;
+  const skipDateQuestion = r?.has_yesterday || r?.has_today || declaration_created_today;
 
   if (skipDateQuestion) {
     await proceedWithFixationDate(ctx, today, userId, deps);

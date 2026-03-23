@@ -24,6 +24,7 @@ export interface SessionData {
   planEditMode?: boolean; // true = ручное редактирование, без LLM
   planningAnswers?: Record<string, string>;
   isFirstPlanning?: boolean; // true = первый план пользователя, показываем подсказку у main_focus
+  isFirstDeclaration?: boolean; // true = первый declaration пользователя — онбординг после карточки
   fixationEditMode?: boolean; // true = ручное редактирование, без LLM
   fixationPromptVariant?: 'v1' | 'v2';
   fixationData?: FixationSessionData;

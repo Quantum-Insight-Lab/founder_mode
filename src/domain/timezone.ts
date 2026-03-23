@@ -30,6 +30,19 @@ export function parseTimezoneOffset(tz: string): number | null {
   return sign * (hours * 60);
 }
 
+/**
+ * Calendar date (YYYY-MM-DD) for an instant in the user's UTC±offset sense.
+ * Same convention as getUserLocalDate (db/user-timezone).
+ */
+export function instantToUserLocalDateString(utcInstant: Date, offsetMin: number | null): string {
+  const utcMs = utcInstant.getTime();
+  if (offsetMin === null) {
+    return new Date(utcMs).toISOString().slice(0, 10);
+  }
+  const userLocalMs = utcMs + offsetMin * 60 * 1000;
+  return new Date(userLocalMs).toISOString().slice(0, 10);
+}
+
 /** Returns Date for getWeekId/getWeekStartEnd — noon UTC of user's local date. */
 export function dateStrToWeekRef(dateStr: string): Date {
   return new Date(dateStr + 'T12:00:00Z');

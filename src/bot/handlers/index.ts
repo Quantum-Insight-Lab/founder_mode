@@ -146,7 +146,7 @@ export function createAppDeps(): HandlerDeps {
         { text: 'Фиксация', callback_data: 'settings_fixation' },
         { text: 'Обзор', callback_data: 'settings_review' },
       ],
-      [{ text: 'Таймзона', callback_data: 'settings_tz' }],
+      [{ text: 'Часовой пояс', callback_data: 'settings_tz' }],
     ];
     await ctx.reply(text, { parse_mode: 'HTML', reply_markup });
   }

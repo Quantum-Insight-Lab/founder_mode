@@ -3,6 +3,7 @@ import {
   userTimeToTimezone,
   parseTimezoneOffset,
   dateStrToWeekRef,
+  instantToUserLocalDateString,
 } from '../src/domain/timezone.js';
 
 describe('domain/timezone', () => {
@@ -57,6 +58,19 @@ describe('domain/timezone', () => {
     it('returns noon UTC of given date', () => {
       const d = dateStrToWeekRef('2026-03-09');
       expect(d.toISOString()).toBe('2026-03-09T12:00:00.000Z');
+    });
+  });
+
+  describe('instantToUserLocalDateString', () => {
+    it('uses UTC calendar day when offset is null', () => {
+      const t = new Date('2026-03-21T22:30:00Z');
+      expect(instantToUserLocalDateString(t, null)).toBe('2026-03-21');
+    });
+
+    it('shifts calendar day for UTC+3 like getUserLocalDate', () => {
+      // 21:00 UTC on 2026-03-21 → local date 2026-03-22 for UTC+3
+      const t = new Date('2026-03-21T21:00:00.000Z');
+      expect(instantToUserLocalDateString(t, 180)).toBe('2026-03-22');
     });
   });
 });

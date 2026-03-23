@@ -164,11 +164,11 @@ export async function handleDeclarationMessage(ctx: AppContext, text: string, de
 
     try {
       if (isEdit) {
-        const rawPost = await declarationService.updateDeclarationManual(userId, record);
+        const { rawPost, structured } = await declarationService.updateDeclarationManual(userId, record);
         funnelCompleted.inc({ type: 'declaration' });
         logger.info({ userId }, 'Declaration manually updated');
         await ctx.reply('❗️ Declaration обновлён.');
-        await sendDeclarationAsCard(ctx, deps, userId, record, rawPost);
+        await sendDeclarationAsCard(ctx, deps, userId, structured, rawPost);
       } else {
         const { rawPost, structured } = await declarationService.createDeclaration(userId, record);
         funnelCompleted.inc({ type: 'declaration' });

@@ -1,4 +1,5 @@
 import type { EventStore } from '../events/event-store.js';
+import { randomUUID } from 'node:crypto';
 import { logger } from '../observability/logger.js';
 import { getTraceId } from '../observability/trace.js';
 import type { DomainEvent } from '../events/types.js';
@@ -66,6 +67,49 @@ function renderDeclarationCard(data: DeclarationStructured): string {
 export function createDeclarationService(eventStore: EventStore, deps: ServiceDeps) {
   const { pool, projectors, llm } = deps;
 
+  async function generateDeclarationContent(
+    userId: string,
+    weekId: string,
+    dayName: string,
+    answers: DeclarationAnswers,
+    idempotencyKey: string
+  ): Promise<{ rawPost: string; structured: DeclarationStructured }> {
+    const userMessage = [
+      `main_focus: ${answers.main_focus}`,
+      `win_result: ${answers.win_result}`,
+      `week_failure: ${answers.week_failure}`,
+    ].join('\n');
+
+    let structured: DeclarationStructured | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const attemptIdempotencyKey = attempt === 0 ? idempotencyKey : `${idempotencyKey}:retry_json_${attempt}`;
+      const attemptUserMessage =
+        attempt === 0
+          ? userMessage
+          : `${userMessage}\n\nВерни только валидный JSON-объект по схеме из system prompt. Без markdown и комментариев.`;
+      const response = await llm.complete(prompts.weeklyDeclaration(dayName), attemptUserMessage, {
+        idempotencyKey: attemptIdempotencyKey,
+        userId,
+        traceId: getTraceId(),
+        callType: 'declaration',
+      });
+      try {
+        const parsed = parseJsonCandidate(response.content ?? '');
+        structured = validateStructuredDeclaration(parsed);
+        break;
+      } catch (err) {
+        logger.warn({ err, userId, weekId, attempt }, 'Declaration JSON parse/validate failed');
+      }
+    }
+
+    if (!structured) {
+      throw new Error('Declaration: не удалось получить валидный JSON');
+    }
+
+    const renderedCard = renderDeclarationCard(structured);
+    return { rawPost: renderedCard, structured };
+  }
+
   return {
     async createDeclaration(
       userId: string,
@@ -77,38 +121,14 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       const dayName = formatDayFull(new Date(`${userDateStr}T12:00:00Z`).getUTCDay());
       logger.debug({ userId, weekId, dayName }, 'createDeclaration');
 
-      const userMessage = [
-        `main_focus: ${answers.main_focus}`,
-        `win_result: ${answers.win_result}`,
-        `week_failure: ${answers.week_failure}`,
-      ].join('\n');
-
       const idempotencyKey = `declaration:${userId}:${weekId}`;
-      let structured: DeclarationStructured | null = null;
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const attemptIdempotencyKey = attempt === 0 ? idempotencyKey : `${idempotencyKey}:retry_json_${attempt}`;
-        const attemptUserMessage =
-          attempt === 0
-            ? userMessage
-            : `${userMessage}\n\nВерни только валидный JSON-объект по схеме из system prompt. Без markdown и комментариев.`;
-        const response = await llm.complete(prompts.weeklyDeclaration(dayName), attemptUserMessage, {
-          idempotencyKey: attemptIdempotencyKey,
-          userId,
-          traceId: getTraceId(),
-          callType: 'declaration',
-        });
-        try {
-          const parsed = parseJsonCandidate(response.content ?? '');
-          structured = validateStructuredDeclaration(parsed);
-          break;
-        } catch (err) {
-          logger.warn({ err, userId, weekId, attempt }, 'Declaration JSON parse/validate failed');
-        }
-      }
-      if (!structured) {
-        throw new Error('Declaration: не удалось получить валидный JSON');
-      }
-      const renderedCard = renderDeclarationCard(structured);
+      const { rawPost, structured } = await generateDeclarationContent(
+        userId,
+        weekId,
+        dayName,
+        answers,
+        idempotencyKey
+      );
 
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
         event_type: EVENT_TYPES.DeclarationCreated,
@@ -120,7 +140,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
           main_focus: structured.main_focus,
           win_result: structured.win_result,
           week_failure: structured.week_failure,
-          raw_post: renderedCard,
+          raw_post: rawPost,
         },
         causation_id: null,
         correlation_id: null,
@@ -131,30 +151,27 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       const appended = await eventStore.append(event);
       await projectors.handleEvent(appended);
 
-      return { rawPost: renderedCard, structured };
+      return { rawPost, structured };
     },
 
-    async updateDeclarationManual(userId: string, answers: DeclarationAnswers): Promise<string> {
+    async updateDeclarationManual(
+      userId: string,
+      answers: DeclarationAnswers
+    ): Promise<{ rawPost: string; structured: DeclarationStructured }> {
       const userDateStr = await getUserLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const weekId = getWeekId(weekRef);
-      logger.debug({ userId, weekId }, 'updateDeclarationManual');
-      const existing = await pool.query<{ raw_post: string }>(
-        'SELECT raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
-        [userId, weekId]
-      );
-      const originalRawPost = existing.rows[0]?.raw_post ?? '';
-      const appendix = [
-        '',
-        '---',
-        '❗️ Ручное редактирование ответов:',
-        `• Фокус: ${answers.main_focus}`,
-        `• Результат: ${answers.win_result}`,
-        `• Критерий срыва: ${answers.week_failure}`,
-      ].join('\n');
-      const newRawPost = originalRawPost + appendix;
+      const dayName = formatDayFull(new Date(`${userDateStr}T12:00:00Z`).getUTCDay());
+      logger.debug({ userId, weekId, dayName }, 'updateDeclarationManual');
 
-      const idempotencyKey = `declaration:${userId}:${weekId}:manual`;
+      const idempotencyKey = `declaration:${userId}:${weekId}:manual:${randomUUID()}`;
+      const { rawPost, structured } = await generateDeclarationContent(
+        userId,
+        weekId,
+        dayName,
+        answers,
+        idempotencyKey
+      );
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
         event_type: EVENT_TYPES.DeclarationUpdated,
         actor: { id: userId, role: 'user' },
@@ -162,10 +179,10 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
         payload: {
           user_id: userId,
           week_id: weekId,
-          main_focus: answers.main_focus,
-          win_result: answers.win_result,
-          week_failure: answers.week_failure,
-          raw_post: newRawPost,
+          main_focus: structured.main_focus,
+          win_result: structured.win_result,
+          week_failure: structured.week_failure,
+          raw_post: rawPost,
         },
         causation_id: null,
         correlation_id: null,
@@ -176,7 +193,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       const appended = await eventStore.append(event);
       await projectors.handleEvent(appended);
 
-      return newRawPost;
+      return { rawPost, structured };
     },
   };
 }

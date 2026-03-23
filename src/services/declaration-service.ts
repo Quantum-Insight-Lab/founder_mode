@@ -16,7 +16,7 @@ interface DeclarationAnswers {
   week_failure: string;
 }
 
-interface DeclarationStructured {
+export interface DeclarationStructured {
   main_focus: string;
   win_result: string;
   week_failure: string;
@@ -67,7 +67,10 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
   const { pool, projectors, llm } = deps;
 
   return {
-    async createDeclaration(userId: string, answers: DeclarationAnswers): Promise<string> {
+    async createDeclaration(
+      userId: string,
+      answers: DeclarationAnswers
+    ): Promise<{ rawPost: string; structured: DeclarationStructured }> {
       const userDateStr = await getUserLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const weekId = getWeekId(weekRef);
@@ -128,7 +131,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       const appended = await eventStore.append(event);
       await projectors.handleEvent(appended);
 
-      return renderedCard;
+      return { rawPost: renderedCard, structured };
     },
 
     async updateDeclarationManual(userId: string, answers: DeclarationAnswers): Promise<string> {

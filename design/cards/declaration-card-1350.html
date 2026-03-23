@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Declaration Card</title>
+  <style>
+    @font-face {
+      font-family: "Roboto";
+      src: url("../../fonts/Roboto-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "Roboto";
+      src: url("../../fonts/Roboto-Bold.ttf") format("truetype");
+      font-weight: 700;
+      font-style: normal;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --design-w: 1080px;
+      /* board padding 18+18 + card min-height 1314 = 1350 */
+      --design-h: 1350px;
+      --pad-x: 48px;
+      --pad-y: 48px;
+      --scale: min(1,
+          (100vw - var(--pad-x)) / var(--design-w),
+          (100vh - var(--pad-y)) / var(--design-h));
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f3f3f1;
+      font-family: "Roboto", sans-serif;
+      padding: 24px;
+    }
+
+    .board-wrap {
+      width: calc(var(--design-w) * var(--scale));
+      height: calc(var(--design-h) * var(--scale));
+      overflow: hidden;
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+
+    .board {
+      width: 1080px;
+      background: #d8d4cc;
+      padding: 18px;
+      transform: scale(var(--scale));
+      transform-origin: top left;
+    }
+
+    .card {
+      position: relative;
+      width: 100%;
+      min-height: 1314px;
+      background: #f7f6f2;
+      border: 2px solid #c7c3bc;
+      border-radius: 32px;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+      padding: 42px 56px 48px 56px;
+      overflow: hidden;
+    }
+
+    .left-line {
+      position: absolute;
+      left: 26px;
+      top: 86px;
+      bottom: 46px;
+      width: 1px;
+      background: #6e6e6e;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      gap: 32px;
+      margin-left: 0;
+    }
+
+    .avatar {
+      width: 180px;
+      height: 180px;
+      border-radius: 32px;
+      background: #6669c9;
+      background-image: var(--avatar-bg-image, none);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      flex-shrink: 0;
+    }
+
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      line-height: normal;
+      margin-top: 12px;
+    }
+
+    .title-block .username {
+      font-family: "Roboto", sans-serif;
+      font-size: 54px;
+      font-weight: 600;
+      color: #000;
+      margin: 0px 0 0 0;
+    }
+
+    .title-block .badge {
+      font-family: "Roboto", sans-serif;
+      font-size: 42px;
+      font-weight: 400;
+      color: #000;
+      margin: 32px 0 0 0;
+    }
+
+    .divider {
+      width: calc(100% - 70px);
+      height: 1px;
+      background: #8d8d8d;
+      margin: 32px 0 22px 28px;
+    }
+
+    .content {
+      padding-left: 0;
+    }
+
+    .section-title {
+      font-size: 62px;
+      font-weight: 600;
+      color: #000;
+      margin: 38px 0 62px 0;
+    }
+
+    .field {
+      font-size: 50px;
+      font-weight: 400;
+      color: #000;
+      margin: 0 0 72px 0;
+      word-break: break-word;
+    }
+
+    .field-label {
+      font-weight: 700;
+    }
+
+    .time {
+      position: absolute;
+      right: 54px;
+      bottom: 34px;
+      font-family: "Roboto", sans-serif;
+      font-size: 38px;
+      color: #000;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="board-wrap">
+    <div class="board">
+      <div class="card">
+        <div class="left-line"></div>
+
+        <div class="header">
+          <div class="avatar" style="--avatar-bg-image: {{AVATAR_BG_IMAGE}};"></div>
+
+          <div class="title-block">
+            <h1 class="username">{{USERNAME}}</h1>
+            <div class="badge">no badges yet</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="content">
+          <h2 class="section-title">Приоритет недели</h2>
+
+          <p class="field"><span class="field-label">Фокус:</span> {{FOCUS}}</p>
+          <p class="field"><span class="field-label">Ожидаемый результат:</span> {{RESULT}}</p>
+          <p class="field"><span class="field-label">Критерий неудачи:</span> {{FAILURE}}</p>
+        </div>
+
+        <div class="time">{{TIME}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

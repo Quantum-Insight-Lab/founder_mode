@@ -19,8 +19,8 @@ export interface SessionData {
   step?: string;
   declarationEditMode?: boolean; // true = ручное редактирование declaration, без LLM
   declarationAnswers?: Record<string, string>;
-  resultReportEditMode?: boolean; // true = ручное редактирование result report, без LLM
-  resultReportAnswers?: Record<string, string>;
+  reportEditMode?: boolean; // true = ручное редактирование report, без LLM
+  reportAnswers?: Record<string, string>;
   planEditMode?: boolean; // true = ручное редактирование, без LLM
   planningAnswers?: Record<string, string>;
   isFirstPlanning?: boolean; // true = первый план пользователя, показываем подсказку у main_focus

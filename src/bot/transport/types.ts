@@ -17,8 +17,11 @@ export interface AppContext {
   userId: string;
   channel: Channel;
   externalId: string;
+  displayName?: string;
   session: SessionData;
   reply(text: string, options?: ReplyOptions): Promise<void>;
+  replyImage?(image: Buffer, filename: string, caption?: string, options?: ReplyOptions): Promise<void>;
+  getAvatarDataUrl?(): Promise<string | null>;
   answerCallbackQuery(): Promise<void>;
   editMessageText?(text: string, options?: ReplyOptions): Promise<void>;
   /** Optional: notify developer (e.g. Telegram alert). */

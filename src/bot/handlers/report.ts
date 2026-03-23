@@ -12,28 +12,28 @@ import { getUserLocalDate } from '../../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from '../../services/plan-service.js';
 import type { HandlerDeps } from './deps.js';
 
-export async function handleResultReportCommand(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleReportCommand(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   const { pool } = deps;
   const userId = ctx.userId;
-  logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /result_report');
+  logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /report');
   ensureSession(ctx);
-  ctx.session.resultReportEditMode = false;
+  ctx.session.reportEditMode = false;
 
   const userDateStr = await getUserLocalDate(userId, pool);
   const weekRef = dateStrToWeekRef(userDateStr);
   const weekId = getWeekId(weekRef);
   const { start, end } = getWeekStartEnd(weekRef);
   const existing = await pool.query(
-    'SELECT raw_post FROM weekly_result_reports WHERE user_id = $1 AND week_id = $2',
+    'SELECT raw_post FROM weekly_reports WHERE user_id = $1 AND week_id = $2',
     [userId, weekId]
   );
 
   if (existing.rows.length > 0) {
-    ctx.session.step = 'result_report_choice';
-    await ctx.reply('Result Report на эту неделю уже есть.', {
+    ctx.session.step = 'report_choice';
+    await ctx.reply('Report на эту неделю уже есть.', {
       reply_markup: [[
-        { text: 'Показать', callback_data: 'result_report_show' },
-        { text: 'Изменить', callback_data: 'result_report_edit' },
+        { text: 'Показать', callback_data: 'report_show' },
+        { text: 'Изменить', callback_data: 'report_edit' },
       ]],
     });
     return;
@@ -58,90 +58,90 @@ export async function handleResultReportCommand(ctx: AppContext, deps: HandlerDe
     return;
   }
 
-  ctx.session.step = 'result_report_user_note';
-  ctx.session.resultReportAnswers = undefined;
-  funnelStarted.inc({ type: 'result_report' });
+  ctx.session.step = 'report_user_note';
+  ctx.session.reportAnswers = undefined;
+  funnelStarted.inc({ type: 'report' });
   await ctx.reply(REVIEW_USER_NOTE_QUESTION);
 }
 
-export async function handleResultReportShow(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleReportShow(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   const { pool } = deps;
   const userId = ctx.userId;
-  logger.debug({ userId }, 'Result report show');
+  logger.debug({ userId }, 'Report show');
   ensureSession(ctx);
   ctx.session.step = undefined;
 
   const userDateStr = await getUserLocalDate(userId, pool);
   const weekId = getWeekId(dateStrToWeekRef(userDateStr));
   const row = await pool.query<{ raw_post: string }>(
-    'SELECT raw_post FROM weekly_result_reports WHERE user_id = $1 AND week_id = $2',
+    'SELECT raw_post FROM weekly_reports WHERE user_id = $1 AND week_id = $2',
     [userId, weekId]
   );
   const rawPost = row.rows[0]?.raw_post ?? '';
   await ctx.answerCallbackQuery();
-  await ctx.reply(formatLlmResponse(rawPost) || 'Result Report пуст.', { parse_mode: 'HTML' });
+  await ctx.reply(formatLlmResponse(rawPost) || 'Report пуст.', { parse_mode: 'HTML' });
 }
 
-export async function handleResultReportEdit(ctx: AppContext): Promise<void> {
+export async function handleReportEdit(ctx: AppContext): Promise<void> {
   ensureSession(ctx);
   await ctx.answerCallbackQuery();
-  ctx.session.step = 'result_report_user_note';
-  ctx.session.resultReportEditMode = true;
-  ctx.session.resultReportAnswers = undefined;
-  funnelStarted.inc({ type: 'result_report' });
+  ctx.session.step = 'report_user_note';
+  ctx.session.reportEditMode = true;
+  ctx.session.reportAnswers = undefined;
+  funnelStarted.inc({ type: 'report' });
   await ctx.reply(REVIEW_USER_NOTE_QUESTION);
 }
 
-export async function handleResultReportMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
-  const { resultReportService, handleLlmReply, formatErrorForUser } = deps;
+export async function handleReportMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
+  const { reportService, handleLlmReply, formatErrorForUser } = deps;
   const userId = ctx.userId;
-  if (ctx.session?.step !== 'result_report_user_note') return;
+  if (ctx.session?.step !== 'report_user_note') return;
   ctx.session.step = undefined;
-  const isEdit = ctx.session.resultReportEditMode ?? false;
-  ctx.session.resultReportEditMode = undefined;
+  const isEdit = ctx.session.reportEditMode ?? false;
+  ctx.session.reportEditMode = undefined;
 
   try {
     if (isEdit) {
-      const rawPost = await resultReportService.updateResultReportManual(userId, text);
-      funnelCompleted.inc({ type: 'result_report' });
-      logger.info({ userId }, 'Result report manually updated');
-      await ctx.reply('❗️ Result Report обновлён.\n\n' + formatLlmResponse(rawPost?.trim() || ''), {
+      const rawPost = await reportService.updateReportManual(userId, text);
+      funnelCompleted.inc({ type: 'report' });
+      logger.info({ userId }, 'Report manually updated');
+      await ctx.reply('❗️ Report обновлён.\n\n' + formatLlmResponse(rawPost?.trim() || ''), {
         parse_mode: 'HTML',
       });
     } else {
-      await ctx.reply('🟢 Готовлю result report...');
-      const rawPost = await resultReportService.createResultReport(userId, text);
-      funnelCompleted.inc({ type: 'result_report' });
-      logger.info({ userId }, 'Result report created');
-      await handleLlmReply(ctx, rawPost ?? '', userId, 'result_report');
+      await ctx.reply('🟢 Готовлю report...');
+      const rawPost = await reportService.createReport(userId, text);
+      funnelCompleted.inc({ type: 'report' });
+      logger.info({ userId }, 'Report created');
+      await handleLlmReply(ctx, rawPost ?? '', userId, 'report');
     }
   } catch (err) {
-    logger.error({ err, userId }, isEdit ? 'Result report manual update failed' : 'Result report creation failed');
-    ctx.alertError?.(err, 'result_report', userId);
+    logger.error({ err, userId }, isEdit ? 'Report manual update failed' : 'Report creation failed');
+    ctx.alertError?.(err, 'report', userId);
     await ctx.reply(formatErrorForUser(err));
   }
 }
 
-export function registerResultReportHandlers(bot: Bot<BotContext>, deps: HandlerDeps): void {
-  bot.command('result_report', async (ctx) => {
+export function registerReportHandlers(bot: Bot<BotContext>, deps: HandlerDeps): void {
+  bot.command('report', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleResultReportCommand(appCtx, deps);
+    await handleReportCommand(appCtx, deps);
   });
-  bot.callbackQuery('result_report_show', async (ctx) => {
+  bot.callbackQuery('report_show', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleResultReportShow(appCtx, deps);
+    await handleReportShow(appCtx, deps);
   });
-  bot.callbackQuery('result_report_edit', async (ctx) => {
+  bot.callbackQuery('report_edit', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleResultReportEdit(appCtx);
+    await handleReportEdit(appCtx);
   });
   bot.on('message:text').filter(
     (ctx) =>
-      ctx.session?.step === 'result_report_user_note' &&
+      ctx.session?.step === 'report_user_note' &&
       !ctx.message.text?.trim().startsWith('/'),
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-      await handleResultReportMessage(appCtx, ctx.message.text ?? '', deps);
+      await handleReportMessage(appCtx, ctx.message.text ?? '', deps);
     }
   );
 }

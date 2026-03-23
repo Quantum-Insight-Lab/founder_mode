@@ -6,7 +6,7 @@ export async function deleteUserData(pool: Pool, userId: string): Promise<void> 
   try {
     await client.query('BEGIN');
     await client.query('DELETE FROM weekly_declarations WHERE user_id = $1', [userId]);
-    await client.query('DELETE FROM weekly_result_reports WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM weekly_reports WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM weekly_plans WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM daily_reflections WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM weekly_reviews WHERE user_id = $1', [userId]);
@@ -17,7 +17,7 @@ export async function deleteUserData(pool: Pool, userId: string): Promise<void> 
        WHERE idempotency_key LIKE $1 OR idempotency_key LIKE $2 OR idempotency_key LIKE $3 OR idempotency_key LIKE $4 OR idempotency_key LIKE $5`,
       [
         `declaration:${userId}:%`,
-        `result_report:${userId}:%`,
+        `report:${userId}:%`,
         `plan:${userId}:%`,
         `reflection:${userId}:%`,
         `review:${userId}:%`,

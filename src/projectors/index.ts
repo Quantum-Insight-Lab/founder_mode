@@ -10,8 +10,8 @@ import type {
   PlanCreatedEvent,
   PlanUpdatedEvent,
   ReflectionSubmittedEvent,
-  ResultReportCreatedEvent,
-  ResultReportUpdatedEvent,
+  ReportCreatedEvent,
+  ReportUpdatedEvent,
   ReviewGeneratedEvent,
   UserRegisteredEvent,
 } from '../events/types.js';
@@ -24,9 +24,9 @@ export function createProjectors(pool: Pool) {
         case EVENT_TYPES.DeclarationUpdated:
           await projectDeclaration(event);
           break;
-        case EVENT_TYPES.ResultReportCreated:
-        case EVENT_TYPES.ResultReportUpdated:
-          await projectResultReport(event);
+        case EVENT_TYPES.ReportCreated:
+        case EVENT_TYPES.ReportUpdated:
+          await projectReport(event);
           break;
         case EVENT_TYPES.PlanCreated:
         case EVENT_TYPES.PlanUpdated:
@@ -107,12 +107,12 @@ export function createProjectors(pool: Pool) {
     );
   }
 
-  async function projectResultReport(
-    event: ResultReportCreatedEvent | ResultReportUpdatedEvent
+  async function projectReport(
+    event: ReportCreatedEvent | ReportUpdatedEvent
   ): Promise<void> {
     const p = event.payload;
     await pool.query(
-      `INSERT INTO weekly_result_reports (
+      `INSERT INTO weekly_reports (
         user_id, week_id, result_status, result_fact, main_gap,
         next_step, raw_post, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())

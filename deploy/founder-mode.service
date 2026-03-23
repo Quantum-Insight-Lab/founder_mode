@@ -6,8 +6,12 @@ Wants=docker.service
 
 [Service]
 Type=simple
+TimeoutStartSec=120s
+TimeoutStopSec=20s
 WorkingDirectory=/opt/founder_mode
 EnvironmentFile=/opt/founder_mode/.env
+Environment=FONTCONFIG_PATH=/opt/founder_mode/fonts
+Environment=FONTCONFIG_FILE=/opt/founder_mode/fonts/fonts.conf
 # Сначала ждём, пока БД начнёт принимать соединения (порт из DATABASE_URL)
 ExecStartPre=/usr/bin/node /opt/founder_mode/scripts/wait-for-db.js 60
 ExecStart=/usr/bin/node /opt/founder_mode/dist/index.js

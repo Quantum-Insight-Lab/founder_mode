@@ -1,5 +1,5 @@
--- Founder Mode: Result Report read model
-CREATE TABLE IF NOT EXISTS weekly_result_reports (
+-- Founder Mode: Report read model
+CREATE TABLE IF NOT EXISTS weekly_reports (
   user_id UUID NOT NULL REFERENCES users(user_id),
   week_id VARCHAR(32) NOT NULL,
   result_status TEXT NOT NULL,

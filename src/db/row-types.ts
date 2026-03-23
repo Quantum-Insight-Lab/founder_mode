@@ -33,7 +33,7 @@ export interface WeeklyDeclarationRow {
   raw_post: string;
 }
 
-export interface WeeklyResultReportRow {
+export interface WeeklyReportRow {
   user_id: string;
   week_id: string;
   result_status: string;

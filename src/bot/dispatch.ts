@@ -24,11 +24,11 @@ import {
   handleDeclarationShow,
 } from './handlers/declaration.js';
 import {
-  handleResultReportCommand,
-  handleResultReportEdit,
-  handleResultReportMessage,
-  handleResultReportShow,
-} from './handlers/result-report.js';
+  handleReportCommand,
+  handleReportEdit,
+  handleReportMessage,
+  handleReportShow,
+} from './handlers/report.js';
 import {
   handlePlanCommand,
   handlePlanShow,
@@ -40,7 +40,6 @@ import {
 } from './handlers/plan.js';
 import {
   handleReflectCommand,
-  handleReflect2Command,
   handleReflectSkipEnableNotif,
   handleReflectDateChoice,
   handleReflectShow,
@@ -54,6 +53,7 @@ import {
   handleReflectionMessage,
   handleNotifyReflect,
 } from './handlers/reflect.js';
+import { handleReflect2Command } from './handlers/reflect2.js';
 import { handleReviewCommand, handleReviewUserNote, handleNotifyReview } from './handlers/review.js';
 import {
   handleSettingsCommand,
@@ -88,14 +88,14 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
     /\b(что дальше|что делать)\b/.test(t);
   const wantsPlan = /\b(plan|план|вектор|фокус)\b/.test(t);
   const wantsDeclaration = /\b(declaration|деклар)\b/.test(t);
-  const wantsResultReport = /\b(result_report|result report|итог недели|result)\b/.test(t);
+  const wantsReport = /\b(report|отчет|итог недели|итог)\b/.test(t);
   const wantsReflect = /\b(reflect|рефлекс)\b/.test(t);
   const wantsReview = /\b(review|обзор|недел)\b/.test(t);
   const wantsSettings = /\b(settings|настрой|уведом)\b/.test(t);
   const wantsDelete = /\b(delete|удал|стер|очист)\b/.test(t);
 
   if (wantsDeclaration) return ctx.reply('Ок. Чтобы зафиксировать declaration недели — /declaration');
-  if (wantsResultReport) return ctx.reply('Ок. Чтобы зафиксировать итог недели — /result_report');
+  if (wantsReport) return ctx.reply('Ок. Чтобы зафиксировать итог недели — /report');
   if (wantsPlan) return ctx.reply('Ок. Для нового флоу начни с declaration недели — /declaration');
   if (wantsReflect) return ctx.reply('Ок. Чтобы зафиксировать день — /reflect (или /reflect2 для нового формата)');
   if (wantsReview) return ctx.reply('Ок. Чтобы собрать обзор недели — /review');
@@ -103,7 +103,7 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
   if (wantsDelete) return ctx.reply('Удаление данных — /delete');
 
   if (!isAffirmativeOrNext) {
-    return ctx.reply('Команды: /declaration /result_report /plan /reflect /reflect2 /review /settings /delete');
+    return ctx.reply('Команды: /declaration /report /plan /reflect /reflect2 /review /settings /delete');
   }
 
   const { pool } = deps;
@@ -128,15 +128,15 @@ async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDep
     return ctx.reply('Время коротко зафиксировать день. Напиши (нажми) /reflect');
   }
 
-  const resultReportExists = await pool.query(
-    'SELECT 1 FROM weekly_result_reports WHERE user_id = $1 AND week_id = $2 LIMIT 1',
+  const reportExists = await pool.query(
+    'SELECT 1 FROM weekly_reports WHERE user_id = $1 AND week_id = $2 LIMIT 1',
     [userId, weekId]
   );
-  if (resultReportExists.rows.length === 0) {
-    return ctx.reply('Осталось зафиксировать итог недели. Напиши (нажми) /result_report');
+  if (reportExists.rows.length === 0) {
+    return ctx.reply('Осталось зафиксировать итог недели. Напиши (нажми) /report');
   }
 
-  return ctx.reply('Команды: /declaration /result_report /plan /reflect /reflect2 /review /settings /delete');
+  return ctx.reply('Команды: /declaration /report /plan /reflect /reflect2 /review /settings /delete');
 }
 
 export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: HandlerDeps): Promise<void> {
@@ -149,8 +149,8 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handlePlanCommand(ctx, deps);
       case 'declaration':
         return handleDeclarationCommand(ctx, deps);
-      case 'result_report':
-        return handleResultReportCommand(ctx, deps);
+      case 'report':
+        return handleReportCommand(ctx, deps);
       case 'reflect':
         return handleReflectCommand(ctx, deps);
       case 'reflect2':
@@ -185,10 +185,10 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleDeclarationShow(ctx, deps);
       case 'declaration_edit':
         return handleDeclarationEdit(ctx);
-      case 'result_report_show':
-        return handleResultReportShow(ctx, deps);
-      case 'result_report_edit':
-        return handleResultReportEdit(ctx);
+      case 'report_show':
+        return handleReportShow(ctx, deps);
+      case 'report_edit':
+        return handleReportEdit(ctx);
       case 'plan_edit':
         return handlePlanEdit(ctx, deps);
       case 'plan_edit_confirm_yes':
@@ -270,7 +270,7 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
 
     if (step === 'onboard_timezone') return handleOnboardTimezone(ctx, text, deps);
     if (step?.startsWith('declaration_')) return handleDeclarationMessage(ctx, text, deps);
-    if (step?.startsWith('result_report_')) return handleResultReportMessage(ctx, text, deps);
+    if (step?.startsWith('report_')) return handleReportMessage(ctx, text, deps);
     if (step?.startsWith('planning_')) return handlePlanningMessage(ctx, text, deps);
     if (step?.match(/^reflect_(movement|nomovement|partial|weekclosed)_\d+$/)) return handleReflectionMessage(ctx, text, deps);
     if (step === 'review_user_note') return handleReviewUserNote(ctx, text, deps);

@@ -6,12 +6,11 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc && cp -r src/llm/prompts dist/llm/",
+    "playwright:install": "playwright install chromium",
     "start": "node dist/index.js",
     "dev": "NODE_ENV=development tsx watch src/index.ts",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:reset": "tsx scripts/reset-db.ts",
-    "db:delete-last": "tsx scripts/delete-last-row.ts",
-    "db:reset-flow": "tsx scripts/reset-flow.ts",
+    "db:redeploy-clean": "tsx scripts/redeploy-clean.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -24,6 +23,7 @@
     "grammy": "^1.21.1",
     "node-cron": "^4.2.1",
     "openai": "^4.24.1",
+    "playwright": "^1.49.1",
     "pg": "^8.11.3",
     "pino": "^8.17.2",
     "pino-pretty": "^10.3.1",

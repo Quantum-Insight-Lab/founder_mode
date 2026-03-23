@@ -28,8 +28,8 @@ export const prompts = {
     loadPrompt('WEEKLY_REVIEW_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
   weeklyReviewSoft: (dayName: string) =>
     loadPrompt('WEEKLY_REVIEW_SOFT_PROMPT').replace(/<День недели>/g, dayName),
-  weeklyResultReport: (dayName: string, weekId: string) =>
-    loadPrompt('WEEKLY_RESULT_REPORT_SYSTEM_PROMPT')
+  weeklyReport: (dayName: string, weekId: string) =>
+    loadPrompt('WEEKLY_REPORT_SYSTEM_PROMPT')
       .replace(/<День недели>/g, dayName)
       .replace(/<week_id>/g, weekId),
   weeklyReset: (dayName: string) =>

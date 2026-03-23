@@ -1,6 +1,6 @@
 /**
  * Альтернативный сценарий Founder Mode по механике из doc.md:
- * Declaration -> Daily Reflection (Пн-Чт, обязательно) -> Result Report -> Reset
+ * Declaration -> Daily Reflection (Пн-Чт, обязательно) -> Report -> Reset
  * Execution Logs — опциональный слой.
  */
 
@@ -72,7 +72,7 @@ export const RESULT_REPORT_QUESTIONS = [
   { key: 'review_user_note', text: 'Что ты считаешь главным итогом недели, если сказать одной строкой?' },
 ] as const;
 
-export type ResultReportAnswerKey = (typeof RESULT_REPORT_QUESTIONS)[number]['key'];
+export type ReportAnswerKey = (typeof RESULT_REPORT_QUESTIONS)[number]['key'];
 
 export const WEEKLY_RESET_QUESTIONS = [
   { key: 'keep', text: 'Что оставить в следующем цикле?' },

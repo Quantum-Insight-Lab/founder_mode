@@ -7,7 +7,7 @@ import { createProjectors } from '../src/projectors/index.js';
 import { createPlanService } from '../src/services/plan-service.js';
 import { createReflectionService } from '../src/services/reflection-service.js';
 import { createReviewService } from '../src/services/review-service.js';
-import { createResultReportService } from '../src/services/result-report-service.js';
+import { createReportService } from '../src/services/report-service.js';
 import { getWeekId, getWeekStartEnd } from '../src/services/plan-service.js';
 
 const dbUrl = process.env.TEST_DATABASE_URL;
@@ -21,7 +21,7 @@ describe.skipIf(!dbUrl)('services', () => {
   let planService: ReturnType<typeof createPlanService>;
   let reflectionService: ReturnType<typeof createReflectionService>;
   let reviewService: ReturnType<typeof createReviewService>;
-  let resultReportService: ReturnType<typeof createResultReportService>;
+  let reportService: ReturnType<typeof createReportService>;
 
   const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
   const tgId = 'test-user-123';
@@ -41,7 +41,7 @@ describe.skipIf(!dbUrl)('services', () => {
   beforeEach(async () => {
     mockComplete.mockClear();
     await pool.query(
-      'TRUNCATE events, weekly_declarations, weekly_result_reports, weekly_plans, daily_reflections, weekly_reviews, idempotency_cache, llm_calls CASCADE'
+      'TRUNCATE events, weekly_declarations, weekly_reports, weekly_plans, daily_reflections, weekly_reviews, idempotency_cache, llm_calls CASCADE'
     );
     await pool.query('DELETE FROM users WHERE tg_id = $1', [tgId]);
     await pool.query('INSERT INTO users (user_id, tg_id) VALUES ($1, $2) ON CONFLICT (tg_id) DO NOTHING', [userId, tgId]);
@@ -52,7 +52,7 @@ describe.skipIf(!dbUrl)('services', () => {
     planService = createPlanService(eventStore, serviceDeps);
     reflectionService = createReflectionService(eventStore, serviceDeps);
     reviewService = createReviewService(eventStore, serviceDeps);
-    resultReportService = createResultReportService(eventStore, serviceDeps);
+    reportService = createReportService(eventStore, serviceDeps);
   });
 
   describe('planService', () => {
@@ -92,12 +92,13 @@ describe.skipIf(!dbUrl)('services', () => {
 
   describe('reflectionService', () => {
     beforeEach(async () => {
-      await planService.createPlan(userId, {
-        current_state: 's',
-        main_focus: 'f',
-        weekly_result: 'r',
-        week_failure: 'f',
-      });
+      const weekId = getWeekId(new Date());
+      await pool.query(
+        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, win_result, week_failure, raw_post)
+         VALUES ($1, $2, 'focus', 'result', 'fail', 'raw')
+         ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'focus'`,
+        [userId, weekId]
+      );
       mockComplete.mockClear();
     });
 
@@ -324,7 +325,7 @@ describe.skipIf(!dbUrl)('services', () => {
     });
   });
 
-  describe('resultReportService', () => {
+  describe('reportService', () => {
     async function seedDeclarationForCurrentWeek() {
       const weekId = getWeekId(new Date());
       await pool.query(
@@ -351,16 +352,16 @@ describe.skipIf(!dbUrl)('services', () => {
         latencyMs: 0,
       });
 
-      const out = await resultReportService.createResultReport(
+      const out = await reportService.createReport(
         userId,
         'Главное — запуск и выводы по каналу пользователей'
       );
 
-      expect(out).toContain(`Неделя ${weekId}`);
+      expect(out).toContain('Неделя x1');
       expect(out).toContain('Результат частично.');
       expect(out).toContain('Главный разрыв —');
 
-      const rows = await pool.query('SELECT * FROM weekly_result_reports WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
+      const rows = await pool.query('SELECT * FROM weekly_reports WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
       expect(rows.rows.length).toBe(1);
       expect(rows.rows[0]).toMatchObject({
         result_status: 'частично',
@@ -391,7 +392,7 @@ describe.skipIf(!dbUrl)('services', () => {
           latencyMs: 0,
         });
 
-      const out = await resultReportService.createResultReport(userId, 'Нужно честно зафиксировать итог недели');
+      const out = await reportService.createReport(userId, 'Нужно честно зафиксировать итог недели');
 
       expect(mockComplete).toHaveBeenCalledTimes(2);
       expect(out).toContain('Результат достигнут.');
@@ -412,14 +413,43 @@ describe.skipIf(!dbUrl)('services', () => {
         latencyMs: 0,
       });
 
-      await resultReportService.createResultReport(userId, 'Итог недели');
-      await resultReportService.createResultReport(userId, 'Итог недели');
+      await reportService.createReport(userId, 'Итог недели');
+      await reportService.createReport(userId, 'Итог недели');
 
       const events = await pool.query(
-        "SELECT * FROM events WHERE event_type = 'ResultReportCreated' AND (payload->>'user_id') = $1",
+        "SELECT * FROM events WHERE event_type = 'ReportCreated' AND (payload->>'user_id') = $1",
         [userId]
       );
       expect(events.rows.length).toBe(1);
+    });
+
+    it('throws when declaration for current week is missing', async () => {
+      await expect(reportService.createReport(userId, 'Итог')).rejects.toThrow(
+        /Нужна declaration недели для Report/
+      );
+      expect(mockComplete).not.toHaveBeenCalled();
+    });
+
+    it('throws when both LLM attempts return invalid JSON', async () => {
+      await seedDeclarationForCurrentWeek();
+      mockComplete
+        .mockResolvedValueOnce({
+          content: 'invalid-json-1',
+          usage: { prompt_tokens: 0, completion_tokens: 0 },
+          model: 'test',
+          latencyMs: 0,
+        })
+        .mockResolvedValueOnce({
+          content: 'invalid-json-2',
+          usage: { prompt_tokens: 0, completion_tokens: 0 },
+          model: 'test',
+          latencyMs: 0,
+        });
+
+      await expect(reportService.createReport(userId, 'Итог недели')).rejects.toThrow(
+        /не удалось получить валидный JSON/
+      );
+      expect(mockComplete).toHaveBeenCalledTimes(2);
     });
   });
 });

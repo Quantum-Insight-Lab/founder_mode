@@ -10,6 +10,7 @@ import { userIdMiddleware } from './bot/transport/user-id-middleware.js';
 import { createSessionStore, createGrammySessionStorage } from './bot/transport/session-store.js';
 import { toGrammyInlineKeyboard } from './bot/transport/telegram-adapter.js';
 import { notifyDeveloper } from './observability/alert.js';
+import { notifySystemdReady, startSystemdWatchdogLoop } from './observability/systemd.js';
 import { getPool } from './db/index.js';
 import { initNotificationScheduler } from './scheduler/notifications.js';
 import { sendMaxMessage } from './bot/transport/max-send.js';
@@ -97,6 +98,8 @@ bot.start({
     if (maxToken) runMaxPolling(maxToken, sessionStore, deps);
     metricsServer.listen(METRICS_PORT, () => {
       logger.info({ port: METRICS_PORT }, 'Health & Metrics server listening');
+      notifySystemdReady();
+      startSystemdWatchdogLoop();
     });
   },
 });

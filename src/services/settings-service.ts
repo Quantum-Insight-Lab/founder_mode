@@ -4,6 +4,8 @@ import { formatDay, formatDays, formatTime } from '../domain/date-format.js';
 
 export interface UserSettingsRow {
   user_id: string;
+  /** Вторая строка в шапке карточки (имя — первая) */
+  header_role: string | null;
   timezone: string | null;
   skip_review_user_note: boolean;
   notifications_enabled: boolean;
@@ -21,7 +23,7 @@ export function createSettingsService(pool: Pool) {
   return {
     async get(userId: string): Promise<UserSettingsRow | null> {
       const row = await pool.query<UserSettingsRow>(
-        `SELECT user_id, timezone, COALESCE(skip_review_user_note, false) AS skip_review_user_note,
+        `SELECT user_id, header_role, timezone, COALESCE(skip_review_user_note, false) AS skip_review_user_note,
                 COALESCE(notifications_enabled, false) AS notifications_enabled,
                 plan_notify_day, plan_notify_time, reflect_notify_days, reflect_notify_time,
                 review_notify_day, review_notify_time

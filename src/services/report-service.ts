@@ -13,7 +13,7 @@ import { InvariantViolationError } from '../domain/errors.js';
 
 type ResultStatus = 'достигнут' | 'частично' | 'не достигнут';
 
-interface ResultReportStructured {
+interface ReportStructured {
   week_id: string;
   result_status: ResultStatus;
   result_fact: string;
@@ -21,9 +21,9 @@ interface ResultReportStructured {
   next_step: string;
 }
 
-interface GeneratedResultReport {
+interface GeneratedReport {
   weekId: string;
-  structured: ResultReportStructured;
+  structured: ReportStructured;
   renderedCard: string;
 }
 
@@ -37,7 +37,7 @@ async function getUserWeekCounter(userId: string, currentWeekId: string, pool: S
          UNION ALL
          SELECT week_id FROM weekly_declarations WHERE user_id = $1::uuid
          UNION ALL
-         SELECT week_id FROM weekly_result_reports WHERE user_id = $1::uuid
+         SELECT week_id FROM weekly_reports WHERE user_id = $1::uuid
          UNION ALL
          SELECT week_id FROM weekly_reviews WHERE user_id = $1::uuid
        ) w
@@ -71,9 +71,9 @@ function normalizeResultStatus(value: unknown): ResultStatus | null {
   return null;
 }
 
-function validateStructuredResult(raw: unknown, expectedWeekId: string): ResultReportStructured {
+function validateStructuredReport(raw: unknown, expectedWeekId: string): ReportStructured {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    throw new Error('Result report must be JSON object');
+    throw new Error('Report must be JSON object');
   }
   const record = raw as Record<string, unknown>;
   const result_status = normalizeResultStatus(record.result_status);
@@ -82,12 +82,12 @@ function validateStructuredResult(raw: unknown, expectedWeekId: string): ResultR
   const next_step = toNonEmptyString(record.next_step) ?? '';
 
   if (!result_status || !result_fact || !main_gap) {
-    throw new Error('Result report JSON missing required fields');
+    throw new Error('Report JSON missing required fields');
   }
 
   const rawWeekId = toNonEmptyString(record.week_id);
   if (rawWeekId && rawWeekId !== expectedWeekId) {
-    logger.warn({ expectedWeekId, gotWeekId: rawWeekId }, 'Result report week_id mismatch');
+    logger.warn({ expectedWeekId, gotWeekId: rawWeekId }, 'Report week_id mismatch');
   }
 
   return {
@@ -99,7 +99,7 @@ function validateStructuredResult(raw: unknown, expectedWeekId: string): ResultR
   };
 }
 
-function renderResultReportCard(data: ResultReportStructured): string {
+function renderReportCard(data: ReportStructured): string {
   return [
     `Неделя ${data.week_id}`,
     '',
@@ -112,21 +112,21 @@ function renderResultReportCard(data: ResultReportStructured): string {
   ].join('\n');
 }
 
-export function createResultReportService(eventStore: EventStore, deps: ServiceDeps) {
+export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
   const { pool, projectors, llm } = deps;
 
-  async function generateResultReportFromData(
+  async function generateReportFromData(
     userId: string,
     optionalUserNote: string,
     idempotencyKey: string
-  ): Promise<GeneratedResultReport> {
+  ): Promise<GeneratedReport> {
     const userDateStr = await getUserLocalDate(userId, pool);
     const weekRef = dateStrToWeekRef(userDateStr);
     const weekId = getWeekId(weekRef);
     const weekCounter = await getUserWeekCounter(userId, weekId, pool);
     const { start, end } = getWeekStartEnd(weekRef);
     const dayName = formatDayFull(new Date(`${userDateStr}T12:00:00Z`).getUTCDay());
-    logger.debug({ userId, weekId, weekCounter, dayName, start, end }, 'generateResultReportFromData');
+    logger.debug({ userId, weekId, weekCounter, dayName, start, end }, 'generateReportFromData');
 
     const declarationRow = await pool.query<{
       main_focus: string;
@@ -140,7 +140,7 @@ export function createResultReportService(eventStore: EventStore, deps: ServiceD
     );
     const declaration = declarationRow.rows[0];
     if (!declaration) {
-      throw new InvariantViolationError('Нужна declaration недели для Result Report', 'NOT_FOUND');
+      throw new InvariantViolationError('Нужна declaration недели для Report', 'NOT_FOUND');
     }
 
     const reflectionsRow = await pool.query<{
@@ -170,9 +170,9 @@ export function createResultReportService(eventStore: EventStore, deps: ServiceD
     };
     const userMessage = JSON.stringify(input, null, 2);
 
-    const basePrompt = prompts.weeklyResultReport(dayName, weekCounter);
+    const basePrompt = prompts.weeklyReport(dayName, weekCounter);
 
-    let structured: ResultReportStructured | null = null;
+    let structured: ReportStructured | null = null;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const attemptIdempotencyKey = attempt === 0 ? idempotencyKey : `${idempotencyKey}:retry_json_${attempt}`;
       const attemptUserMessage =
@@ -183,40 +183,40 @@ export function createResultReportService(eventStore: EventStore, deps: ServiceD
         idempotencyKey: attemptIdempotencyKey,
         userId,
         traceId: getTraceId(),
-        callType: 'result_report',
+        callType: 'report',
       });
       try {
         const parsed = parseJsonCandidate(response.content ?? '');
-        structured = validateStructuredResult(parsed, weekCounter);
+        structured = validateStructuredReport(parsed, weekCounter);
         break;
       } catch (err) {
-        logger.warn({ err, userId, weekId, attempt }, 'Result report JSON parse/validate failed');
+        logger.warn({ err, userId, weekId, attempt }, 'Report JSON parse/validate failed');
       }
     }
 
     if (!structured) {
-      throw new InvariantViolationError('Result Report: не удалось получить валидный JSON', 'SERVICE_ERROR');
+      throw new InvariantViolationError('Report: не удалось получить валидный JSON', 'SERVICE_ERROR');
     }
-    const renderedCard = renderResultReportCard(structured);
+    const renderedCard = renderReportCard(structured);
     return { weekId, structured, renderedCard };
   }
 
   return {
-    async createResultReport(userId: string, optionalUserNote: string): Promise<string> {
+    async createReport(userId: string, optionalUserNote: string): Promise<string> {
       const userDateStr = await getUserLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const weekId = getWeekId(weekRef);
-      const idempotencyKey = `result_report:${userId}:${weekId}`;
-      const { weekId: resolvedWeekId, structured, renderedCard } = await generateResultReportFromData(
+      const idempotencyKey = `report:${userId}:${weekId}`;
+      const { weekId: resolvedWeekId, structured, renderedCard } = await generateReportFromData(
         userId,
         optionalUserNote,
         idempotencyKey
       );
 
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
-        event_type: EVENT_TYPES.ResultReportCreated,
+        event_type: EVENT_TYPES.ReportCreated,
         actor: { id: userId, role: 'user' },
-        subject: { entity: 'WeeklyResultReport', id: `${userId}:${resolvedWeekId}` },
+        subject: { entity: 'WeeklyReport', id: `${userId}:${resolvedWeekId}` },
         payload: {
           user_id: userId,
           week_id: resolvedWeekId,
@@ -237,21 +237,21 @@ export function createResultReportService(eventStore: EventStore, deps: ServiceD
       return renderedCard;
     },
 
-    async updateResultReportManual(userId: string, optionalUserNote: string): Promise<string> {
+    async updateReportManual(userId: string, optionalUserNote: string): Promise<string> {
       const userDateStr = await getUserLocalDate(userId, pool);
       const weekRef = dateStrToWeekRef(userDateStr);
       const weekId = getWeekId(weekRef);
-      logger.debug({ userId, weekId }, 'updateResultReportManual');
-      const idempotencyKey = `result_report:${userId}:${weekId}:manual`;
-      const { structured, renderedCard } = await generateResultReportFromData(
+      logger.debug({ userId, weekId }, 'updateReportManual');
+      const idempotencyKey = `report:${userId}:${weekId}:manual`;
+      const { structured, renderedCard } = await generateReportFromData(
         userId,
         optionalUserNote,
         idempotencyKey
       );
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
-        event_type: EVENT_TYPES.ResultReportUpdated,
+        event_type: EVENT_TYPES.ReportUpdated,
         actor: { id: userId, role: 'user' },
-        subject: { entity: 'WeeklyResultReport', id: `${userId}:${weekId}` },
+        subject: { entity: 'WeeklyReport', id: `${userId}:${weekId}` },
         payload: {
           user_id: userId,
           week_id: weekId,

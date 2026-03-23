@@ -4,8 +4,8 @@
 export const EVENT_TYPES = {
   DeclarationCreated: 'DeclarationCreated',
   DeclarationUpdated: 'DeclarationUpdated',
-  ResultReportCreated: 'ResultReportCreated',
-  ResultReportUpdated: 'ResultReportUpdated',
+  ReportCreated: 'ReportCreated',
+  ReportUpdated: 'ReportUpdated',
   PlanCreated: 'PlanCreated',
   PlanUpdated: 'PlanUpdated',
   ReflectionSubmitted: 'ReflectionSubmitted',
@@ -55,7 +55,7 @@ export interface DeclarationCreatedPayload {
   raw_post: string;
 }
 
-export interface ResultReportCreatedPayload {
+export interface ReportCreatedPayload {
   user_id: string;
   week_id: string;
   result_status: string;
@@ -109,13 +109,13 @@ export interface DeclarationUpdatedEvent extends BaseEvent {
   event_type: 'DeclarationUpdated';
   payload: DeclarationCreatedPayload;
 }
-export interface ResultReportCreatedEvent extends BaseEvent {
-  event_type: 'ResultReportCreated';
-  payload: ResultReportCreatedPayload;
+export interface ReportCreatedEvent extends BaseEvent {
+  event_type: 'ReportCreated';
+  payload: ReportCreatedPayload;
 }
-export interface ResultReportUpdatedEvent extends BaseEvent {
-  event_type: 'ResultReportUpdated';
-  payload: ResultReportCreatedPayload;
+export interface ReportUpdatedEvent extends BaseEvent {
+  event_type: 'ReportUpdated';
+  payload: ReportCreatedPayload;
 }
 export interface PlanUpdatedEvent extends BaseEvent {
   event_type: 'PlanUpdated';
@@ -137,8 +137,8 @@ export interface UserRegisteredEvent extends BaseEvent {
 export type DomainEvent =
   | DeclarationCreatedEvent
   | DeclarationUpdatedEvent
-  | ResultReportCreatedEvent
-  | ResultReportUpdatedEvent
+  | ReportCreatedEvent
+  | ReportUpdatedEvent
   | PlanCreatedEvent
   | PlanUpdatedEvent
   | ReflectionSubmittedEvent

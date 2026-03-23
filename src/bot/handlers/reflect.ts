@@ -146,13 +146,6 @@ export async function handleReflectCommand(ctx: AppContext, deps: HandlerDeps): 
   await ctx.reply(questionText, { reply_markup: rows });
 }
 
-export async function handleReflect2Command(ctx: AppContext, deps: HandlerDeps): Promise<void> {
-  logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /reflect2');
-  ensureSession(ctx);
-  ctx.session.reflectionPromptVariant = 'v2';
-  await handleReflectCommand(ctx, deps);
-}
-
 export async function handleReflectSkipEnableNotif(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   const { settingsService, showSettingsMenu } = deps;
   const userId = ctx.userId;
@@ -365,10 +358,6 @@ export function registerReflectHandlers(bot: import('grammy').Bot<BotContext>, d
   bot.command('reflect', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleReflectCommand(appCtx, deps);
-  });
-  bot.command('reflect2', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleReflect2Command(appCtx, deps);
   });
   bot.callbackQuery('reflect_skip_enable_notif', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });

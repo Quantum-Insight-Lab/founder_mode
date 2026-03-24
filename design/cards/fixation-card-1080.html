@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Declaration Card</title>
+  <title>Fixation Card</title>
   <style>
     @font-face {
       font-family: "Roboto";
@@ -19,8 +19,7 @@
 
     :root {
       --design-w: 1080px;
-      /* board padding 18+18 + card min-height 1884 = 1920 */
-      --design-h: 1920px;
+      --design-h: 1080px;
       --pad-x: 48px;
       --pad-y: 48px;
       --scale: min(1,
@@ -59,7 +58,7 @@
     .card {
       position: relative;
       width: 100%;
-      min-height: 1884px;
+      min-height: 1044px;
       background: #f7f6f2;
       border: 2px solid #c7c3bc;
       border-radius: 32px;
@@ -105,15 +104,13 @@
     }
 
     .title-block .username {
-      font-family: "Roboto", sans-serif;
       font-size: 52px;
       font-weight: 500;
       color: #000;
-      margin: 0px 0 0 0;
+      margin: 0;
     }
 
     .title-block .badge {
-      font-family: "Roboto", sans-serif;
       font-size: 42px;
       font-weight: 400;
       color: #000;
@@ -135,26 +132,23 @@
       font-size: 62px;
       font-weight: 500;
       color: #000;
-      margin: 38px 0 62px 0;
+      margin: 38px 0 48px 0;
     }
 
     .field {
-      font-size: 50px;
+      font-size: 44px;
+      line-height: 1.35;
       font-weight: 400;
       color: #000;
-      margin: 0 0 72px 0;
+      margin: 0 0 24px 0;
       word-break: break-word;
-    }
-
-    .field-label {
-      font-weight: 400;
+      white-space: pre-wrap;
     }
 
     .time {
       position: absolute;
       right: 54px;
       bottom: 34px;
-      font-family: "Roboto", sans-serif;
       font-size: 38px;
       color: #000;
     }
@@ -179,11 +173,8 @@
         <div class="divider"></div>
 
         <div class="content">
-          <h2 class="section-title">Приоритет недели</h2>
-
-          <p class="field"><span class="field-label">Фокус:</span> {{FOCUS}}</p>
-          <p class="field"><span class="field-label">Результат:</span> {{RESULT}}</p>
-          <p class="field"><span class="field-label">Провал:</span> {{FAILURE}}</p>
+          <h2 class="section-title">Фиксация дня</h2>
+          <p class="field">{{CONTENT}}</p>
         </div>
 
         <div class="time">{{TIME}}</div>

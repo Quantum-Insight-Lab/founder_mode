@@ -18,10 +18,10 @@ import {
 } from '../conversations.js';
 import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
-import { formatLlmResponse } from '../../domain/html.js';
-import { getUserLocalDate } from '../../db/user-timezone.js';
+import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
 import { dateStrToWeekRef, instantToUserLocalDateString, parseTimezoneOffset } from '../../domain/timezone.js';
 import { getWeekId } from '../../services/plan-service.js';
+import { renderFixationCardPng } from '../../services/fixation-card-render.js';
 import type { HandlerDeps } from './deps.js';
 
 const MOVEMENT_MARKUP: import('../transport/types.js').InlineButton[][] = [
@@ -32,6 +32,36 @@ const MOVEMENT_MARKUP: import('../transport/types.js').InlineButton[][] = [
   ],
   [{ text: 'Результат недели уже закрыт', callback_data: 'fixation_week_closed' }],
 ];
+
+async function sendFixationAsCard(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  userId: string,
+  rawPost: string
+): Promise<void> {
+  const { handleLlmReply, pool } = deps;
+  const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
+  const username = ctx.displayName?.trim() || 'Founder';
+  const avatarDataUrl = await ctx.getAvatarDataUrl?.();
+  const avatarBackgroundImage = avatarDataUrl ? `url(${avatarDataUrl})` : 'none';
+  try {
+    const png = await renderFixationCardPng({
+      username,
+      content: rawPost,
+      timeHHmm,
+      avatarBackgroundImage,
+    });
+    if (ctx.replyImage) {
+      logger.info({ userId, channel: ctx.channel }, 'Fixation card image sent');
+      await ctx.replyImage(png, 'fixation.png');
+      return;
+    }
+    logger.info({ userId, channel: ctx.channel }, 'Fixation card image unsupported in channel, fallback to text');
+  } catch (err) {
+    logger.error({ err, userId }, 'Fixation card PNG failed, falling back to text');
+  }
+  await handleLlmReply(ctx, rawPost, userId, 'fixation');
+}
 
 async function proceedWithFixationDate(ctx: AppContext, date: string, userId: string, deps: HandlerDeps): Promise<void> {
   const { pool } = deps;
@@ -208,18 +238,20 @@ export async function handleFixationShow(ctx: AppContext, deps: HandlerDeps): Pr
   );
   const rawPost = row.rows[0]?.raw_post ?? '';
   await ctx.answerCallbackQuery();
-  await ctx.reply(formatLlmResponse(rawPost) || 'Фиксация пуста.', { parse_mode: 'HTML' });
+  if (!rawPost.trim()) {
+    await ctx.reply('Фиксация пуста.');
+    return;
+  }
+  await sendFixationAsCard(ctx, deps, userId, rawPost);
 }
 
 export async function handleFixationEdit(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   ensureSession(ctx);
-  ctx.session.step = 'fixation_edit_confirm';
+  ctx.session.step = 'fixation_movement';
+  ctx.session.fixationEditMode = true;
   await ctx.answerCallbackQuery();
-  await ctx.reply('⚠️ GPT повторно вызываться не будет — ответы сохранятся для корректного обзора недели.\n\nПродолжить?', {
-    reply_markup: [[
-      { text: 'Да', callback_data: 'fixation_edit_confirm_yes' },
-      { text: 'Нет', callback_data: 'fixation_edit_confirm_no' },
-    ]],
+  await ctx.reply(REFLECTION_MOVEMENT_QUESTION, {
+    reply_markup: MOVEMENT_MARKUP,
   });
 }
 
@@ -295,7 +327,7 @@ const branchToQuestions = {
 } as const;
 
 export async function handleFixationMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
-  const { pool, fixationService, handleLlmReply, formatErrorForUser } = deps;
+  const { pool, fixationService, formatErrorForUser } = deps;
   const userId = ctx.userId;
   const m = ctx.session!.step!.match(fixationStepRe)!;
   const branch = m[1] as keyof typeof branchToQuestions;
@@ -333,13 +365,13 @@ export async function handleFixationMessage(ctx: AppContext, text: string, deps:
         const rawPost = await fixationService.updateFixationManual(userId, payload);
         funnelCompleted.inc({ type: 'fixation' });
         logger.info({ userId, date: data.date }, 'Fixation manually updated');
-        await ctx.reply('❗️ Фиксация обновлена.\n\n' + formatLlmResponse(rawPost?.trim() || ''), { parse_mode: 'HTML' });
+        await ctx.reply('❗️ Фиксация обновлена.');
+        await sendFixationAsCard(ctx, deps, userId, rawPost ?? '');
       } else {
-        await ctx.reply('🟢 Готовлю фиксацию...');
         const rawPost = await fixationService.submitFixation(userId, payload);
         funnelCompleted.inc({ type: 'fixation' });
         logger.info({ userId, date: data.date }, 'Fixation submitted');
-        await handleLlmReply(ctx, rawPost ?? '', userId, 'fixation');
+        await sendFixationAsCard(ctx, deps, userId, rawPost ?? '');
         await ctx.reply(ONBOARDING_AFTER_REFLECT);
         const hintRow = await pool.query<{ fixation_onboarding_hint_shown_at: Date | null }>(
           'SELECT fixation_onboarding_hint_shown_at FROM user_settings WHERE user_id = $1',

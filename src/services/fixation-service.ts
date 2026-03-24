@@ -1,4 +1,5 @@
 import type { EventStore } from '../events/event-store.js';
+import { randomUUID } from 'node:crypto';
 import { logger } from '../observability/logger.js';
 import { getTraceId } from '../observability/trace.js';
 import type { DomainEvent, FixationSubmittedPayload, FixationMovementBranch } from '../events/types.js';
@@ -27,13 +28,17 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       thought_of_day: string;
       why_partial?: string;
       new_focus?: string;
-    }
+    },
+    idempotencyKeyOverride?: string,
+    skipDateValidation = false
   ): Promise<string> {
     logger.debug({ userId, date: data.date }, 'submitFixation');
     const had_movement = data.movement_branch === 'yes';
     validateFixationBranch(data);
     const todayStr = await getUserLocalDate(userId, pool);
-    validateFixationDate(data.date, todayStr);
+    if (!skipDateValidation) {
+      validateFixationDate(data.date, todayStr);
+    }
     const date = new Date(data.date + 'T12:00:00Z');
     const day = formatDayFull(date.getUTCDay());
     const weekId = getWeekId(date);
@@ -97,7 +102,7 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       userMessage = `Движение по главному фокусу: Результат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day ?? ''}`;
     }
 
-    const idempotencyKey = `fixation:${userId}:${data.date}`;
+    const idempotencyKey = idempotencyKeyOverride ?? `fixation:${userId}:${data.date}`;
     const prompt = prompts.dailyFixation();
     const response = await llm.complete(prompt, userMessage, {
       idempotencyKey,
@@ -160,98 +165,15 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       }
     ): Promise<string> {
       logger.debug({ userId, date: data.date }, 'updateFixationManual');
-      const had_movement = data.movement_branch === 'yes';
-      validateFixationBranch(data);
-      const todayStr = await getUserLocalDate(userId, pool);
-      validateFixationDate(data.date, todayStr);
-      const date = new Date(data.date + 'T12:00:00Z');
-      const day = formatDayFull(date.getUTCDay());
-
-      const existing = await pool.query<{ raw_post: string }>(
-        'SELECT raw_post FROM daily_fixations WHERE user_id = $1 AND date = $2',
-        [userId, data.date]
-      );
-      const originalRawPost = existing.rows[0]?.raw_post ?? '';
-
-      const branchLabel =
-        data.movement_branch === 'yes'
-          ? 'Да'
-          : data.movement_branch === 'no'
-            ? 'Нет'
-            : data.movement_branch === 'partial'
-              ? 'Частично'
-              : 'Результат недели закрыт';
-      const lines: string[] = [
-        '',
-        '---',
-        '❗️ Ручное редактирование ответов:',
-        `Ветка: ${branchLabel}`,
-      ];
-      if (data.movement_branch === 'yes') {
-        lines.push(`• Что продвинуло: ${data.what_moved ?? ''}`);
-        lines.push(`• Движение вне фокуса: ${data.attention_sink ?? ''}`);
-        lines.push(`• Шаг на завтра: ${data.tomorrow_step ?? ''}`);
-      } else if (data.movement_branch === 'no') {
-        lines.push(`• Что остановило: ${data.what_stopped ?? ''}`);
-        lines.push(`• Что заняло внимание: ${data.attention_sink ?? ''}`);
-        lines.push(`• Как вернуть вектор: ${data.tomorrow_step ?? ''}`);
-      } else if (data.movement_branch === 'partial') {
-        lines.push(`• Что удалось сделать: ${data.what_moved ?? ''}`);
-        lines.push(`• Почему частично: ${data.why_partial ?? ''}`);
-        lines.push(`• Что ещё заняло внимание: ${data.attention_sink ?? ''}`);
-        lines.push(`• Следующий шаг по фокусу: ${data.tomorrow_step ?? ''}`);
-      } else if (data.movement_branch === 'week_closed') {
-        lines.push(`• Новый фокус: ${data.new_focus ?? ''}`);
-        lines.push(`• Что сделано по нему: ${data.what_moved ?? ''}`);
-        lines.push(`• Следующий шаг: ${data.tomorrow_step ?? ''}`);
+      const existing = await pool.query('SELECT 1 FROM daily_fixations WHERE user_id = $1 AND date = $2 LIMIT 1', [
+        userId,
+        data.date,
+      ]);
+      if (existing.rows.length === 0) {
+        throw new InvariantViolationError('Фиксация за этот день не найдена', 'NOT_FOUND');
       }
-      lines.push(`• Что стало понятнее / мысль дня: ${data.thought_of_day}`);
-      const newRawPost = originalRawPost + lines.join('\n');
-
-      const payload: FixationSubmittedPayload = {
-        user_id: userId,
-        date: data.date,
-        day,
-        had_movement,
-        movement_branch: data.movement_branch,
-        thought_of_day: data.thought_of_day,
-        raw_post: newRawPost,
-      };
-      if (data.movement_branch === 'yes') {
-        payload.what_moved = data.what_moved;
-        payload.attention_sink = data.attention_sink;
-        payload.tomorrow_step = data.tomorrow_step;
-      } else if (data.movement_branch === 'no') {
-        payload.what_stopped = data.what_stopped;
-        payload.attention_sink = data.attention_sink;
-        payload.tomorrow_step = data.tomorrow_step;
-      } else if (data.movement_branch === 'partial') {
-        payload.what_moved = data.what_moved;
-        payload.why_partial = data.why_partial;
-        payload.attention_sink = data.attention_sink;
-        payload.tomorrow_step = data.tomorrow_step;
-      } else if (data.movement_branch === 'week_closed') {
-        payload.new_focus = data.new_focus;
-        payload.what_moved = data.what_moved;
-        payload.tomorrow_step = data.tomorrow_step;
-      }
-
-      const idempotencyKey = `fixation:${userId}:${data.date}:manual`;
-      const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
-        event_type: EVENT_TYPES.FixationSubmitted,
-        actor: { id: userId, role: 'user' },
-        subject: { entity: 'DailyFixation', id: `${userId}:${data.date}` },
-        payload,
-        causation_id: null,
-        correlation_id: null,
-        idempotency_key: idempotencyKey,
-        schema_version: 1,
-      };
-
-      const appended = await eventStore.append(event);
-      await projectors.handleEvent(appended);
-
-      return newRawPost;
+      const idempotencyKey = `fixation:${userId}:${data.date}:manual:${randomUUID()}`;
+      return submitFixationBase(userId, data, idempotencyKey, true);
     },
   };
 }

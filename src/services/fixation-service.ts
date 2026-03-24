@@ -27,10 +27,9 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       thought_of_day: string;
       why_partial?: string;
       new_focus?: string;
-    },
-    variant: 'v1' | 'v2'
+    }
   ): Promise<string> {
-    logger.debug({ userId, date: data.date, variant }, 'submitFixation');
+    logger.debug({ userId, date: data.date }, 'submitFixation');
     const had_movement = data.movement_branch === 'yes';
     validateFixationBranch(data);
     const todayStr = await getUserLocalDate(userId, pool);
@@ -38,22 +37,24 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
     const date = new Date(data.date + 'T12:00:00Z');
     const day = formatDayFull(date.getUTCDay());
     const weekId = getWeekId(date);
-    const declarationRow = await pool.query<{ main_focus: string }>(
-      'SELECT main_focus FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
-      [userId, weekId]
-    );
-    let mainFocus = declarationRow.rows[0]?.main_focus;
-    if (!mainFocus) {
-      // Если пользователь выбрал дату из “пограничной” недели (когда declaration для этой недели
-      // ещё не создан), не блокируем сбор фиксации: используем declaration текущей локальной недели.
+    let declarationOk = (
+      await pool.query('SELECT 1 FROM weekly_declarations WHERE user_id = $1 AND week_id = $2 LIMIT 1', [
+        userId,
+        weekId,
+      ])
+    ).rows.length > 0;
+    if (!declarationOk) {
+      // Дата из «пограничной» недели: допускаем фиксацию, если есть declaration текущей локальной недели.
       const todayWeekId = getWeekId(new Date(todayStr + 'T12:00:00Z'));
-      const fallbackDeclarationRow = await pool.query<{ main_focus: string }>(
-        'SELECT main_focus FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
-        [userId, todayWeekId]
-      );
-      mainFocus = fallbackDeclarationRow.rows[0]?.main_focus;
+      declarationOk =
+        (
+          await pool.query('SELECT 1 FROM weekly_declarations WHERE user_id = $1 AND week_id = $2 LIMIT 1', [
+            userId,
+            todayWeekId,
+          ])
+        ).rows.length > 0;
     }
-    if (!mainFocus) {
+    if (!declarationOk) {
       throw new InvariantViolationError('Нужна declaration недели для фиксации', 'NOT_FOUND');
     }
 
@@ -87,17 +88,17 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
 
     let userMessage: string;
     if (data.movement_branch === 'yes') {
-      userMessage = `День недели: ${day}\nДвижение по главному фокусу («${mainFocus}»): Да\nЧто продвинуло: ${data.what_moved ?? ''}\nДвижение вне фокуса: ${data.attention_sink ?? ''}\nШаг на завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
+      userMessage = `Движение по главному фокусу: Да\nЧто продвинуло: ${data.what_moved ?? ''}\nДвижение вне фокуса: ${data.attention_sink ?? ''}\nШаг на завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
     } else if (data.movement_branch === 'no') {
-      userMessage = `День недели: ${day}\nДвижение по главному фокусу («${mainFocus}»): Нет\nЧто остановило: ${data.what_stopped ?? ''}\nЧто заняло внимание: ${data.attention_sink ?? ''}\nКак вернуть вектор завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
+      userMessage = `Движение по главному фокусу: Нет\nЧто остановило: ${data.what_stopped ?? ''}\nЧто заняло внимание: ${data.attention_sink ?? ''}\nКак вернуть вектор завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
     } else if (data.movement_branch === 'partial') {
-      userMessage = `День недели: ${day}\nДвижение по главному фокусу («${mainFocus}»): Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
+      userMessage = `Движение по главному фокусу: Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
     } else {
-      userMessage = `День недели: ${day}\nДвижение по главному фокусу («${mainFocus}»): Результат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day ?? ''}`;
+      userMessage = `Движение по главному фокусу: Результат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day ?? ''}`;
     }
 
     const idempotencyKey = `fixation:${userId}:${data.date}`;
-    const prompt = variant === 'v2' ? prompts.dailyFixationV2(day) : prompts.dailyFixation(day);
+    const prompt = prompts.dailyFixation();
     const response = await llm.complete(prompt, userMessage, {
       idempotencyKey,
       userId,
@@ -140,25 +141,7 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
         new_focus?: string;
       }
     ): Promise<string> {
-      return submitFixationBase(userId, data, 'v1');
-    },
-
-    async submitFixationV2(
-      userId: string,
-      data: {
-        date: string;
-        movement_branch: FixationMovementBranch;
-        had_movement?: boolean;
-        what_moved?: string;
-        tomorrow_step?: string;
-        what_stopped?: string;
-        attention_sink?: string;
-        thought_of_day: string;
-        why_partial?: string;
-        new_focus?: string;
-      }
-    ): Promise<string> {
-      return submitFixationBase(userId, data, 'v2');
+      return submitFixationBase(userId, data);
     },
 
     async updateFixationManual(

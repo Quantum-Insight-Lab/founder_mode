@@ -1,5 +1,5 @@
 -- Founder Mode: PDA Event Core + Read Models
--- Migration 001: Initial schema
+-- Полная начальная схема (единственный файл миграции). Чистая БД: применить этот файл.
 
 -- Events (append-only, PDA 4.4)
 CREATE TABLE IF NOT EXISTS events (
@@ -107,26 +107,6 @@ CREATE TABLE IF NOT EXISTS weekly_reports (
 -- Daily fixations (read model, INV-001: unique user_id, date)
 CREATE TABLE IF NOT EXISTS daily_fixations (
   user_id UUID NOT NULL REFERENCES users(user_id),
-  date DATE NOT NULL,
-  day VARCHAR(16) NOT NULL,
-  had_movement BOOLEAN NOT NULL,
-  movement_branch VARCHAR(32),
-  what_moved TEXT,
-  tomorrow_step TEXT,
-  what_stopped TEXT,
-  attention_sink TEXT,
-  thought_of_day TEXT NOT NULL,
-  raw_post TEXT NOT NULL,
-  why_partial TEXT,
-  new_focus TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, date)
-);
-
--- Fixations mirror (current source for fixation flow)
-CREATE TABLE IF NOT EXISTS fixations (
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   date DATE NOT NULL,
   day VARCHAR(16) NOT NULL,
   had_movement BOOLEAN NOT NULL,

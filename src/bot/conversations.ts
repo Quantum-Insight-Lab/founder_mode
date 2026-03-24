@@ -65,22 +65,22 @@ export const ONBOARDING_AFTER_PLAN_2 =
   '💡 Иногда уже через 2–3 дня становится видно, куда на самом деле уходит энергия.';
 
 export const ONBOARDING_FIRST_REFLECT_INTRO =
-  '💡 Давай быстро посмотрим, что на самом деле произошло сегодня.\n\nЭто займёт около минуты.';
+  'Давай быстро посмотрим, что на самом деле произошло сегодня.\n\nЭто займёт около минуты.';
 
 export const ONBOARDING_NEXT_REFLECT_INTRO =
-  '💡 Время коротко зафиксировать день. Посмотрим, было ли движение по главному.';
+  'Время коротко зафиксировать день. Посмотрим, было ли движение по главному.';
 
 export const ONBOARDING_AFTER_REFLECT =
-  '💡 День зафиксирован.\n\nЗавтра проверим,\nполучится ли сделать следующий шаг.';
+  'День зафиксирован.\n\nЗавтра проверим,\nполучится ли сделать следующий шаг.';
 
-export const ONBOARDING_AFTER_REFLECT_HINT = '💡 Часть эксперимента завершена.';
+export const ONBOARDING_AFTER_REFLECT_HINT = '❗️ Часть эксперимента завершена.';
 
 export const ONBOARDING_SATURDAY_REVIEW_INVITE =
-  '💡 Неделя подходит к концу.\n\n' +
+  'Неделя подходит к концу.\n\n' +
   'Давай соберём короткий обзор: что получилось, и куда двигаться дальше. Напиши (нажми) /report';
 
 export const ONBOARDING_AFTER_REVIEW_1 =
-  '💡 Эксперимент завершён.\n\n' +
+  '❗️ Эксперимент завершён.\n\n' +
   'Теперь у тебя есть:\n' +
   'вектор недели,\n' +
   'история ежедневного движения\n' +
@@ -90,7 +90,7 @@ export const ONBOARDING_AFTER_REVIEW_1 =
 export const ONBOARDING_AFTER_REVIEW_QUESTION = 'Хочешь продолжить следующий недельный цикл?';
 
 export const ONBOARDING_CTA_LATER_MSG =
-  '💡 Хорошо.\n\n' +
+  'Хорошо.\n\n' +
   'Когда захочешь вернуться, мы начнём новый цикл с нового фокуса.\n\n' +
   'Founder Mode работает по календарной неделе\n(понедельник → воскресенье).\n\n' +
   'Обзор недели собирается по этому периоду.\n\n' +
@@ -102,7 +102,7 @@ export const ONBOARDING_CTA_LATER_MSG =
   '/delete - удалить данные';
 
 export const ONBOARDING_CTA_YES_FINAL_MSG =
-  '💡 Отлично.\n\n' +
+  'Отлично.\n\n' +
   'Founder Mode работает по календарной неделе\n(понедельник → воскресенье).\n\n' +
   'Обзор недели собирается по этому периоду.\n\n' +
   'Команды:\n' +
@@ -127,6 +127,10 @@ export const MAIN_FOCUS_FIRST_PLANNING_HINT =
   '💡 Один приоритет — ключевой принцип.\nСписок задач рассеивает фокус. Один приоритет — это вектор.';
 
 export type PlanningAnswerKey = (typeof PLANNING_QUESTIONS)[number]['key'];
+
+/** Редактирование declaration заблокировано при наличии фиксаций в локальной неделе */
+export const DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS =
+  '⚠️ На этой неделе уже есть фиксации дня. Declaration изменить нельзя — он задаёт контекст для уже записанных дней.';
 
 /**
  * Reflection: intro + branched flow by had_movement

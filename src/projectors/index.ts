@@ -164,42 +164,6 @@ export function createProjectors(pool: Pool) {
         p.new_focus ?? null,
       ]
     );
-
-    await pool.query(
-      `INSERT INTO fixations (
-        user_id, date, day, had_movement, movement_branch, what_moved,
-        tomorrow_step, what_stopped, attention_sink,
-        thought_of_day, raw_post, why_partial, new_focus, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
-      ON CONFLICT (user_id, date) DO UPDATE SET
-        day = EXCLUDED.day,
-        had_movement = EXCLUDED.had_movement,
-        movement_branch = EXCLUDED.movement_branch,
-        what_moved = EXCLUDED.what_moved,
-        tomorrow_step = EXCLUDED.tomorrow_step,
-        what_stopped = EXCLUDED.what_stopped,
-        attention_sink = EXCLUDED.attention_sink,
-        thought_of_day = EXCLUDED.thought_of_day,
-        raw_post = EXCLUDED.raw_post,
-        why_partial = EXCLUDED.why_partial,
-        new_focus = EXCLUDED.new_focus,
-        updated_at = NOW()`,
-      [
-        p.user_id,
-        p.date,
-        p.day,
-        p.had_movement,
-        p.movement_branch ?? null,
-        p.what_moved ?? null,
-        p.tomorrow_step ?? null,
-        p.what_stopped ?? null,
-        p.attention_sink ?? null,
-        p.thought_of_day,
-        p.raw_post,
-        p.why_partial ?? null,
-        p.new_focus ?? null,
-      ]
-    );
   }
 
   async function projectReview(event: ReviewGeneratedEvent): Promise<void> {

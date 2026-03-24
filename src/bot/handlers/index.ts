@@ -4,7 +4,7 @@ import type { BotContext } from '../context.js';
 import { InvariantViolationError } from '../../domain/errors.js';
 import { invariantViolations } from '../../observability/metrics.js';
 import { logger } from '../../observability/logger.js';
-import { formatLlmResponse } from '../../domain/html.js';
+import { escapeHtml, formatLlmResponse } from '../../domain/html.js';
 import { getUserLocalDate } from '../../db/user-timezone.js';
 import { createEventStore } from '../../events/event-store.js';
 import { EVENT_TYPES } from '../../events/types.js';
@@ -102,7 +102,8 @@ export function createAppDeps(): HandlerDeps {
     userId: string,
     context: 'declaration' | 'plan' | 'fixation' | 'review' | 'report'
   ): Promise<void> {
-    const formatted = formatLlmResponse(rawPost?.trim() || '');
+    const trimmed = rawPost?.trim() || '';
+    const formatted = context === 'fixation' ? escapeHtml(trimmed) : formatLlmResponse(trimmed);
     if (!formatted) {
       logger.error({ userId }, `${context}: empty LLM response`);
       ctx.alertError?.(new Error('Empty LLM response'), context, userId);

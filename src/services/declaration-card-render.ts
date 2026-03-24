@@ -17,8 +17,7 @@ export interface DeclarationCardPngInput {
 }
 
 let browserSingleton: Browser | null = null;
-let embeddedRegularFontDataUrl: string | null = null;
-let embeddedBoldFontDataUrl: string | null = null;
+let embeddedVariableFontDataUrl: string | null = null;
 const CARD_PRESETS = [
   { name: '1080x1080', template: 'declaration-card-1080.html' },
   { name: '1080x1350', template: 'declaration-card-1350.html' },
@@ -61,19 +60,15 @@ export async function buildDeclarationCardHtml(
   for (const [key, value] of Object.entries(data)) {
     html = html.split(`{{${key}}}`).join(escapeHtml(value));
   }
-  if (!embeddedRegularFontDataUrl || !embeddedBoldFontDataUrl) {
-    const [regular, bold] = await Promise.all([
-      readFile(path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf')),
-      readFile(path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf')),
+  if (!embeddedVariableFontDataUrl) {
+    const [variable] = await Promise.all([
+      readFile(path.join(process.cwd(), 'fonts', 'Roboto-Variable.ttf')),
     ]);
-    embeddedRegularFontDataUrl = `data:font/ttf;base64,${regular.toString('base64')}`;
-    embeddedBoldFontDataUrl = `data:font/ttf;base64,${bold.toString('base64')}`;
+    embeddedVariableFontDataUrl = `data:font/ttf;base64,${variable.toString('base64')}`;
   }
   html = html
-    .split('../../fonts/Roboto-Regular.ttf')
-    .join(embeddedRegularFontDataUrl)
-    .split('../../fonts/Roboto-Bold.ttf')
-    .join(embeddedBoldFontDataUrl);
+    .split('../../fonts/Roboto-Variable.ttf')
+    .join(embeddedVariableFontDataUrl);
   if (html.includes('{{')) {
     logger.warn('declaration-card template still has unreplaced placeholders');
   }

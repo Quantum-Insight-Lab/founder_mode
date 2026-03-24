@@ -12,9 +12,6 @@ export const WEEKLY_DECLARATION_QUESTIONS = [
 
 export type WeeklyDeclarationAnswerKey = (typeof WEEKLY_DECLARATION_QUESTIONS)[number]['key'];
 
-export const DAILY_REFLECTION_REQUIRED_DAYS_NOTE =
-  'Понедельник-четверг: короткая рефлексия обязательна. Execution Log — по желанию.';
-
 export const DAILY_REFLECTION_MOVEMENT_QUESTION = 'Было ли сегодня движение по главному приоритету?';
 
 export const DAILY_REFLECTION_QUESTIONS_MOVEMENT = [

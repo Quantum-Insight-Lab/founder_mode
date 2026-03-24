@@ -92,7 +92,6 @@ export async function handleFixationCommandBase(ctx: AppContext, deps: HandlerDe
   const { pool, getFixationDate } = deps;
   const userId = ctx.userId;
   ensureSession(ctx);
-  ctx.session.fixationPromptVariant ??= 'v1';
   ctx.session.fixationData = {};
   const userDateStr = await getUserLocalDate(userId, pool);
   const weekId = getWeekId(dateStrToWeekRef(userDateStr));
@@ -169,7 +168,6 @@ export async function handleFixationCommandBase(ctx: AppContext, deps: HandlerDe
 export async function handleFixationCommand(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /fixation');
   ensureSession(ctx);
-  ctx.session.fixationPromptVariant = 'v2';
   await handleFixationCommandBase(ctx, deps);
 }
 
@@ -312,7 +310,6 @@ export async function handleFixationMessage(ctx: AppContext, text: string, deps:
     ctx.session!.step = undefined;
     const data = ctx.session!.fixationData!;
     const isEdit = ctx.session!.fixationEditMode ?? false;
-    const variant = ctx.session!.fixationPromptVariant ?? 'v1';
     const movementBranch = (data.movement_branch ?? (data.had_movement ? 'yes' : 'no')) as 'yes' | 'no' | 'partial' | 'week_closed';
     ctx.session!.fixationData = undefined;
     ctx.session!.fixationEditMode = undefined;
@@ -339,10 +336,7 @@ export async function handleFixationMessage(ctx: AppContext, text: string, deps:
         await ctx.reply('❗️ Фиксация обновлена.\n\n' + formatLlmResponse(rawPost?.trim() || ''), { parse_mode: 'HTML' });
       } else {
         await ctx.reply('🟢 Готовлю фиксацию...');
-        const rawPost =
-          variant === 'v2'
-            ? await fixationService.submitFixationV2(userId, payload)
-            : await fixationService.submitFixation(userId, payload);
+        const rawPost = await fixationService.submitFixation(userId, payload);
         funnelCompleted.inc({ type: 'fixation' });
         logger.info({ userId, date: data.date }, 'Fixation submitted');
         await handleLlmReply(ctx, rawPost ?? '', userId, 'fixation');
@@ -376,7 +370,6 @@ export async function handleNotifyFixation(ctx: AppContext, deps: HandlerDeps): 
   logger.info({ channel: ctx.channel, externalId: ctx.externalId, userId }, 'Notify fixation');
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
-  ctx.session.fixationPromptVariant = 'v2';
   await handleFixationCommandBase(ctx, deps);
 }
 

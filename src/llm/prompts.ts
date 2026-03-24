@@ -14,14 +14,7 @@ export const prompts = {
     loadPrompt('WEEKLY_PLAN_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
   weeklyDeclaration: (dayName: string) =>
     loadPrompt('WEEKLY_DECLARATION_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
-  dailyFixation: (dayName: string) =>
-    loadPrompt('DAILY_REFLECTION_SYSTEM_PROMPT')
-      .replace(/<День недели>/g, dayName)
-      .replace(/<day>/g, dayName),
-  dailyFixationV2: (dayName: string) =>
-    loadPrompt('DAILY_REFLECTION_V2_SYSTEM_PROMPT')
-      .replace(/<День недели>/g, dayName)
-      .replace(/<day>/g, dayName),
+  dailyFixation: () => loadPrompt('DAILY_FIXATION_SYSTEM_PROMPT'),
   executionLog: (dayName: string) =>
     loadPrompt('EXECUTION_LOG_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
   weeklyReview: (dayName: string) =>

@@ -181,7 +181,7 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
       case 'declaration_show':
         return handleDeclarationShow(ctx, deps);
       case 'declaration_edit':
-        return handleDeclarationEdit(ctx);
+        return handleDeclarationEdit(ctx, deps);
       case 'report_show':
         return handleReportShow(ctx, deps);
       case 'report_edit':

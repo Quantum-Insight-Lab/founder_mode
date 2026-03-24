@@ -4,6 +4,7 @@ import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
+  DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS,
   ONBOARDING_AFTER_PLAN_1,
   ONBOARDING_AFTER_PLAN_2,
 } from '../conversations.js';
@@ -15,7 +16,7 @@ import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { dateStrToWeekRef } from '../../domain/timezone.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
-import { getWeekId } from '../../services/week-service.js';
+import { getWeekId, getWeekStartEnd } from '../../services/week-service.js';
 import { renderDeclarationCardPng } from '../../services/declaration-card-render.js';
 import type { DeclarationStructured } from '../../services/declaration-service.js';
 import type { HandlerDeps } from './deps.js';
@@ -144,9 +145,27 @@ export async function handleDeclarationShow(ctx: AppContext, deps: HandlerDeps):
   );
 }
 
-export async function handleDeclarationEdit(ctx: AppContext): Promise<void> {
+export async function handleDeclarationEdit(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  const { pool, countRows } = deps;
+  const userId = ctx.userId;
+  logger.debug({ userId }, 'Declaration edit');
   ensureSession(ctx);
   await ctx.answerCallbackQuery();
+
+  const userDateStr = await getUserLocalDate(userId, pool);
+  const { start, end } = getWeekStartEnd(dateStrToWeekRef(userDateStr));
+  const hasFixations =
+    (await countRows(
+      pool,
+      'SELECT COUNT(*)::int AS c FROM daily_fixations WHERE user_id = $1 AND date >= $2 AND date <= $3',
+      [userId, start, end]
+    )) > 0;
+
+  if (hasFixations) {
+    await ctx.reply(DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS);
+    return;
+  }
+
   ctx.session.isFirstDeclaration = undefined;
   ctx.session.step = 'declaration_0';
   ctx.session.declarationEditMode = true;
@@ -211,7 +230,7 @@ export function registerDeclarationHandlers(bot: Bot<BotContext>, deps: HandlerD
   });
   bot.callbackQuery('declaration_edit', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleDeclarationEdit(appCtx);
+    await handleDeclarationEdit(appCtx, deps);
   });
   bot.on('message:text').filter(
     (ctx) =>

@@ -7,7 +7,7 @@ async function clearFixationData(dbUrl: string): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query("DELETE FROM fixations");
+    await client.query('DELETE FROM daily_fixations');
     await client.query("DELETE FROM events WHERE event_type = 'FixationSubmitted' AND idempotency_key ~ '^fixation:'");
     await client.query("DELETE FROM idempotency_cache WHERE idempotency_key ~ '^fixation:'");
     await client.query("DELETE FROM llm_calls WHERE event_type = 'fixation'");

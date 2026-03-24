@@ -23,30 +23,41 @@ function rowToDomainEvent(row: EventsRow): DomainEvent {
 
 export interface EventStore {
   append(event: Omit<DomainEvent, 'event_id' | 'occurred_at'>): Promise<DomainEvent>;
-  appendMany(events: Omit<DomainEvent, 'event_id' | 'occurred_at'>[]): Promise<DomainEvent[]>;
   getByIdempotencyKey(key: string): Promise<DomainEvent | null>;
 }
 
 export function createEventStore(pool: Pool): EventStore {
   return {
     async append(partial) {
-      if (partial.idempotency_key) {
-        const existing = await this.getByIdempotencyKey(partial.idempotency_key);
-        if (existing) {
-          logger.debug(
-            { event_type: partial.event_type, idempotency_key: partial.idempotency_key },
-            'Event store: skip duplicate'
-          );
-          return existing;
-        }
-      }
-      const event = {
-        ...partial,
-        event_id: randomUUID(),
-        occurred_at: new Date().toISOString(),
-      } as DomainEvent;
       const client = await pool.connect();
       try {
+        await client.query('BEGIN');
+        if (partial.idempotency_key) {
+          await client.query('SELECT pg_advisory_xact_lock(42, hashtext($1::text))', [
+            partial.idempotency_key,
+          ]);
+          const existing = await client.query<EventsRow>(
+            `SELECT event_id, event_type, occurred_at, actor_id, actor_role, subject_entity, subject_id,
+                    payload, causation_id, correlation_id, idempotency_key, schema_version
+             FROM events WHERE idempotency_key = $1 LIMIT 1`,
+            [partial.idempotency_key]
+          );
+          if (existing.rows.length > 0) {
+            await client.query('COMMIT');
+            logger.debug(
+              { event_type: partial.event_type, idempotency_key: partial.idempotency_key },
+              'Event store: skip duplicate'
+            );
+            return rowToDomainEvent(existing.rows[0]);
+          }
+        }
+
+        const event = {
+          ...partial,
+          event_id: randomUUID(),
+          occurred_at: new Date().toISOString(),
+        } as DomainEvent;
+
         await client.query(
           `INSERT INTO events (
             event_id, event_type, occurred_at, actor_id, actor_role,
@@ -68,75 +79,15 @@ export function createEventStore(pool: Pool): EventStore {
             event.schema_version,
           ]
         );
+        await client.query('COMMIT');
         logger.debug(
           { event_type: event.event_type, event_id: event.event_id, idempotency_key: event.idempotency_key },
           'Event store: appended'
         );
         return event;
-      } finally {
-        client.release();
-      }
-    },
-
-    async appendMany(partials) {
-      const client = await pool.connect();
-      try {
-        const results: DomainEvent[] = [];
-        const toInsert: DomainEvent[] = [];
-
-        for (const p of partials) {
-          if (p.idempotency_key) {
-            const existing = await client.query<EventsRow>(
-              `SELECT event_id, event_type, occurred_at, actor_id, actor_role, subject_entity, subject_id,
-                      payload, causation_id, correlation_id, idempotency_key, schema_version
-               FROM events WHERE idempotency_key = $1 LIMIT 1`,
-              [p.idempotency_key]
-            );
-            if (existing.rows.length > 0) {
-              results.push(rowToDomainEvent(existing.rows[0]));
-              continue;
-            }
-          }
-          const event = {
-            ...p,
-            event_id: randomUUID(),
-            occurred_at: new Date().toISOString(),
-          } as DomainEvent;
-          toInsert.push(event);
-          results.push(event);
-        }
-
-        await client.query('BEGIN');
-        try {
-          for (const event of toInsert) {
-            await client.query(
-              `INSERT INTO events (
-                event_id, event_type, occurred_at, actor_id, actor_role,
-                subject_entity, subject_id, payload, causation_id, correlation_id,
-                idempotency_key, schema_version
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-              [
-                event.event_id,
-                event.event_type,
-                event.occurred_at,
-                event.actor.id,
-                event.actor.role,
-                event.subject.entity,
-                event.subject.id,
-                JSON.stringify(event.payload),
-                event.causation_id,
-                event.correlation_id,
-                event.idempotency_key,
-                event.schema_version,
-              ]
-            );
-          }
-          await client.query('COMMIT');
-        } catch (e) {
-          await client.query('ROLLBACK');
-          throw e;
-        }
-        return results;
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
       } finally {
         client.release();
       }

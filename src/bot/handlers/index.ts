@@ -9,42 +9,35 @@ import { getUserLocalDate } from '../../db/user-timezone.js';
 import { createEventStore } from '../../events/event-store.js';
 import { EVENT_TYPES } from '../../events/types.js';
 import { createProjectors } from '../../projectors/index.js';
-import { createPlanService, getWeekId, getWeekStartEnd } from '../../services/plan-service.js';
 import { createDeclarationService } from '../../services/declaration-service.js';
 import { createReportService } from '../../services/report-service.js';
 import { createFixationService } from '../../services/fixation-service.js';
-import { createReviewService } from '../../services/review-service.js';
 import { createSettingsService, formatDay, formatDays, formatTime } from '../../services/settings-service.js';
 import { createLLMClient } from '../../llm/client.js';
 import { getPool, getUserByTgId, getUserByMaxId, markOnboarded, countRows } from '../../db/index.js';
 import { initTokenSpikeChecker } from '../../observability/token-spike.js';
 import {
   SETTINGS_NOTIFICATIONS,
-  SETTINGS_PLAN,
+  SETTINGS_DECLARATION,
   SETTINGS_FIXATION,
-  SETTINGS_REVIEW,
+  SETTINGS_REPORT,
   SETTINGS_TIMEZONE,
 } from '../conversations.js';
 import type { HandlerDeps } from './deps.js';
 import { registerOnboardingHandlers } from './onboarding.js';
 import { registerDeclarationHandlers } from './declaration.js';
 import { registerReportHandlers } from './report.js';
-import { registerPlanHandlers } from './plan.js';
 import { registerFixationHandlers } from './fixation.js';
-import { registerReviewHandlers } from './review.js';
 import { registerSettingsHandlers } from './settings.js';
 import { registerDeleteHandlers } from './delete.js';
-
-const SERVICE_ERROR_FALLBACK = '❌ Сервисная ошибка зафиксирована и передана разработчику. Попробуйте позже.';
+import { formatUserFacingError, USER_SERVICE_ERROR_FALLBACK } from '../user-facing-error.js';
 
 function formatErrorForUser(err: unknown): string {
   if (err instanceof InvariantViolationError) {
     invariantViolations.inc({ invariant_id: err.invariantId });
     logger.warn({ invariantId: err.invariantId, message: err.message }, 'Invariant violation');
-    const msg = err.message;
-    return msg.startsWith('❌') ? msg : `❌ ${msg}`;
   }
-  return SERVICE_ERROR_FALLBACK;
+  return formatUserFacingError(err);
 }
 
 /** Creates handler deps (including ensureUser) for use in index and registerHandlers. */
@@ -54,11 +47,9 @@ export function createAppDeps(): HandlerDeps {
   const projectors = createProjectors(pool);
   const llm = createLLMClient();
   const serviceDeps = { pool, projectors, llm };
-  const planService = createPlanService(eventStore, serviceDeps);
   const declarationService = createDeclarationService(eventStore, serviceDeps);
   const reportService = createReportService(eventStore, serviceDeps);
   const fixationService = createFixationService(eventStore, serviceDeps);
-  const reviewService = createReviewService(eventStore, serviceDeps);
   const settingsService = createSettingsService(pool);
 
   async function ensureUser(channel: 'telegram' | 'max', externalId: string): Promise<string> {
@@ -100,7 +91,7 @@ export function createAppDeps(): HandlerDeps {
     ctx: import('../transport/types.js').AppContext,
     rawPost: string,
     userId: string,
-    context: 'declaration' | 'plan' | 'fixation' | 'review' | 'report'
+    context: 'declaration' | 'fixation' | 'report'
   ): Promise<void> {
     const trimmed = rawPost?.trim() || '';
     const formatted = context === 'fixation' ? escapeHtml(trimmed) : formatLlmResponse(trimmed);
@@ -108,7 +99,7 @@ export function createAppDeps(): HandlerDeps {
       logger.error({ userId }, `${context}: empty LLM response`);
       ctx.alertError?.(new Error('Empty LLM response'), context, userId);
     }
-    await ctx.reply(formatted || SERVICE_ERROR_FALLBACK, { parse_mode: 'HTML' });
+    await ctx.reply(formatted || USER_SERVICE_ERROR_FALLBACK, { parse_mode: 'HTML' });
   }
 
   async function showSettingsMenu(
@@ -117,22 +108,22 @@ export function createAppDeps(): HandlerDeps {
   ): Promise<void> {
     const settings = await settingsService.getOrCreate(userId);
     const notif = settings.notifications_enabled ? 'Вкл' : 'Выкл';
-    const planStr = settings.plan_notify_day != null
-      ? `${formatDay(settings.plan_notify_day)} ${formatTime(settings.plan_notify_time)}`
+    const declarationStr = settings.declaration_notify_day != null
+      ? `${formatDay(settings.declaration_notify_day)} ${formatTime(settings.declaration_notify_time)}`
       : '—';
     const reflectStr = settings.fixation_notify_days
       ? `${formatDays(settings.fixation_notify_days)} ${formatTime(settings.fixation_notify_time)}`
       : '—';
-    const reviewStr = settings.review_notify_day != null
-      ? `${formatDay(settings.review_notify_day)} ${formatTime(settings.review_notify_time)}`
+    const reportStr = settings.report_notify_day != null
+      ? `${formatDay(settings.report_notify_day)} ${formatTime(settings.report_notify_time)}`
       : '—';
     const tzStr = settings.timezone ?? '—';
 
     const text =
       `<b>${SETTINGS_NOTIFICATIONS}</b>: ${notif}\n` +
-      `<b>${SETTINGS_PLAN}</b>: ${planStr}\n` +
+      `<b>${SETTINGS_DECLARATION}</b>: ${declarationStr}\n` +
       `<b>${SETTINGS_FIXATION}</b>: ${reflectStr}\n` +
-      `<b>${SETTINGS_REVIEW}</b>: ${reviewStr}\n` +
+      `<b>${SETTINGS_REPORT}</b>: ${reportStr}\n` +
       `<b>${SETTINGS_TIMEZONE}</b>: ${tzStr}`;
 
     const reply_markup: import('../transport/types.js').InlineButton[][] = [
@@ -143,9 +134,9 @@ export function createAppDeps(): HandlerDeps {
         },
       ],
       [
-        { text: 'План', callback_data: 'settings_plan' },
+        { text: 'Декларация', callback_data: 'settings_declaration' },
         { text: 'Фиксация', callback_data: 'settings_fixation' },
-        { text: 'Обзор', callback_data: 'settings_review' },
+        { text: 'Отчёт', callback_data: 'settings_report' },
       ],
       [{ text: 'Часовой пояс', callback_data: 'settings_tz' }],
     ];
@@ -164,9 +155,7 @@ export function createAppDeps(): HandlerDeps {
     countRows,
     declarationService,
     reportService,
-    planService,
     fixationService,
-    reviewService,
     settingsService,
     showSettingsMenu,
   };
@@ -177,9 +166,7 @@ export function registerHandlers(bot: Bot<BotContext>, deps: HandlerDeps) {
   registerOnboardingHandlers(bot, deps);
   registerDeclarationHandlers(bot, deps);
   registerReportHandlers(bot, deps);
-  registerPlanHandlers(bot, deps);
   registerFixationHandlers(bot, deps);
-  registerReviewHandlers(bot, deps);
   registerSettingsHandlers(bot, deps);
   registerDeleteHandlers(bot, deps);
 }

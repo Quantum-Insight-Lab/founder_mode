@@ -1,13 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { validateFixationDate, validateFixationBranch } from '../src/domain/validators.js';
 import { InvariantViolationError } from '../src/domain/errors.js';
-import { getPool } from '../src/db/index.js';
-
-const mockQuery = vi.hoisted(() => vi.fn());
-const mockPool = { query: mockQuery };
-vi.mock('../src/db/index.js', () => ({
-  getPool: () => mockPool,
-}));
 
 describe('validators', () => {
   describe('INV-004: validateFixationDate', () => {
@@ -88,45 +81,6 @@ describe('validators', () => {
           thought_of_day: 'x',
         })
       ).not.toThrow();
-    });
-  });
-
-  describe('INV-003: validateReviewMinData', () => {
-    beforeEach(async () => {
-      mockQuery.mockReset();
-      vi.resetModules();
-    });
-
-    it('throws when no plan exists', async () => {
-      mockQuery.mockResolvedValueOnce({ rowCount: 0 }).mockResolvedValueOnce({ rowCount: 0 });
-      const { validateReviewMinData } = await import('../src/db/review-validation.js');
-      await expect(
-        validateReviewMinData(getPool(), 'user1', '20260309', '2026-03-09', '2026-03-15')
-      ).rejects.toThrow('Нужен план недели для обзора');
-    });
-
-    it('throws when fixations count is 0', async () => {
-      mockQuery.mockResolvedValueOnce({ rowCount: 1 }).mockResolvedValueOnce({ rowCount: 0 });
-      const { validateReviewMinData } = await import('../src/db/review-validation.js');
-      await expect(
-        validateReviewMinData(getPool(), 'user1', '20260309', '2026-03-09', '2026-03-15')
-      ).rejects.toThrow(/фиксац|Сейчас: 0/);
-    });
-
-    it('passes when plan and 1 fixation exist', async () => {
-      mockQuery.mockResolvedValueOnce({ rowCount: 1 }).mockResolvedValueOnce({ rowCount: 1 });
-      const { validateReviewMinData } = await import('../src/db/review-validation.js');
-      await expect(
-        validateReviewMinData(getPool(), 'user1', '20260309', '2026-03-09', '2026-03-15')
-      ).resolves.toBeUndefined();
-    });
-
-    it('passes when plan and 3+ fixations exist', async () => {
-      mockQuery.mockResolvedValueOnce({ rowCount: 1 }).mockResolvedValueOnce({ rowCount: 3 });
-      const { validateReviewMinData } = await import('../src/db/review-validation.js');
-      await expect(
-        validateReviewMinData(getPool(), 'user1', '20260309', '2026-03-09', '2026-03-15')
-      ).resolves.toBeUndefined();
     });
   });
 });

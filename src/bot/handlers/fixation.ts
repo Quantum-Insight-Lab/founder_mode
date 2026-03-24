@@ -19,8 +19,8 @@ import {
 import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
-import { dateStrToWeekRef, instantToUserLocalDateString, parseTimezoneOffset } from '../../domain/timezone.js';
-import { getWeekId } from '../../services/plan-service.js';
+import { instantToUserLocalDateString, parseTimezoneOffset } from '../../domain/timezone.js';
+import { getWeekId } from '../../services/week-service.js';
 import { renderFixationCardPng } from '../../services/fixation-card-render.js';
 import type { HandlerDeps } from './deps.js';
 
@@ -69,8 +69,7 @@ async function proceedWithFixationDate(ctx: AppContext, date: string, userId: st
   ctx.session.fixationData = { date };
 
   const userDateStr = await getUserLocalDate(userId, pool);
-  const weekRef = dateStrToWeekRef(userDateStr);
-  const weekId = getWeekId(weekRef);
+  const weekId = getWeekId(userDateStr);
   const declaration = await pool.query(
     'SELECT 1 FROM weekly_declarations WHERE user_id = $1 AND week_id = $2 LIMIT 1',
     [userId, weekId]
@@ -100,17 +99,17 @@ async function proceedWithFixationDate(ctx: AppContext, date: string, userId: st
   ctx.session.step = 'fixation_movement';
   ctx.session.fixationEditMode = false;
 
-  const meta = await pool.query<{ total: number; review_count: number }>(
+  const meta = await pool.query<{ total: number; report_count: number }>(
     `SELECT
        (SELECT COUNT(*)::int FROM daily_fixations WHERE user_id = $1) AS total,
-       (SELECT COUNT(*)::int FROM weekly_reviews WHERE user_id = $1) AS review_count`,
+       (SELECT COUNT(*)::int FROM weekly_reports WHERE user_id = $1) AS report_count`,
     [userId]
   );
   const totalFixations = meta.rows[0]?.total ?? 0;
-  const reviewCount = meta.rows[0]?.review_count ?? 0;
+  const reportCount = meta.rows[0]?.report_count ?? 0;
   if (totalFixations === 0) {
     await ctx.reply(ONBOARDING_FIRST_REFLECT_INTRO);
-  } else if (reviewCount === 0) {
+  } else if (reportCount === 0) {
     await ctx.reply(ONBOARDING_NEXT_REFLECT_INTRO);
   }
   await ctx.reply(REFLECTION_MOVEMENT_QUESTION, {
@@ -124,7 +123,7 @@ export async function handleFixationCommandBase(ctx: AppContext, deps: HandlerDe
   ensureSession(ctx);
   ctx.session.fixationData = {};
   const userDateStr = await getUserLocalDate(userId, pool);
-  const weekId = getWeekId(dateStrToWeekRef(userDateStr));
+  const weekId = getWeekId(userDateStr);
   const declaration = await pool.query(
     'SELECT 1 FROM weekly_declarations WHERE user_id = $1 AND week_id = $2 LIMIT 1',
     [userId, weekId]
@@ -256,13 +255,7 @@ export async function handleFixationEdit(ctx: AppContext, deps: HandlerDeps): Pr
 }
 
 export async function handleFixationEditConfirmYes(ctx: AppContext, deps: HandlerDeps): Promise<void> {
-  ensureSession(ctx);
-  ctx.session.step = 'fixation_movement';
-  ctx.session.fixationEditMode = true;
-  await ctx.answerCallbackQuery();
-  await ctx.reply(REFLECTION_MOVEMENT_QUESTION, {
-    reply_markup: MOVEMENT_MARKUP,
-  });
+  return handleFixationEdit(ctx, deps);
 }
 
 export async function handleFixationEditConfirmNo(ctx: AppContext, deps: HandlerDeps): Promise<void> {

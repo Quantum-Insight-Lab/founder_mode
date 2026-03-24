@@ -1,4 +1,4 @@
-import type { Bot, Context, SessionFlavor } from 'grammy';
+import type { Context, SessionFlavor } from 'grammy';
 
 /** Данные сессии рефлексии при заполнении по веткам movement_branch */
 export interface FixationSessionData {
@@ -20,18 +20,14 @@ export interface SessionData {
   declarationEditMode?: boolean; // true = ручное редактирование declaration, без LLM
   declarationAnswers?: Record<string, string>;
   reportEditMode?: boolean; // true = ручное редактирование report, без LLM
-  reportAnswers?: Record<string, string>;
-  planEditMode?: boolean; // true = ручное редактирование, без LLM
-  planningAnswers?: Record<string, string>;
-  isFirstPlanning?: boolean; // true = первый план пользователя, показываем подсказку у main_focus
   isFirstDeclaration?: boolean; // true = первый declaration пользователя — онбординг после карточки
   fixationEditMode?: boolean; // true = ручное редактирование, без LLM
   fixationData?: FixationSessionData;
   settingsData?: {
-    editing?: 'plan' | 'fixation' | 'review';
-    plan_day?: number;
+    editing?: 'declaration' | 'fixation' | 'report';
+    declaration_day?: number;
     fixation_days?: string;
-    review_day?: number;
+    report_day?: number;
     [key: string]: unknown;
   };
 }

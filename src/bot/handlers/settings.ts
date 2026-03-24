@@ -52,37 +52,37 @@ export async function handleSettingsNotifToggle(ctx: AppContext, deps: HandlerDe
   await deps.showSettingsMenu(ctx, userId);
 }
 
-export async function handleSettingsPlan(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsDeclaration(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
-  ctx.session.step = 'settings_plan_day';
-  ctx.session.settingsData = { editing: 'plan' };
-  await ctx.reply('День уведомления о планировании:', { reply_markup: getDayPickerRows('settings_plan_day') });
+  ctx.session.step = 'settings_declaration_day';
+  ctx.session.settingsData = { editing: 'declaration' };
+  await ctx.reply('День напоминания о declaration недели:', { reply_markup: getDayPickerRows('settings_declaration_day') });
 }
 
-export async function handleSettingsPlanDay(ctx: AppContext, day: number, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsDeclarationDay(ctx: AppContext, day: number, deps: HandlerDeps): Promise<void> {
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
-  ctx.session.settingsData = { ...ctx.session.settingsData, plan_day: day };
-  ctx.session.step = 'settings_plan_time';
-  await ctx.reply('Время:', { reply_markup: getTimePickerRows('settings_plan_time') });
+  ctx.session.settingsData = { ...ctx.session.settingsData, declaration_day: day };
+  ctx.session.step = 'settings_declaration_time';
+  await ctx.reply('Время:', { reply_markup: getTimePickerRows('settings_declaration_time') });
 }
 
-export async function handleSettingsPlanTimeCustom(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsDeclarationTimeCustom(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
-  ctx.session.step = 'settings_plan_time_input';
-  logger.debug({ userId: ctx.userId }, 'Settings plan: custom time input');
+  ctx.session.step = 'settings_declaration_time_input';
+  logger.debug({ userId: ctx.userId }, 'Settings declaration: custom time input');
   await ctx.reply(SETTINGS_TIME_INPUT_QUESTION);
 }
 
-export async function handleSettingsPlanTime(ctx: AppContext, time: string, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsDeclarationTime(ctx: AppContext, time: string, deps: HandlerDeps): Promise<void> {
   const { settingsService } = deps;
   const userId = ctx.userId;
-  const day = ctx.session?.settingsData?.plan_day ?? 0;
+  const day = ctx.session?.settingsData?.declaration_day ?? 0;
   await ctx.answerCallbackQuery();
-  await settingsService.updatePlanNotify(userId, day, time);
-  logger.info({ userId, day, time }, 'Settings plan notify updated');
+  await settingsService.updateDeclarationNotify(userId, day, time);
+  logger.info({ userId, day, time }, 'Settings declaration notify updated');
   ensureSession(ctx);
   ctx.session.step = undefined;
   ctx.session.settingsData = undefined;
@@ -134,37 +134,37 @@ export async function handleSettingsFixationTime(ctx: AppContext, time: string, 
   await deps.showSettingsMenu(ctx, userId);
 }
 
-export async function handleSettingsReview(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsReport(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
-  ctx.session.step = 'settings_review_day';
-  ctx.session.settingsData = { editing: 'review' };
-  await ctx.reply('День уведомления об обзоре:', { reply_markup: getDayPickerRows('settings_review_day') });
+  ctx.session.step = 'settings_report_day';
+  ctx.session.settingsData = { editing: 'report' };
+  await ctx.reply('День напоминания о report недели:', { reply_markup: getDayPickerRows('settings_report_day') });
 }
 
-export async function handleSettingsReviewDay(ctx: AppContext, day: number, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsReportDay(ctx: AppContext, day: number, deps: HandlerDeps): Promise<void> {
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
-  ctx.session.settingsData = { ...ctx.session.settingsData, review_day: day };
-  ctx.session.step = 'settings_review_time';
-  await ctx.reply('Время:', { reply_markup: getTimePickerRows('settings_review_time') });
+  ctx.session.settingsData = { ...ctx.session.settingsData, report_day: day };
+  ctx.session.step = 'settings_report_time';
+  await ctx.reply('Время:', { reply_markup: getTimePickerRows('settings_report_time') });
 }
 
-export async function handleSettingsReviewTimeCustom(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsReportTimeCustom(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
-  ctx.session.step = 'settings_review_time_input';
-  logger.debug({ userId: ctx.userId }, 'Settings review: custom time input');
+  ctx.session.step = 'settings_report_time_input';
+  logger.debug({ userId: ctx.userId }, 'Settings report: custom time input');
   await ctx.reply(SETTINGS_TIME_INPUT_QUESTION);
 }
 
-export async function handleSettingsReviewTime(ctx: AppContext, time: string, deps: HandlerDeps): Promise<void> {
+export async function handleSettingsReportTime(ctx: AppContext, time: string, deps: HandlerDeps): Promise<void> {
   const { settingsService } = deps;
   const userId = ctx.userId;
-  const day = ctx.session?.settingsData?.review_day ?? 5;
+  const day = ctx.session?.settingsData?.report_day ?? 5;
   await ctx.answerCallbackQuery();
-  await settingsService.updateReviewNotify(userId, day, time);
-  logger.info({ userId, day, time }, 'Settings review notify updated');
+  await settingsService.updateReportNotify(userId, day, time);
+  logger.info({ userId, day, time }, 'Settings report notify updated');
   ensureSession(ctx);
   ctx.session.step = undefined;
   ctx.session.settingsData = undefined;
@@ -191,18 +191,18 @@ export async function handleSettingsTimeInput(ctx: AppContext, text: string, dep
     const m = parseInt(match[2], 10);
     if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
       const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      if (step === 'settings_plan_time_input' && typeof data?.plan_day === 'number') {
-        await settingsService.updatePlanNotify(userId, data.plan_day, time);
-        logger.info({ userId, day: data.plan_day, time }, 'Settings plan notify updated (custom)');
+      if (step === 'settings_declaration_time_input' && typeof data?.declaration_day === 'number') {
+        await settingsService.updateDeclarationNotify(userId, data.declaration_day, time);
+        logger.info({ userId, day: data.declaration_day, time }, 'Settings declaration notify updated (custom)');
         saved = true;
       } else if (step === 'settings_fixation_time_input' && data?.fixation_days) {
         const days = String(data.fixation_days);
         await settingsService.updateFixationNotify(userId, days, time);
         logger.info({ userId, days, time }, 'Settings fixation notify updated (custom)');
         saved = true;
-      } else if (step === 'settings_review_time_input' && typeof data?.review_day === 'number') {
-        await settingsService.updateReviewNotify(userId, data.review_day, time);
-        logger.info({ userId, day: data.review_day, time }, 'Settings review notify updated (custom)');
+      } else if (step === 'settings_report_time_input' && typeof data?.report_day === 'number') {
+        await settingsService.updateReportNotify(userId, data.report_day, time);
+        logger.info({ userId, day: data.report_day, time }, 'Settings report notify updated (custom)');
         saved = true;
       }
     }
@@ -249,21 +249,21 @@ export function registerSettingsHandlers(bot: import('grammy').Bot<BotContext>, 
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleSettingsNotifToggle(appCtx, deps);
   });
-  bot.callbackQuery(/^settings_plan$/, async (ctx) => {
+  bot.callbackQuery(/^settings_declaration$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsPlan(appCtx, deps);
+    await handleSettingsDeclaration(appCtx, deps);
   });
-  bot.callbackQuery(/^settings_plan_day_(\d)$/, async (ctx) => {
+  bot.callbackQuery(/^settings_declaration_day_(\d)$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsPlanDay(appCtx, parseInt(ctx.match[1], 10), deps);
+    await handleSettingsDeclarationDay(appCtx, parseInt(ctx.match[1], 10), deps);
   });
-  bot.callbackQuery(/^settings_plan_time_custom$/, async (ctx) => {
+  bot.callbackQuery(/^settings_declaration_time_custom$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsPlanTimeCustom(appCtx, deps);
+    await handleSettingsDeclarationTimeCustom(appCtx, deps);
   });
-  bot.callbackQuery(/^settings_plan_time_([\d-]+)$/, async (ctx) => {
+  bot.callbackQuery(/^settings_declaration_time_([\d-]+)$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsPlanTime(appCtx, timeFromCallback(ctx.match), deps);
+    await handleSettingsDeclarationTime(appCtx, timeFromCallback(ctx.match), deps);
   });
   bot.callbackQuery(/^settings_fixation$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
@@ -281,21 +281,21 @@ export function registerSettingsHandlers(bot: import('grammy').Bot<BotContext>, 
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleSettingsFixationTime(appCtx, timeFromCallback(ctx.match), deps);
   });
-  bot.callbackQuery(/^settings_review$/, async (ctx) => {
+  bot.callbackQuery(/^settings_report$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsReview(appCtx, deps);
+    await handleSettingsReport(appCtx, deps);
   });
-  bot.callbackQuery(/^settings_review_day_(\d)$/, async (ctx) => {
+  bot.callbackQuery(/^settings_report_day_(\d)$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsReviewDay(appCtx, parseInt(ctx.match[1], 10), deps);
+    await handleSettingsReportDay(appCtx, parseInt(ctx.match[1], 10), deps);
   });
-  bot.callbackQuery(/^settings_review_time_custom$/, async (ctx) => {
+  bot.callbackQuery(/^settings_report_time_custom$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsReviewTimeCustom(appCtx, deps);
+    await handleSettingsReportTimeCustom(appCtx, deps);
   });
-  bot.callbackQuery(/^settings_review_time_([\d-]+)$/, async (ctx) => {
+  bot.callbackQuery(/^settings_report_time_([\d-]+)$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleSettingsReviewTime(appCtx, timeFromCallback(ctx.match), deps);
+    await handleSettingsReportTime(appCtx, timeFromCallback(ctx.match), deps);
   });
   bot.callbackQuery(/^settings_tz$/, async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
@@ -305,9 +305,9 @@ export function registerSettingsHandlers(bot: import('grammy').Bot<BotContext>, 
     (ctx) => {
       const step = ctx.session?.step;
       return (
-        (step === 'settings_plan_time_input' ||
+        (step === 'settings_declaration_time_input' ||
           step === 'settings_fixation_time_input' ||
-          step === 'settings_review_time_input') &&
+          step === 'settings_report_time_input') &&
         !ctx.message.text?.trim().startsWith('/')
       );
     },

@@ -8,42 +8,18 @@ import {
   ONBOARDING_AFTER_PLAN_1,
   ONBOARDING_AFTER_PLAN_2,
 } from '../conversations.js';
-import {
-  WEEKLY_DECLARATION_QUESTIONS,
-  type WeeklyDeclarationAnswerKey,
-} from '../conversations2.js';
+import { WEEKLY_DECLARATION_QUESTIONS, type WeeklyDeclarationAnswerKey } from '../conversations.js';
 import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
-import { dateStrToWeekRef } from '../../domain/timezone.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from '../../services/week-service.js';
 import { renderDeclarationCardPng } from '../../services/declaration-card-render.js';
-import type { DeclarationStructured } from '../../services/declaration-service.js';
 import type { HandlerDeps } from './deps.js';
-
-function dbg(location: string, message: string, hypothesisId: string, data: Record<string, unknown>): void {
-  // #region agent log
-  fetch('http://localhost:7319/ingest/99c8c27e-61cc-44fe-b95c-d0b4a202837b', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a9c3c9' },
-    body: JSON.stringify({
-      sessionId: 'a9c3c9',
-      runId: 'max-avatar-debug-v1',
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-}
 
 async function sendDeclarationAsCard(
   ctx: AppContext,
   deps: HandlerDeps,
   userId: string,
-  structured: DeclarationStructured,
   rawPost: string
 ): Promise<void> {
   const { handleLlmReply, pool } = deps;
@@ -51,17 +27,10 @@ async function sendDeclarationAsCard(
   const username = ctx.displayName?.trim() || 'Founder';
   const avatarDataUrl = await ctx.getAvatarDataUrl?.();
   const avatarBackgroundImage = avatarDataUrl ? `url(${avatarDataUrl})` : 'none';
-  dbg('declaration.ts:sendDeclarationAsCard:1', 'declaration card avatar source', 'H6', {
-    channel: ctx.channel,
-    hasAvatarDataUrl: Boolean(avatarDataUrl),
-    avatarPrefix: avatarDataUrl?.slice(0, 36) ?? '',
-  });
   try {
     const png = await renderDeclarationCardPng({
       username,
-      main_focus: structured.main_focus,
-      win_result: structured.win_result,
-      week_failure: structured.week_failure,
+      content: rawPost,
       timeHHmm,
       avatarBackgroundImage,
     });
@@ -85,8 +54,7 @@ export async function handleDeclarationCommand(ctx: AppContext, deps: HandlerDep
   ctx.session.declarationEditMode = false;
 
   const userDateStr = await getUserLocalDate(userId, pool);
-  const weekRef = dateStrToWeekRef(userDateStr);
-  const weekId = getWeekId(weekRef);
+  const weekId = getWeekId(userDateStr);
   const existing = await pool.query(
     'SELECT raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
     [userId, weekId]
@@ -120,14 +88,9 @@ export async function handleDeclarationShow(ctx: AppContext, deps: HandlerDeps):
   ctx.session.step = undefined;
 
   const userDateStr = await getUserLocalDate(userId, pool);
-  const weekId = getWeekId(dateStrToWeekRef(userDateStr));
-  const row = await pool.query<{
-    raw_post: string;
-    main_focus: string;
-    win_result: string;
-    week_failure: string;
-  }>(
-    'SELECT raw_post, main_focus, win_result, week_failure FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
+  const weekId = getWeekId(userDateStr);
+  const row = await pool.query<{ raw_post: string }>(
+    'SELECT raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
     [userId, weekId]
   );
   const r = row.rows[0];
@@ -136,13 +99,7 @@ export async function handleDeclarationShow(ctx: AppContext, deps: HandlerDeps):
     await ctx.reply('Declaration пуст.');
     return;
   }
-  await sendDeclarationAsCard(
-    ctx,
-    deps,
-    userId,
-    { main_focus: r.main_focus, win_result: r.win_result, week_failure: r.week_failure },
-    r.raw_post
-  );
+  await sendDeclarationAsCard(ctx, deps, userId, r.raw_post);
 }
 
 export async function handleDeclarationEdit(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -153,7 +110,7 @@ export async function handleDeclarationEdit(ctx: AppContext, deps: HandlerDeps):
   await ctx.answerCallbackQuery();
 
   const userDateStr = await getUserLocalDate(userId, pool);
-  const { start, end } = getWeekStartEnd(dateStrToWeekRef(userDateStr));
+  const { start, end } = getWeekStartEnd(userDateStr);
   const hasFixations =
     (await countRows(
       pool,
@@ -193,16 +150,16 @@ export async function handleDeclarationMessage(ctx: AppContext, text: string, de
 
     try {
       if (isEdit) {
-        const { rawPost, structured } = await declarationService.updateDeclarationManual(userId, record);
+        const { rawPost } = await declarationService.updateDeclarationManual(userId, record);
         funnelCompleted.inc({ type: 'declaration' });
         logger.info({ userId }, 'Declaration manually updated');
         await ctx.reply('❗️ Declaration обновлён.');
-        await sendDeclarationAsCard(ctx, deps, userId, structured, rawPost);
+        await sendDeclarationAsCard(ctx, deps, userId, rawPost);
       } else {
-        const { rawPost, structured } = await declarationService.createDeclaration(userId, record);
+        const { rawPost } = await declarationService.createDeclaration(userId, record);
         funnelCompleted.inc({ type: 'declaration' });
         logger.info({ userId }, 'Declaration created');
-        await sendDeclarationAsCard(ctx, deps, userId, structured, rawPost);
+        await sendDeclarationAsCard(ctx, deps, userId, rawPost);
         if (isFirstDeclaration) {
           await ctx.reply(ONBOARDING_AFTER_PLAN_1);
           await ctx.reply(`<i>${ONBOARDING_AFTER_PLAN_2}</i>`, { parse_mode: 'HTML' });
@@ -216,6 +173,38 @@ export async function handleDeclarationMessage(ctx: AppContext, text: string, de
   } else {
     ctx.session!.step = `declaration_${idx + 1}`;
     await ctx.reply(WEEKLY_DECLARATION_QUESTIONS[idx + 1].text);
+  }
+}
+
+export async function handleNotifyDeclaration(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  const { pool, countRows } = deps;
+  const userId = ctx.userId;
+  logger.info({ channel: ctx.channel, externalId: ctx.externalId, userId }, 'Notify declaration');
+  await ctx.answerCallbackQuery();
+  ensureSession(ctx);
+  ctx.session.declarationEditMode = false;
+  const userDateStr = await getUserLocalDate(userId, pool);
+  const weekId = getWeekId(userDateStr);
+  const existing = await pool.query(
+    'SELECT 1 FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
+    [userId, weekId]
+  );
+  if (existing.rows.length > 0) {
+    ctx.session.isFirstDeclaration = undefined;
+    ctx.session.step = 'declaration_choice';
+    await ctx.reply('Declaration на эту неделю уже есть.', {
+      reply_markup: [[
+        { text: 'Показать', callback_data: 'declaration_show' },
+        { text: 'Изменить', callback_data: 'declaration_edit' },
+      ]],
+    });
+  } else {
+    ctx.session.step = 'declaration_0';
+    ctx.session.declarationAnswers = {};
+    ctx.session.isFirstDeclaration =
+      (await countRows(pool, 'SELECT COUNT(*)::int AS c FROM weekly_declarations WHERE user_id = $1', [userId])) === 0;
+    funnelStarted.inc({ type: 'declaration' });
+    await ctx.reply(WEEKLY_DECLARATION_QUESTIONS[0].text);
   }
 }
 
@@ -241,4 +230,8 @@ export function registerDeclarationHandlers(bot: Bot<BotContext>, deps: HandlerD
       await handleDeclarationMessage(appCtx, ctx.message.text ?? '', deps);
     }
   );
+  bot.callbackQuery('notify_declaration', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleNotifyDeclaration(appCtx, deps);
+  });
 }

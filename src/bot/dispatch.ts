@@ -6,38 +6,29 @@ import { logger } from '../observability/logger.js';
 import type { AppContext } from './transport/types.js';
 import type { IncomingEvent } from './transport/types.js';
 import type { HandlerDeps } from './handlers/deps.js';
-import { getUserLocalDate } from '../db/user-timezone.js';
-import { dateStrToWeekRef } from '../domain/timezone.js';
-import { getWeekId } from '../services/plan-service.js';
+import { IDLE_COMMAND_LIST_REPLY } from './idle-message.js';
+import { timeFromSettingsCallbackData } from './settings-callback.js';
 import {
   handleStart,
   handleOnboardTimezone,
   handleOnboardCtaYes,
   handleOnboardCtaLater,
-  handleOnboardReviewCtaYes,
-  handleOnboardReviewCtaLater,
+  handleOnboardReportCtaYes,
+  handleOnboardReportCtaLater,
 } from './handlers/onboarding.js';
 import {
   handleDeclarationCommand,
   handleDeclarationEdit,
   handleDeclarationMessage,
   handleDeclarationShow,
+  handleNotifyDeclaration,
 } from './handlers/declaration.js';
 import {
   handleReportCommand,
   handleReportEdit,
-  handleReportMessage,
   handleReportShow,
+  handleNotifyReport,
 } from './handlers/report.js';
-import {
-  handlePlanCommand,
-  handlePlanShow,
-  handlePlanEdit,
-  handlePlanEditConfirmYes,
-  handlePlanEditConfirmNo,
-  handlePlanningMessage,
-  handleNotifyPlan,
-} from './handlers/plan.js';
 import {
   handleFixationSkipEnableNotif,
   handleFixationDateChoice,
@@ -53,89 +44,29 @@ import {
   handleFixationMessage,
   handleNotifyFixation,
 } from './handlers/fixation.js';
-import { handleReviewCommand, handleReviewUserNote, handleNotifyReview } from './handlers/review.js';
 import {
   handleSettingsCommand,
   handleSettingsNotifToggle,
-  handleSettingsPlan,
-  handleSettingsPlanDay,
-  handleSettingsPlanTimeCustom,
-  handleSettingsPlanTime,
+  handleSettingsDeclaration,
+  handleSettingsDeclarationDay,
+  handleSettingsDeclarationTimeCustom,
+  handleSettingsDeclarationTime,
   handleSettingsFixation,
   handleSettingsFixationDays,
   handleSettingsFixationTimeCustom,
   handleSettingsFixationTime,
-  handleSettingsReview,
-  handleSettingsReviewDay,
-  handleSettingsReviewTimeCustom,
-  handleSettingsReviewTime,
+  handleSettingsReport,
+  handleSettingsReportDay,
+  handleSettingsReportTimeCustom,
+  handleSettingsReportTime,
   handleSettingsTz,
   handleSettingsTimeInput,
   handleSettingsTzInput,
 } from './handlers/settings.js';
 import { handleDeleteCommand, handleDeleteConfirmYes, handleDeleteConfirmNo } from './handlers/delete.js';
 
-function timeFromCallbackData(data: string): string {
-  const m = data.match(/^settings_(?:plan|fixation|review)_time_([\d-]+)$/);
-  return String(m?.[1] ?? '').replace('-', ':');
-}
-
-async function handleIdleMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
-  const t = text.trim().toLowerCase();
-  const isAffirmativeOrNext =
-    /^(ок|okay|окей|да|понял|поняла|готов|готово|дальше|что дальше|что делать)\b/.test(t) ||
-    /\b(что дальше|что делать)\b/.test(t);
-  const wantsPlan = /\b(plan|план|вектор|фокус)\b/.test(t);
-  const wantsDeclaration = /\b(declaration|деклар)\b/.test(t);
-  const wantsReport = /\b(report|отчет|итог недели|итог)\b/.test(t);
-  const wantsFixation = /\b(fixation|фиксац|рефлекс|reflect)\b/.test(t);
-  const wantsReview = /\b(review|обзор|недел)\b/.test(t);
-  const wantsSettings = /\b(settings|настрой|уведом)\b/.test(t);
-  const wantsDelete = /\b(delete|удал|стер|очист)\b/.test(t);
-
-  if (wantsDeclaration) return ctx.reply('Ок. Чтобы зафиксировать declaration недели — /declaration');
-  if (wantsReport) return ctx.reply('Ок. Чтобы зафиксировать итог недели — /report');
-  if (wantsPlan) return ctx.reply('Ок. Для нового флоу начни с declaration недели — /declaration');
-  if (wantsFixation) return ctx.reply('Ок. Чтобы зафиксировать день — /fixation');
-  if (wantsReview) return ctx.reply('Ок. Чтобы собрать обзор недели — /review');
-  if (wantsSettings) return ctx.reply('Настройки — /settings');
-  if (wantsDelete) return ctx.reply('Удаление данных — /delete');
-
-  if (!isAffirmativeOrNext) {
-    return ctx.reply('Команды: /declaration /report /plan /fixation /review /settings /delete');
-  }
-
-  const { pool } = deps;
-  const userId = ctx.userId;
-  const userDateStr = await getUserLocalDate(userId, pool);
-  const weekRef = dateStrToWeekRef(userDateStr);
-  const weekId = getWeekId(weekRef);
-
-  const declarationExists = await pool.query(
-    'SELECT 1 FROM weekly_declarations WHERE user_id = $1 AND week_id = $2 LIMIT 1',
-    [userId, weekId]
-  );
-  if (declarationExists.rows.length === 0) {
-    return ctx.reply('Давай начнём с declaration недели. Напиши (нажми) /declaration');
-  }
-
-  const todayFixationExists = await pool.query(
-    'SELECT 1 FROM daily_fixations WHERE user_id = $1 AND date = $2::date LIMIT 1',
-    [userId, userDateStr]
-  );
-  if (todayFixationExists.rows.length === 0) {
-    return ctx.reply('Время коротко зафиксировать день. Напиши (нажми) /fixation');
-  }
-
-  const reportExists = await pool.query(
-    'SELECT 1 FROM weekly_reports WHERE user_id = $1 AND week_id = $2 LIMIT 1',
-    [userId, weekId]
-  );
-  if (reportExists.rows.length === 0) {
-    return ctx.reply('Осталось зафиксировать итог недели. Напиши (нажми) /report');
-  }
-
-  return ctx.reply('Команды: /declaration /report /plan /fixation /review /settings /delete');
+async function handleIdleMessage(ctx: AppContext): Promise<void> {
+  return ctx.reply(IDLE_COMMAND_LIST_REPLY);
 }
 
 export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: HandlerDeps): Promise<void> {
@@ -144,16 +75,12 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
     switch (event.name) {
       case 'start':
         return handleStart(ctx, deps);
-      case 'plan':
-        return handlePlanCommand(ctx, deps);
       case 'declaration':
         return handleDeclarationCommand(ctx, deps);
       case 'report':
         return handleReportCommand(ctx, deps);
       case 'fixation':
         return handleFixationCommand(ctx, deps);
-      case 'review':
-        return handleReviewCommand(ctx, deps);
       case 'settings':
         return handleSettingsCommand(ctx, deps);
       case 'delete':
@@ -172,12 +99,10 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleOnboardCtaYes(ctx, deps);
       case 'onboard_cta_later':
         return handleOnboardCtaLater(ctx, deps);
-      case 'onboard_review_cta_yes':
-        return handleOnboardReviewCtaYes(ctx, deps);
-      case 'onboard_review_cta_later':
-        return handleOnboardReviewCtaLater(ctx, deps);
-      case 'plan_show':
-        return handlePlanShow(ctx, deps);
+      case 'onboard_report_cta_yes':
+        return handleOnboardReportCtaYes(ctx, deps);
+      case 'onboard_report_cta_later':
+        return handleOnboardReportCtaLater(ctx, deps);
       case 'declaration_show':
         return handleDeclarationShow(ctx, deps);
       case 'declaration_edit':
@@ -185,15 +110,9 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
       case 'report_show':
         return handleReportShow(ctx, deps);
       case 'report_edit':
-        return handleReportEdit(ctx);
-      case 'plan_edit':
-        return handlePlanEdit(ctx, deps);
-      case 'plan_edit_confirm_yes':
-        return handlePlanEditConfirmYes(ctx, deps);
-      case 'plan_edit_confirm_no':
-        return handlePlanEditConfirmNo(ctx, deps);
-      case 'notify_plan':
-        return handleNotifyPlan(ctx, deps);
+        return handleReportEdit(ctx, deps);
+      case 'notify_declaration':
+        return handleNotifyDeclaration(ctx, deps);
       case 'fixation_skip_enable_notif':
         return handleFixationSkipEnableNotif(ctx, deps);
       case 'fixation_date_yesterday':
@@ -218,22 +137,22 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleFixationYes(ctx, deps);
       case 'notify_fixation':
         return handleNotifyFixation(ctx, deps);
-      case 'notify_review':
-        return handleNotifyReview(ctx, deps);
+      case 'notify_report':
+        return handleNotifyReport(ctx, deps);
       case 'settings_notif_toggle':
         return handleSettingsNotifToggle(ctx, deps);
-      case 'settings_plan':
-        return handleSettingsPlan(ctx, deps);
-      case 'settings_plan_time_custom':
-        return handleSettingsPlanTimeCustom(ctx, deps);
+      case 'settings_declaration':
+        return handleSettingsDeclaration(ctx, deps);
+      case 'settings_declaration_time_custom':
+        return handleSettingsDeclarationTimeCustom(ctx, deps);
       case 'settings_fixation':
         return handleSettingsFixation(ctx, deps);
       case 'settings_fixation_time_custom':
         return handleSettingsFixationTimeCustom(ctx, deps);
-      case 'settings_review':
-        return handleSettingsReview(ctx, deps);
-      case 'settings_review_time_custom':
-        return handleSettingsReviewTimeCustom(ctx, deps);
+      case 'settings_report':
+        return handleSettingsReport(ctx, deps);
+      case 'settings_report_time_custom':
+        return handleSettingsReportTimeCustom(ctx, deps);
       case 'settings_tz':
         return handleSettingsTz(ctx, deps);
       case 'delete_confirm_yes':
@@ -241,18 +160,27 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
       case 'delete_confirm_no':
         return handleDeleteConfirmNo(ctx, deps);
       default: {
-        const planDay = data.match(/^settings_plan_day_(\d)$/);
-        if (planDay) return handleSettingsPlanDay(ctx, parseInt(planDay[1], 10), deps);
-        const planTime = data.match(/^settings_plan_time_([\d-]+)$/);
-        if (planTime) return handleSettingsPlanTime(ctx, timeFromCallbackData(data), deps);
+        const declDay = data.match(/^settings_declaration_day_(\d)$/);
+        if (declDay) return handleSettingsDeclarationDay(ctx, parseInt(declDay[1], 10), deps);
+        const declTime = data.match(/^settings_declaration_time_([\d-]+)$/);
+        if (declTime) {
+          const time = timeFromSettingsCallbackData(data);
+          if (time) return handleSettingsDeclarationTime(ctx, time, deps);
+        }
         const fixationDays = data.match(/^settings_fixation_days_(.+)$/);
         if (fixationDays) return handleSettingsFixationDays(ctx, fixationDays[1], deps);
         const fixationTime = data.match(/^settings_fixation_time_([\d-]+)$/);
-        if (fixationTime) return handleSettingsFixationTime(ctx, timeFromCallbackData(data), deps);
-        const reviewDay = data.match(/^settings_review_day_(\d)$/);
-        if (reviewDay) return handleSettingsReviewDay(ctx, parseInt(reviewDay[1], 10), deps);
-        const reviewTime = data.match(/^settings_review_time_([\d-]+)$/);
-        if (reviewTime) return handleSettingsReviewTime(ctx, timeFromCallbackData(data), deps);
+        if (fixationTime) {
+          const time = timeFromSettingsCallbackData(data);
+          if (time) return handleSettingsFixationTime(ctx, time, deps);
+        }
+        const reportDay = data.match(/^settings_report_day_(\d)$/);
+        if (reportDay) return handleSettingsReportDay(ctx, parseInt(reportDay[1], 10), deps);
+        const reportTime = data.match(/^settings_report_time_([\d-]+)$/);
+        if (reportTime) {
+          const time = timeFromSettingsCallbackData(data);
+          if (time) return handleSettingsReportTime(ctx, time, deps);
+        }
         logger.debug({ channel: ctx.channel, userId: ctx.userId, callback: data }, 'Unknown callback, skip');
         return;
       }
@@ -267,15 +195,16 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
 
     if (step === 'onboard_timezone') return handleOnboardTimezone(ctx, text, deps);
     if (step?.startsWith('declaration_')) return handleDeclarationMessage(ctx, text, deps);
-    if (step?.startsWith('report_')) return handleReportMessage(ctx, text, deps);
-    if (step?.startsWith('planning_')) return handlePlanningMessage(ctx, text, deps);
     if (step?.match(/^fixation_(movement|nomovement|partial|weekclosed)_\d+$/)) return handleFixationMessage(ctx, text, deps);
-    if (step === 'review_user_note') return handleReviewUserNote(ctx, text, deps);
-    if (step === 'settings_plan_time_input' || step === 'settings_fixation_time_input' || step === 'settings_review_time_input') {
+    if (
+      step === 'settings_declaration_time_input' ||
+      step === 'settings_fixation_time_input' ||
+      step === 'settings_report_time_input'
+    ) {
       return handleSettingsTimeInput(ctx, text, deps);
     }
     if (step === 'settings_tz_input') return handleSettingsTzInput(ctx, text, deps);
-    if (!text.startsWith('/')) return handleIdleMessage(ctx, text, deps);
+    if (!text.startsWith('/')) return handleIdleMessage(ctx);
     logger.debug({ channel: ctx.channel, userId: ctx.userId, step }, 'Message not for any step, skip');
   }
 }

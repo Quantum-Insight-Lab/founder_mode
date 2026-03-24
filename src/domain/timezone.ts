@@ -43,7 +43,7 @@ export function instantToUserLocalDateString(utcInstant: Date, offsetMin: number
   return new Date(userLocalMs).toISOString().slice(0, 10);
 }
 
-/** Returns Date for getWeekId/getWeekStartEnd — noon UTC of user's local date. */
+/** Noon UTC anchor for a calendar YYYY-MM-DD (tests, legacy callers). Prefer week helpers on the string. */
 export function dateStrToWeekRef(dateStr: string): Date {
   return new Date(dateStr + 'T12:00:00Z');
 }

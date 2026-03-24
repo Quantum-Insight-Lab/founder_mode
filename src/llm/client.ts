@@ -16,13 +16,13 @@ export interface LLMResponse {
   latencyMs: number;
 }
 
-export type LLMCallType = 'declaration' | 'plan' | 'fixation' | 'review' | 'report';
+export type LLMCallType = 'declaration' | 'fixation' | 'report';
 
 export interface LLMOptions {
   idempotencyKey?: string;
   traceId?: string;
   userId?: string;
-  callType?: LLMCallType;
+  callType: LLMCallType;
 }
 
 const cfg = config().reliability;
@@ -41,7 +41,7 @@ export function createLLMClient() {
     async complete(
       systemPrompt: string,
       userMessage: string,
-      options: LLMOptions = {}
+      options: LLMOptions
     ): Promise<LLMResponse> {
       const idempotencyKey = options.idempotencyKey ?? randomUUID();
       const traceId = options.traceId ?? randomUUID();
@@ -52,7 +52,7 @@ export function createLLMClient() {
         [idempotencyKey]
       );
 
-      const callType = options.callType ?? 'plan';
+      const callType = options.callType;
 
       if (existing.rows.length > 0) {
         const row = existing.rows[0];
@@ -71,10 +71,8 @@ export function createLLMClient() {
 
       logger.debug({ idempotencyKey, userId: options.userId }, 'LLM API call');
       const start = Date.now();
-      const responseFormat =
-        callType === 'report' || callType === 'declaration'
-          ? ({ type: 'json_object' } as const)
-          : ({ type: 'text' } as const);
+      // Не передаём response_format: json_object требует слова «json» в messages;
+      // type: text не нужен — по умолчанию обычный текст.
       const response = await openai.chat.completions.create({
         model,
         messages: [
@@ -82,7 +80,6 @@ export function createLLMClient() {
           { role: 'user', content: userMessage },
         ],
         max_completion_tokens: 4096,
-        response_format: responseFormat,
       });
       const latencyMs = Date.now() - start;
 

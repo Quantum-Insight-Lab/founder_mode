@@ -3,8 +3,7 @@
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { Pool } from 'pg';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { applyAllMigrations } from './apply-migrations.js';
 
 const dbUrl = process.env.TEST_DATABASE_URL;
 
@@ -29,8 +28,7 @@ describe.skipIf(!dbUrl)('LLM idempotency (INV-006)', () => {
   beforeAll(async () => {
     const pool = new Pool({ connectionString: dbUrl });
     poolRef.current = pool;
-    const sql = readFileSync(resolve(process.cwd(), 'migrations/001_init.sql'), 'utf-8');
-    await pool.query(sql);
+    await applyAllMigrations(pool);
   });
 
   beforeEach(async () => {
@@ -44,8 +42,8 @@ describe.skipIf(!dbUrl)('LLM idempotency (INV-006)', () => {
     const client = createLLMClient();
     const key = `inv006-test-${Date.now()}`;
 
-    const r1 = await client.complete('sys', 'user', { idempotencyKey: key });
-    const r2 = await client.complete('sys', 'user', { idempotencyKey: key });
+    const r1 = await client.complete('sys', 'user', { idempotencyKey: key, callType: 'declaration' });
+    const r2 = await client.complete('sys', 'user', { idempotencyKey: key, callType: 'declaration' });
 
     expect(r1.content).toBe('cached response');
     expect(r2.content).toBe('cached response');

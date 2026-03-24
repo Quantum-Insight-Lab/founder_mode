@@ -99,10 +99,10 @@ export async function handleOnboardCtaLater(ctx: AppContext, deps: HandlerDeps):
   await ctx.reply(ONBOARDING_CTA_LATER_FIRST_MSG);
 }
 
-export async function handleOnboardReviewCtaYes(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleOnboardReportCtaYes(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   const { pool } = deps;
   const userId = ctx.userId;
-  logger.info({ userId }, 'Onboarding: review CTA yes');
+  logger.info({ userId }, 'Onboarding: report CTA yes');
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
   ctx.session.step = undefined;
@@ -110,10 +110,10 @@ export async function handleOnboardReviewCtaYes(ctx: AppContext, deps: HandlerDe
   await ctx.reply(ONBOARDING_CTA_YES_FINAL_MSG);
 }
 
-export async function handleOnboardReviewCtaLater(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleOnboardReportCtaLater(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   const { pool } = deps;
   const userId = ctx.userId;
-  logger.info({ userId }, 'Onboarding: review CTA later');
+  logger.info({ userId }, 'Onboarding: report CTA later');
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
   ctx.session.step = undefined;
@@ -143,12 +143,12 @@ export function registerOnboardingHandlers(bot: Bot<BotContext>, deps: HandlerDe
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleOnboardCtaLater(appCtx, deps);
   });
-  bot.callbackQuery('onboard_review_cta_yes', async (ctx) => {
+  bot.callbackQuery('onboard_report_cta_yes', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleOnboardReviewCtaYes(appCtx, deps);
+    await handleOnboardReportCtaYes(appCtx, deps);
   });
-  bot.callbackQuery('onboard_review_cta_later', async (ctx) => {
+  bot.callbackQuery('onboard_report_cta_later', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleOnboardReviewCtaLater(appCtx, deps);
+    await handleOnboardReportCtaLater(appCtx, deps);
   });
 }

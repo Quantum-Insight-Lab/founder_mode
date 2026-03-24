@@ -12,24 +12,6 @@ import type { HandlerDeps } from '../handlers/deps.js';
 const MAX_UPDATES_URL = 'https://platform-api.max.ru/updates';
 const MAX_API_BASE = 'https://platform-api.max.ru';
 
-function dbg(location: string, message: string, hypothesisId: string, data: Record<string, unknown>): void {
-  // #region agent log
-  fetch('http://localhost:7319/ingest/99c8c27e-61cc-44fe-b95c-d0b4a202837b', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a9c3c9' },
-    body: JSON.stringify({
-      sessionId: 'a9c3c9',
-      runId: 'max-avatar-debug-v1',
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-}
-
 /** MAX API update (message_created, message_callback, bot_started). */
 interface MaxUpdate {
   update_type?: string;
@@ -136,17 +118,6 @@ function extractAvatarUrl(u: MaxUpdate): string | null {
     }
     if (avatarUrl) break;
   }
-  dbg('max-adapter.ts:extractAvatarUrl:1', 'MAX update avatar url extraction', 'H1', {
-    updateType: u.update_type ?? '',
-    hasAvatarUrl: Boolean(avatarUrl),
-    avatarUrlPrefix: avatarUrl?.slice(0, 100) ?? '',
-    topLevelKeys: Object.keys((u as unknown as Record<string, unknown>) ?? {}).slice(0, 20),
-    senderKeys: sender ? Object.keys(sender).slice(0, 20) : [],
-    callbackUserKeys: callbackUser ? Object.keys(callbackUser).slice(0, 20) : [],
-    topUserKeys: topUser ? Object.keys(topUser).slice(0, 20) : [],
-    hasSender: Boolean(u.message?.sender),
-    hasCallback: Boolean(u.callback),
-  });
   return avatarUrl;
 }
 
@@ -178,11 +149,6 @@ function buildMaxAppContext(
       await sendMaxImage(token, externalId, image, filename, caption, format);
     },
     async getAvatarDataUrl() {
-      dbg('max-adapter.ts:getAvatarDataUrl:1', 'MAX avatar fetch start', 'H2', {
-        hasAvatarUrl: Boolean(avatarUrl),
-        avatarUrlPrefix: avatarUrl?.slice(0, 100) ?? '',
-        chatId: chatId ?? '',
-      });
       let resolvedAvatarUrl = avatarUrl;
       if (!resolvedAvatarUrl && chatId) {
         const membersUrl = `${MAX_API_BASE}/chats/${encodeURIComponent(chatId)}/members?user_ids=${encodeURIComponent(externalId)}&count=1`;
@@ -206,13 +172,6 @@ function buildMaxAppContext(
           } else {
             errorText = (await membersRes.text()).slice(0, 200);
           }
-          dbg('max-adapter.ts:getAvatarDataUrl:membersProbe', 'MAX members avatar probe', 'H8', {
-            status: membersRes.status,
-            ok: membersRes.ok,
-            hasPayload: Boolean(payload),
-            resolvedFromMembers: Boolean(resolvedAvatarUrl),
-            errorText,
-          });
 
           if (!resolvedAvatarUrl) {
             const fallbackUrl = `${MAX_API_BASE}/chats/${encodeURIComponent(chatId)}/members?count=100`;
@@ -233,17 +192,9 @@ function buildMaxAppContext(
             } else {
               fallbackErrorText = (await fallbackRes.text()).slice(0, 200);
             }
-            dbg('max-adapter.ts:getAvatarDataUrl:membersProbeFallback', 'MAX members avatar probe fallback', 'H8', {
-              status: fallbackRes.status,
-              ok: fallbackRes.ok,
-              resolvedFromMembers: Boolean(resolvedAvatarUrl),
-              errorText: fallbackErrorText,
-            });
           }
         } catch {
-          dbg('max-adapter.ts:getAvatarDataUrl:membersProbeFail', 'MAX members avatar probe failed', 'H8', {
-            chatId,
-          });
+          // probe failed
         }
       }
       if (!resolvedAvatarUrl) {
@@ -272,19 +223,9 @@ function buildMaxAppContext(
             } else {
               errorText = (await profileRes.text()).slice(0, 200);
             }
-            dbg('max-adapter.ts:getAvatarDataUrl:profileProbe', 'MAX user profile avatar probe', 'H9', {
-              url: profileUrl,
-              status: profileRes.status,
-              ok: profileRes.ok,
-              resolvedFromProfile: Boolean(resolvedAvatarUrl),
-              hasBody: Boolean(body),
-              errorText,
-            });
             if (resolvedAvatarUrl) break;
           } catch {
-            dbg('max-adapter.ts:getAvatarDataUrl:profileProbeFail', 'MAX user profile avatar probe failed', 'H9', {
-              url: profileUrl,
-            });
+            // probe failed
           }
         }
       }
@@ -298,35 +239,16 @@ function buildMaxAppContext(
       let res: Response;
       try {
         res = await tryFetch(true);
-        dbg('max-adapter.ts:getAvatarDataUrl:2', 'MAX avatar fetch with auth', 'H3', {
-          ok: res.ok,
-          status: res.status,
-          contentType: res.headers.get('content-type') ?? '',
-          absoluteUrlPrefix: absoluteUrl.slice(0, 100),
-        });
         if (!res.ok) {
           res = await tryFetch(false);
-          dbg('max-adapter.ts:getAvatarDataUrl:3', 'MAX avatar fetch without auth', 'H3', {
-            ok: res.ok,
-            status: res.status,
-            contentType: res.headers.get('content-type') ?? '',
-          });
         }
       } catch {
-        dbg('max-adapter.ts:getAvatarDataUrl:4', 'MAX avatar fetch exception', 'H4', {
-          absoluteUrlPrefix: absoluteUrl.slice(0, 100),
-        });
         return null;
       }
       if (!res.ok) return null;
       const bytes = await res.arrayBuffer();
       const headerType = res.headers.get('content-type')?.split(';')[0] || '';
       const contentType = headerType.startsWith('image/') ? headerType : guessImageContentType(absoluteUrl);
-      dbg('max-adapter.ts:getAvatarDataUrl:5', 'MAX avatar data url built', 'H5', {
-        bytes: bytes.byteLength,
-        headerType,
-        contentType,
-      });
       return `data:${contentType};base64,${Buffer.from(bytes).toString('base64')}`;
     },
     alertError(err: unknown, context: string, uid?: string) {

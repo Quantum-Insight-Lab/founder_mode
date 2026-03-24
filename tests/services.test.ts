@@ -1,14 +1,12 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { Pool } from 'pg';
-import { readFileSync, readdirSync } from 'fs';
-import { resolve } from 'path';
+import { applyAllMigrations } from './apply-migrations.js';
 import { createEventStore } from '../src/events/event-store.js';
 import { createProjectors } from '../src/projectors/index.js';
-import { createPlanService } from '../src/services/plan-service.js';
 import { createFixationService } from '../src/services/fixation-service.js';
-import { createReviewService } from '../src/services/review-service.js';
 import { createReportService } from '../src/services/report-service.js';
-import { getWeekId, getWeekStartEnd } from '../src/services/plan-service.js';
+import { createDeclarationService } from '../src/services/declaration-service.js';
+import { getWeekId } from '../src/services/week-service.js';
 
 const dbUrl = process.env.TEST_DATABASE_URL;
 
@@ -18,30 +16,22 @@ const mockLlm = { complete: mockComplete };
 describe.skipIf(!dbUrl)('services', () => {
   let pool: Pool;
   let eventStore: ReturnType<typeof createEventStore>;
-  let planService: ReturnType<typeof createPlanService>;
   let fixationService: ReturnType<typeof createFixationService>;
-  let reviewService: ReturnType<typeof createReviewService>;
   let reportService: ReturnType<typeof createReportService>;
+  let declarationService: ReturnType<typeof createDeclarationService>;
 
   const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
   const tgId = 'test-user-123';
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: dbUrl });
-    const migrationDir = resolve(process.cwd(), 'migrations');
-    const files = readdirSync(migrationDir)
-      .filter((f) => f.endsWith('.sql'))
-      .sort();
-    for (const file of files) {
-      const sql = readFileSync(resolve(migrationDir, file), 'utf-8');
-      await pool.query(sql);
-    }
+    await applyAllMigrations(pool);
   });
 
   beforeEach(async () => {
     mockComplete.mockClear();
     await pool.query(
-      'TRUNCATE events, weekly_declarations, weekly_reports, weekly_plans, daily_fixations, weekly_reviews, idempotency_cache, llm_calls CASCADE'
+      'TRUNCATE events, weekly_declarations, weekly_reports, daily_fixations, idempotency_cache, llm_calls CASCADE'
     );
     await pool.query('DELETE FROM users WHERE tg_id = $1', [tgId]);
     await pool.query('INSERT INTO users (user_id, tg_id) VALUES ($1, $2) ON CONFLICT (tg_id) DO NOTHING', [userId, tgId]);
@@ -49,50 +39,14 @@ describe.skipIf(!dbUrl)('services', () => {
     eventStore = createEventStore(pool);
     const projectors = createProjectors(pool);
     const serviceDeps = { pool, projectors, llm: mockLlm };
-    planService = createPlanService(eventStore, serviceDeps);
     fixationService = createFixationService(eventStore, serviceDeps);
-    reviewService = createReviewService(eventStore, serviceDeps);
     reportService = createReportService(eventStore, serviceDeps);
-  });
-
-  describe('planService', () => {
-    it('INV-002: second plan same week overwrites (upsert), one row per user/week', async () => {
-      const answers = { current_state: 's', main_focus: 'f', weekly_result: 'r', week_failure: 'fail' };
-      await planService.createPlan(userId, answers);
-      mockComplete.mockClear();
-      await planService.createPlan(userId, { ...answers, main_focus: 'f2' });
-
-      const weekId = getWeekId(new Date());
-      const rows = await pool.query('SELECT * FROM weekly_plans WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
-      expect(rows.rows.length).toBe(1);
-    });
-
-    it('creates plan and writes to events and weekly_plans', async () => {
-      const answers = {
-        current_state: 'test state',
-        main_focus: 'focus',
-        weekly_result: 'result',
-        week_failure: 'no sales',
-      };
-
-      const result = await planService.createPlan(userId, answers);
-
-      expect(result).toBe('Fake LLM response');
-      expect(mockComplete).toHaveBeenCalledTimes(1);
-
-      const events = await pool.query('SELECT * FROM events WHERE event_type = $1', ['PlanCreated']);
-      expect(events.rows.length).toBe(1);
-      expect(events.rows[0].payload).toMatchObject({ user_id: userId, main_focus: 'focus' });
-
-      const weekId = getWeekId(new Date());
-      const plans = await pool.query('SELECT * FROM weekly_plans WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
-      expect(plans.rows.length).toBe(1);
-    });
+    declarationService = createDeclarationService(eventStore, serviceDeps);
   });
 
   describe('fixationService', () => {
     beforeEach(async () => {
-      const weekId = getWeekId(new Date());
+      const weekId = getWeekId(new Date().toISOString().slice(0, 10));
       await pool.query(
         `INSERT INTO weekly_declarations (user_id, week_id, main_focus, win_result, week_failure, raw_post)
          VALUES ($1, $2, 'focus', 'result', 'fail', 'raw')
@@ -106,7 +60,7 @@ describe.skipIf(!dbUrl)('services', () => {
       const today = new Date().toISOString().slice(0, 10);
       const data1 = {
         date: today,
-        movement_branch: 'yes',
+        movement_branch: 'yes' as const,
         what_moved: 'a',
         attention_sink: 'b',
         tomorrow_step: 'c',
@@ -114,7 +68,7 @@ describe.skipIf(!dbUrl)('services', () => {
       };
       const data2 = {
         date: today,
-        movement_branch: 'no',
+        movement_branch: 'no' as const,
         what_stopped: 'x',
         attention_sink: 'z',
         tomorrow_step: 'r',
@@ -133,7 +87,7 @@ describe.skipIf(!dbUrl)('services', () => {
       const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
       const data = {
         date: tomorrow,
-        movement_branch: 'yes',
+        movement_branch: 'yes' as const,
         what_moved: 'x',
         attention_sink: 'y',
         tomorrow_step: 'z',
@@ -149,7 +103,7 @@ describe.skipIf(!dbUrl)('services', () => {
       const today = new Date().toISOString().slice(0, 10);
       const data = {
         date: today,
-        movement_branch: 'yes',
+        movement_branch: 'yes' as const,
         what_moved: 'x',
         attention_sink: 'y',
         tomorrow_step: 'z',
@@ -170,164 +124,9 @@ describe.skipIf(!dbUrl)('services', () => {
     });
   });
 
-  describe('reviewService', () => {
-    it('throws when plan not found', async () => {
-      await expect(reviewService.generateReview(userId)).rejects.toThrow(/Нужен план недели для обзора/);
-    });
-
-    it('INV-007: does not return another user\'s plan — user A gets error when only user B has data', async () => {
-      const userAId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-      const userBId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
-      await pool.query(
-        'INSERT INTO users (user_id, tg_id) VALUES ($1, $2), ($3, $4) ON CONFLICT (tg_id) DO NOTHING',
-        [userAId, 'user-A-007', userBId, 'user-B-007']
-      );
-      const weekId = getWeekId(new Date());
-      await pool.query(
-        `INSERT INTO weekly_plans (user_id, week_id, main_focus, weekly_result, raw_post)
-         VALUES ($1, $2, 'secret', 'r', 'p') ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'secret'`,
-        [userBId, weekId]
-      );
-      const { start } = getWeekStartEnd(new Date());
-      for (let i = 0; i < 3; i++) {
-        const d = new Date(start);
-        d.setDate(d.getDate() + i);
-        const date = d.toISOString().slice(0, 10);
-        const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
-        await pool.query(
-          `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
-           VALUES ($1, $2, $3, true, 't', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 't'`,
-          [userBId, date, day]
-        );
-      }
-
-      await expect(reviewService.generateReview(userAId)).rejects.toThrow(/Нужен план недели для обзора/);
-      expect(mockComplete).not.toHaveBeenCalled();
-    });
-
-    it('throws when insufficient reflections', async () => {
-      const weekId = getWeekId(new Date());
-      await pool.query(
-        `INSERT INTO weekly_plans (user_id, week_id, main_focus, weekly_result, raw_post)
-         VALUES ($1, $2, 'f', 'r', 'p') ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'f'`,
-        [userId, weekId]
-      );
-      // 0 reflections — validation should reject
-
-      await expect(reviewService.generateReview(userId)).rejects.toThrow(/фиксац|Сейчас: 0/);
-    });
-
-    it('generates review when plan and 3+ reflections exist', async () => {
-      const { start, end } = getWeekStartEnd(new Date());
-      const weekId = getWeekId(new Date());
-      await pool.query(
-        `INSERT INTO weekly_plans (user_id, week_id, main_focus, weekly_result, raw_post)
-         VALUES ($1, $2, 'f', 'r', 'p') ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'f'`,
-        [userId, weekId]
-      );
-      const dates = [start];
-      let d = new Date(start);
-      for (let i = 1; i < 3; i++) {
-        d.setDate(d.getDate() + 1);
-        dates.push(d.toISOString().slice(0, 10));
-      }
-      for (const date of dates) {
-        const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(date).getDay()];
-        await pool.query(
-          `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
-           VALUES ($1, $2, $3, true, 't', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 't'`,
-          [userId, date, day]
-        );
-      }
-
-      const result = await reviewService.generateReview(userId);
-
-      expect('content' in result).toBe(true);
-      expect((result as { content: string }).content).toBe('Fake LLM response');
-      expect(mockComplete).toHaveBeenCalledTimes(1);
-    });
-
-    it('INV-005: reflections outside day_range are not in review input', async () => {
-      const { start, end } = getWeekStartEnd(new Date());
-      const weekId = getWeekId(new Date());
-      await pool.query(
-        `INSERT INTO weekly_plans (user_id, week_id, main_focus, weekly_result, raw_post)
-         VALUES ($1, $2, 'f', 'r', 'p') ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'f'`,
-        [userId, weekId]
-      );
-      let d = new Date(start);
-      for (let i = 0; i < 3; i++) {
-        const date = d.toISOString().slice(0, 10);
-        const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(date).getDay()];
-        await pool.query(
-          `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
-           VALUES ($1, $2, $3, true, 't', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 't'`,
-          [userId, date, day]
-        );
-        d.setDate(d.getDate() + 1);
-      }
-      const outsideDate = new Date(end);
-      outsideDate.setDate(outsideDate.getDate() + 1);
-      const outsideStr = outsideDate.toISOString().slice(0, 10);
-      const outsideDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][outsideDate.getDay()];
-      await pool.query(
-        `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
-         VALUES ($1, $2, $3, true, 'outside', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 'outside'`,
-        [userId, outsideStr, outsideDay]
-      );
-
-      await reviewService.generateReview(userId);
-
-      const call = mockComplete.mock.calls[0];
-      const userMessage = call[1] as string;
-      const input = JSON.parse(userMessage) as { day_range: { start: string; end: string }; daily_fixations: { thought_of_day?: string }[] };
-      expect(input.day_range.start).toBe(start);
-      expect(input.day_range.end).toBe(end);
-      expect(input.daily_fixations.map((r) => r.thought_of_day)).not.toContain('outside');
-    });
-
-    it('INV-010: review uses same week_id and day_range as plan', async () => {
-      const { start, end } = getWeekStartEnd(new Date());
-      const weekId = getWeekId(new Date());
-      await pool.query(
-        `INSERT INTO weekly_plans (user_id, week_id, main_focus, weekly_result, raw_post)
-         VALUES ($1, $2, 'f', 'r', 'p') ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'f'`,
-        [userId, weekId]
-      );
-      const dates = [start];
-      let d = new Date(start);
-      for (let i = 1; i < 3; i++) {
-        d.setDate(d.getDate() + 1);
-        dates.push(d.toISOString().slice(0, 10));
-      }
-      for (const date of dates) {
-        const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(date).getDay()];
-        await pool.query(
-          `INSERT INTO daily_fixations (user_id, date, day, had_movement, thought_of_day, raw_post)
-           VALUES ($1, $2, $3, true, 't', 'r') ON CONFLICT (user_id, date) DO UPDATE SET thought_of_day = 't'`,
-          [userId, date, day]
-        );
-      }
-
-      await reviewService.generateReview(userId);
-
-      const reviewRows = await pool.query('SELECT * FROM weekly_reviews WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
-      expect(reviewRows.rows.length).toBe(1);
-      expect(reviewRows.rows[0].user_id).toBe(userId);
-      expect(reviewRows.rows[0].week_id).toBe(weekId);
-
-      const eventRows = await pool.query('SELECT payload FROM events WHERE event_type = $1 AND (payload->>\'user_id\') = $2 ORDER BY occurred_at DESC LIMIT 1', ['ReviewGenerated', userId]);
-      expect(eventRows.rows.length).toBe(1);
-      const payload = eventRows.rows[0].payload as { week_id: string; day_range_start: string; day_range_end: string };
-      expect(payload.week_id).toBe(weekId);
-      expect(payload.day_range_start).toBe(start);
-      expect(payload.day_range_end).toBe(end);
-    });
-  });
-
   describe('reportService', () => {
     async function seedDeclarationForCurrentWeek() {
-      const weekId = getWeekId(new Date());
+      const weekId = getWeekId(new Date().toISOString().slice(0, 10));
       await pool.query(
         `INSERT INTO weekly_declarations (user_id, week_id, main_focus, win_result, week_failure, raw_post)
          VALUES ($1, $2, 'focus', 'result', 'fail', 'raw')
@@ -337,84 +136,61 @@ describe.skipIf(!dbUrl)('services', () => {
       return weekId;
     }
 
-    it('renders deterministic card from valid JSON', async () => {
+    it('renders deterministic card from text response', async () => {
       const weekId = await seedDeclarationForCurrentWeek();
       mockComplete.mockResolvedValueOnce({
-        content: JSON.stringify({
-          week_id: weekId,
-          result_status: 'частично',
-          result_fact: 'Продукт запущен',
-          main_gap: 'Нет канала пользователей',
-          next_step: 'Сначала люди, потом развитие',
-        }),
+        content: 'Статус: частично\n\nФакт: Продукт запущен\n\nРазрыв: Нет канала пользователей',
         usage: { prompt_tokens: 0, completion_tokens: 0 },
         model: 'test',
         latencyMs: 0,
       });
 
-      const out = await reportService.createReport(
-        userId,
-        'Главное — запуск и выводы по каналу пользователей'
-      );
+      const out = await reportService.createReport(userId);
 
-      expect(out).toContain('Неделя x1');
-      expect(out).toContain('Результат частично.');
-      expect(out).toContain('Главный разрыв —');
+      expect(out).toContain('Статус: частично');
+      expect(out).toContain('Факт: Продукт запущен');
+      expect(out).toContain('Разрыв: Нет канала пользователей');
 
       const rows = await pool.query('SELECT * FROM weekly_reports WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
       expect(rows.rows.length).toBe(1);
       expect(rows.rows[0]).toMatchObject({
-        result_status: 'частично',
-        result_fact: 'Продукт запущен',
-        main_gap: 'Нет канала пользователей',
+        raw_post: out,
       });
     });
 
-    it('retries once when first LLM response is invalid JSON', async () => {
-      const weekId = await seedDeclarationForCurrentWeek();
+    it('retries once when first LLM response is empty', async () => {
+      await seedDeclarationForCurrentWeek();
       mockComplete
         .mockResolvedValueOnce({
-          content: 'not-json',
+          content: '   ',
           usage: { prompt_tokens: 0, completion_tokens: 0 },
           model: 'test',
           latencyMs: 0,
         })
         .mockResolvedValueOnce({
-          content: JSON.stringify({
-            week_id: weekId,
-            result_status: 'достигнут',
-            result_fact: 'Продукт запущен',
-            main_gap: 'Слабый охват',
-            next_step: 'Усилить канал привлечения',
-          }),
+          content: 'Статус: достигнут\n\nФакт: Продукт запущен\n\nРазрыв: Слабый охват',
           usage: { prompt_tokens: 0, completion_tokens: 0 },
           model: 'test',
           latencyMs: 0,
         });
 
-      const out = await reportService.createReport(userId, 'Нужно честно зафиксировать итог недели');
+      const out = await reportService.createReport(userId);
 
       expect(mockComplete).toHaveBeenCalledTimes(2);
-      expect(out).toContain('Результат достигнут.');
+      expect(out).toContain('Статус: достигнут');
     });
 
     it('keeps single event per week with same idempotency key', async () => {
       await seedDeclarationForCurrentWeek();
       mockComplete.mockResolvedValue({
-        content: JSON.stringify({
-          week_id: getWeekId(new Date()),
-          result_status: 'достигнут',
-          result_fact: 'Факт',
-          main_gap: 'Разрыв',
-          next_step: 'Шаг',
-        }),
+        content: 'Статус: достигнут\n\nФакт: Факт\n\nРазрыв: Разрыв',
         usage: { prompt_tokens: 0, completion_tokens: 0 },
         model: 'test',
         latencyMs: 0,
       });
 
-      await reportService.createReport(userId, 'Итог недели');
-      await reportService.createReport(userId, 'Итог недели');
+      await reportService.createReport(userId);
+      await reportService.createReport(userId);
 
       const events = await pool.query(
         "SELECT * FROM events WHERE event_type = 'ReportCreated' AND (payload->>'user_id') = $1",
@@ -424,30 +200,107 @@ describe.skipIf(!dbUrl)('services', () => {
     });
 
     it('throws when declaration for current week is missing', async () => {
-      await expect(reportService.createReport(userId, 'Итог')).rejects.toThrow(
+      await expect(reportService.createReport(userId)).rejects.toThrow(
         /Нужна declaration недели для Report/
       );
       expect(mockComplete).not.toHaveBeenCalled();
     });
 
-    it('throws when both LLM attempts return invalid JSON', async () => {
+    it('throws when both LLM attempts return empty text', async () => {
       await seedDeclarationForCurrentWeek();
       mockComplete
         .mockResolvedValueOnce({
-          content: 'invalid-json-1',
+          content: '  ',
           usage: { prompt_tokens: 0, completion_tokens: 0 },
           model: 'test',
           latencyMs: 0,
         })
         .mockResolvedValueOnce({
-          content: 'invalid-json-2',
+          content: '\n\n',
           usage: { prompt_tokens: 0, completion_tokens: 0 },
           model: 'test',
           latencyMs: 0,
         });
 
-      await expect(reportService.createReport(userId, 'Итог недели')).rejects.toThrow(
-        /не удалось получить валидный JSON/
+      await expect(reportService.createReport(userId)).rejects.toThrow(
+        /не удалось получить текст карточки/
+      );
+      expect(mockComplete).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('declarationService', () => {
+    const answers = { main_focus: 'фокус', win_result: 'результат', week_failure: 'провал' };
+
+    it('createDeclaration writes read model and DeclarationCreated event', async () => {
+      mockComplete.mockResolvedValueOnce({
+        content: 'Фокус: A\n\nРезультат: B\n\nПровал: C',
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+
+      const { rawPost, structured } = await declarationService.createDeclaration(userId, answers);
+
+      expect(structured).toMatchObject(answers);
+      expect(rawPost).toContain('Фокус:');
+
+      const weekId = getWeekId(new Date().toISOString().slice(0, 10));
+      const row = await pool.query('SELECT raw_post, main_focus FROM weekly_declarations WHERE user_id = $1 AND week_id = $2', [
+        userId,
+        weekId,
+      ]);
+      expect(row.rows.length).toBe(1);
+      expect(row.rows[0]?.main_focus).toBe('фокус');
+
+      const evs = await pool.query(
+        `SELECT event_type FROM events WHERE event_type = 'DeclarationCreated' AND (payload->>'user_id') = $1`,
+        [userId]
+      );
+      expect(evs.rows.length).toBe(1);
+    });
+
+    it('updateDeclarationManual appends DeclarationUpdated', async () => {
+      mockComplete.mockResolvedValue({
+        content: 'Фокус: X\n\nРезультат: Y\n\nПровал: Z',
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+      await declarationService.createDeclaration(userId, answers);
+      mockComplete.mockClear();
+
+      await declarationService.updateDeclarationManual(userId, {
+        main_focus: 'mf2',
+        win_result: 'wr2',
+        week_failure: 'wf2',
+      });
+
+      expect(mockComplete).toHaveBeenCalled();
+      const upd = await pool.query(
+        `SELECT COUNT(*)::int AS c FROM events WHERE event_type = 'DeclarationUpdated' AND (payload->>'user_id') = $1`,
+        [userId]
+      );
+      expect(upd.rows[0]?.c).toBe(1);
+    });
+
+    it('throws when declaration LLM returns empty twice', async () => {
+      mockComplete
+        .mockResolvedValueOnce({
+          content: '   ',
+          usage: { prompt_tokens: 0, completion_tokens: 0 },
+          model: 'test',
+          latencyMs: 0,
+        })
+        .mockResolvedValueOnce({
+          content: '\n',
+          usage: { prompt_tokens: 0, completion_tokens: 0 },
+          model: 'test',
+          latencyMs: 0,
+        });
+
+      await expect(declarationService.createDeclaration(userId, answers)).rejects.toThrow(
+        /Declaration: не удалось получить текст карточки/
       );
       expect(mockComplete).toHaveBeenCalledTimes(2);
     });

@@ -5,7 +5,7 @@ export function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** Format LLM response: header bold, body escaped. For plan/reflect/review. */
+/** Format LLM response: header bold, body escaped (Telegram HTML). */
 export function formatLlmResponse(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) return trimmed;

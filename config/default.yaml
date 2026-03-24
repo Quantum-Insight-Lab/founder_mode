@@ -1,6 +1,3 @@
-product:
-  min_reflections_for_review: 4
-
 reliability:
   llm_request_timeout_ms: 30000
   llm_max_retries: 2

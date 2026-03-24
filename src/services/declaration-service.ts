@@ -6,10 +6,9 @@ import type { DomainEvent } from '../events/types.js';
 import { EVENT_TYPES } from '../events/types.js';
 import { prompts } from '../llm/prompts.js';
 import type { ServiceDeps } from './deps.js';
-import { dateStrToWeekRef } from '../domain/timezone.js';
-import { formatDayFull } from '../domain/date-format.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { getWeekId } from './week-service.js';
+import { stripTrailingDotsPerLine } from '../domain/text-format.js';
 
 interface DeclarationAnswers {
   main_focus: string;
@@ -17,51 +16,10 @@ interface DeclarationAnswers {
   week_failure: string;
 }
 
-export interface DeclarationStructured {
+interface DeclarationStructured {
   main_focus: string;
   win_result: string;
   week_failure: string;
-}
-
-function parseJsonCandidate(raw: string): unknown {
-  const trimmed = raw.trim();
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  const payload = fenced ? fenced[1] : trimmed;
-  return JSON.parse(payload);
-}
-
-function toNonEmptyString(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function validateStructuredDeclaration(raw: unknown): DeclarationStructured {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    throw new Error('Declaration must be JSON object');
-  }
-  const record = raw as Record<string, unknown>;
-  const main_focus = toNonEmptyString(record.main_focus);
-  const win_result = toNonEmptyString(record.win_result);
-  const week_failure = toNonEmptyString(record.week_failure);
-
-  if (!main_focus || !win_result || !week_failure) {
-    throw new Error('Declaration JSON missing required fields');
-  }
-
-  return { main_focus, win_result, week_failure };
-}
-
-function renderDeclarationCard(data: DeclarationStructured): string {
-  return [
-    'Приоритет недели',
-    '',
-    `Фокус: ${data.main_focus}.`,
-    '',
-    `Ожидаемый результат: ${data.win_result}.`,
-    '',
-    `Критерий неудачи: ${data.week_failure}.`,
-  ].join('\n');
 }
 
 export function createDeclarationService(eventStore: EventStore, deps: ServiceDeps) {
@@ -70,44 +28,37 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
   async function generateDeclarationContent(
     userId: string,
     weekId: string,
-    dayName: string,
     answers: DeclarationAnswers,
     idempotencyKey: string
-  ): Promise<{ rawPost: string; structured: DeclarationStructured }> {
+  ): Promise<{ rawPost: string }> {
     const userMessage = [
       `main_focus: ${answers.main_focus}`,
       `win_result: ${answers.win_result}`,
       `week_failure: ${answers.week_failure}`,
     ].join('\n');
 
-    let structured: DeclarationStructured | null = null;
+    let rawPost = '';
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const attemptIdempotencyKey = attempt === 0 ? idempotencyKey : `${idempotencyKey}:retry_json_${attempt}`;
+      const attemptIdempotencyKey = attempt === 0 ? idempotencyKey : `${idempotencyKey}:retry_text_${attempt}`;
       const attemptUserMessage =
         attempt === 0
           ? userMessage
-          : `${userMessage}\n\nВерни только валидный JSON-объект по схеме из system prompt. Без markdown и комментариев.`;
-      const response = await llm.complete(prompts.weeklyDeclaration(dayName), attemptUserMessage, {
+          : `${userMessage}\n\nВерни только итоговый текст карточки, без markdown и комментариев.`;
+      const response = await llm.complete(prompts.weeklyDeclaration(), attemptUserMessage, {
         idempotencyKey: attemptIdempotencyKey,
         userId,
         traceId: getTraceId(),
         callType: 'declaration',
       });
-      try {
-        const parsed = parseJsonCandidate(response.content ?? '');
-        structured = validateStructuredDeclaration(parsed);
-        break;
-      } catch (err) {
-        logger.warn({ err, userId, weekId, attempt }, 'Declaration JSON parse/validate failed');
-      }
+      rawPost = stripTrailingDotsPerLine((response.content ?? '').trim());
+      if (rawPost.length > 0) break;
+      logger.warn({ userId, weekId, attempt }, 'Declaration text response is empty');
     }
 
-    if (!structured) {
-      throw new Error('Declaration: не удалось получить валидный JSON');
+    if (!rawPost) {
+      throw new Error('Declaration: не удалось получить текст карточки');
     }
-
-    const renderedCard = renderDeclarationCard(structured);
-    return { rawPost: renderedCard, structured };
+    return { rawPost };
   }
 
   return {
@@ -116,19 +67,16 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       answers: DeclarationAnswers
     ): Promise<{ rawPost: string; structured: DeclarationStructured }> {
       const userDateStr = await getUserLocalDate(userId, pool);
-      const weekRef = dateStrToWeekRef(userDateStr);
-      const weekId = getWeekId(weekRef);
-      const dayName = formatDayFull(new Date(`${userDateStr}T12:00:00Z`).getUTCDay());
-      logger.debug({ userId, weekId, dayName }, 'createDeclaration');
+      const weekId = getWeekId(userDateStr);
+      logger.debug({ userId, weekId }, 'createDeclaration');
 
       const idempotencyKey = `declaration:${userId}:${weekId}`;
-      const { rawPost, structured } = await generateDeclarationContent(
-        userId,
-        weekId,
-        dayName,
-        answers,
-        idempotencyKey
-      );
+      const { rawPost } = await generateDeclarationContent(userId, weekId, answers, idempotencyKey);
+      const structured: DeclarationStructured = {
+        main_focus: answers.main_focus.trim(),
+        win_result: answers.win_result.trim(),
+        week_failure: answers.week_failure.trim(),
+      };
 
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
         event_type: EVENT_TYPES.DeclarationCreated,
@@ -159,19 +107,16 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       answers: DeclarationAnswers
     ): Promise<{ rawPost: string; structured: DeclarationStructured }> {
       const userDateStr = await getUserLocalDate(userId, pool);
-      const weekRef = dateStrToWeekRef(userDateStr);
-      const weekId = getWeekId(weekRef);
-      const dayName = formatDayFull(new Date(`${userDateStr}T12:00:00Z`).getUTCDay());
-      logger.debug({ userId, weekId, dayName }, 'updateDeclarationManual');
+      const weekId = getWeekId(userDateStr);
+      logger.debug({ userId, weekId }, 'updateDeclarationManual');
 
       const idempotencyKey = `declaration:${userId}:${weekId}:manual:${randomUUID()}`;
-      const { rawPost, structured } = await generateDeclarationContent(
-        userId,
-        weekId,
-        dayName,
-        answers,
-        idempotencyKey
-      );
+      const { rawPost } = await generateDeclarationContent(userId, weekId, answers, idempotencyKey);
+      const structured: DeclarationStructured = {
+        main_focus: answers.main_focus.trim(),
+        win_result: answers.win_result.trim(),
+        week_failure: answers.week_failure.trim(),
+      };
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
         event_type: EVENT_TYPES.DeclarationUpdated,
         actor: { id: userId, role: 'user' },

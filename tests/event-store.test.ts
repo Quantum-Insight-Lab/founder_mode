@@ -2,8 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { Pool } from 'pg';
 import { createEventStore } from '../src/events/event-store.js';
 import { EVENT_TYPES } from '../src/events/types.js';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { applyAllMigrations } from './apply-migrations.js';
 
 const dbUrl = process.env.TEST_DATABASE_URL;
 
@@ -13,8 +12,7 @@ describe.skipIf(!dbUrl)('event-store', () => {
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: dbUrl });
-    const sql = readFileSync(resolve(process.cwd(), 'migrations/001_init.sql'), 'utf-8');
-    await pool.query(sql);
+    await applyAllMigrations(pool);
   });
 
   beforeEach(async () => {

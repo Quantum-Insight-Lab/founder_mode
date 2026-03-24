@@ -8,7 +8,8 @@ import { prompts } from '../llm/prompts.js';
 import { validateFixationDate, validateFixationBranch } from '../domain/validators.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
-import { getWeekId } from './plan-service.js';
+import { stripTrailingDotsPerLine } from '../domain/text-format.js';
+import { getWeekId } from './week-service.js';
 import { InvariantViolationError } from '../domain/errors.js';
 import type { ServiceDeps } from './deps.js';
 
@@ -41,7 +42,7 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
     }
     const date = new Date(data.date + 'T12:00:00Z');
     const day = formatDayFull(date.getUTCDay());
-    const weekId = getWeekId(date);
+    const weekId = getWeekId(data.date);
     let declarationOk = (
       await pool.query('SELECT 1 FROM weekly_declarations WHERE user_id = $1 AND week_id = $2 LIMIT 1', [
         userId,
@@ -50,7 +51,7 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
     ).rows.length > 0;
     if (!declarationOk) {
       // Дата из «пограничной» недели: допускаем фиксацию, если есть declaration текущей локальной недели.
-      const todayWeekId = getWeekId(new Date(todayStr + 'T12:00:00Z'));
+      const todayWeekId = getWeekId(todayStr);
       declarationOk =
         (
           await pool.query('SELECT 1 FROM weekly_declarations WHERE user_id = $1 AND week_id = $2 LIMIT 1', [
@@ -110,8 +111,8 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       traceId: getTraceId(),
       callType: 'fixation',
     });
-
-    payload.raw_post = response.content;
+    const rawPost = stripTrailingDotsPerLine(response.content ?? '');
+    payload.raw_post = rawPost;
 
     const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
       event_type: EVENT_TYPES.FixationSubmitted,
@@ -127,7 +128,7 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
     const appended = await eventStore.append(event);
     await projectors.handleEvent(appended);
 
-    return response.content;
+    return rawPost;
   }
 
   return {

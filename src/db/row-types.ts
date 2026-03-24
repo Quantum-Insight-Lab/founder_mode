@@ -14,32 +14,12 @@ export interface EventsRow {
   schema_version: number;
 }
 
-export interface WeeklyPlanRow {
-  user_id: string;
-  week_id: string;
-  current_state: string | null;
-  main_focus: string;
-  weekly_result: string;
-  week_failure: string | null;
-  raw_post: string;
-}
-
 export interface WeeklyDeclarationRow {
   user_id: string;
   week_id: string;
   main_focus: string;
   win_result: string;
   week_failure: string;
-  raw_post: string;
-}
-
-export interface WeeklyReportRow {
-  user_id: string;
-  week_id: string;
-  result_status: string;
-  result_fact: string;
-  main_gap: string;
-  next_step: string;
   raw_post: string;
 }
 

@@ -33,24 +33,23 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT users_at_least_one_channel CHECK (tg_id IS NOT NULL OR max_id IS NOT NULL)
 );
 
--- User settings (timezone, notifications, review question)
+-- User settings (timezone, notifications)
 CREATE TABLE IF NOT EXISTS user_settings (
   user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
   timezone VARCHAR(64),
-  skip_review_user_note BOOLEAN NOT NULL DEFAULT false,
   notifications_enabled BOOLEAN NOT NULL DEFAULT false,
-  plan_notify_day INT,
-  plan_notify_time VARCHAR(5),
+  declaration_notify_day INT,
+  declaration_notify_time VARCHAR(5),
   fixation_notify_days VARCHAR(32),
   fixation_notify_time VARCHAR(5),
-  review_notify_day INT,
-  review_notify_time VARCHAR(5),
-  last_plan_notify_week_id VARCHAR(32),
+  report_notify_day INT,
+  report_notify_time VARCHAR(5),
+  last_declaration_notify_week_id VARCHAR(32),
   last_fixation_notify_date DATE,
-  last_review_notify_week_id VARCHAR(32),
+  last_report_notify_week_id VARCHAR(32),
   skip_hint_shown_at TIMESTAMPTZ,
   fixation_onboarding_hint_shown_at TIMESTAMPTZ NULL,
-  onboarding_review_invite_sent_at TIMESTAMPTZ NULL,
+  onboarding_report_invite_sent_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -61,20 +60,6 @@ CREATE TABLE IF NOT EXISTS weeks (
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Weekly plans (read model)
-CREATE TABLE IF NOT EXISTS weekly_plans (
-  user_id UUID NOT NULL REFERENCES users(user_id),
-  week_id VARCHAR(32) NOT NULL,
-  current_state TEXT,
-  main_focus TEXT NOT NULL,
-  weekly_result TEXT NOT NULL,
-  week_failure TEXT,
-  raw_post TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, week_id)
 );
 
 -- Weekly declarations (read model)
@@ -94,10 +79,6 @@ CREATE TABLE IF NOT EXISTS weekly_declarations (
 CREATE TABLE IF NOT EXISTS weekly_reports (
   user_id UUID NOT NULL REFERENCES users(user_id),
   week_id VARCHAR(32) NOT NULL,
-  result_status TEXT NOT NULL,
-  result_fact TEXT NOT NULL,
-  main_gap TEXT NOT NULL,
-  next_step TEXT NOT NULL,
   raw_post TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -122,15 +103,6 @@ CREATE TABLE IF NOT EXISTS daily_fixations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (user_id, date)
-);
-
--- Weekly reviews (read model)
-CREATE TABLE IF NOT EXISTS weekly_reviews (
-  user_id UUID NOT NULL REFERENCES users(user_id),
-  week_id VARCHAR(32) NOT NULL,
-  content TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, week_id)
 );
 
 -- LLM calls (audit, INV-006)

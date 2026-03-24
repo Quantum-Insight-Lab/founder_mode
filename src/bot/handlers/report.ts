@@ -3,26 +3,57 @@ import type { BotContext } from '../context.js';
 import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
-import { REVIEW_USER_NOTE_QUESTION } from '../conversations.js';
+import {
+  ONBOARDING_AFTER_REPORT_1,
+  ONBOARDING_AFTER_REPORT_QUESTION,
+} from '../conversations.js';
 import { logger } from '../../observability/logger.js';
 import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
-import { formatLlmResponse } from '../../domain/html.js';
-import { dateStrToWeekRef } from '../../domain/timezone.js';
-import { getUserLocalDate } from '../../db/user-timezone.js';
-import { getWeekId, getWeekStartEnd } from '../../services/plan-service.js';
+import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
+import { getWeekId, getWeekStartEnd } from '../../services/week-service.js';
+import { renderReportCardPng } from '../../services/report-card-render.js';
 import type { HandlerDeps } from './deps.js';
 
+async function sendReportAsCard(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  userId: string,
+  rawPost: string
+): Promise<void> {
+  const { handleLlmReply, pool } = deps;
+  const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
+  const username = ctx.displayName?.trim() || 'Founder';
+  const avatarDataUrl = await ctx.getAvatarDataUrl?.();
+  const avatarBackgroundImage = avatarDataUrl ? `url(${avatarDataUrl})` : 'none';
+  try {
+    const png = await renderReportCardPng({
+      username,
+      content: rawPost,
+      timeHHmm,
+      avatarBackgroundImage,
+    });
+    if (ctx.replyImage) {
+      logger.info({ userId, channel: ctx.channel }, 'Report card image sent');
+      await ctx.replyImage(png, 'report.png');
+      return;
+    }
+    logger.info({ userId, channel: ctx.channel }, 'Report card image unsupported in channel, fallback to text');
+  } catch (err) {
+    logger.error({ err, userId }, 'Report card PNG failed, falling back to text');
+  }
+  await handleLlmReply(ctx, rawPost, userId, 'report');
+}
+
 export async function handleReportCommand(ctx: AppContext, deps: HandlerDeps): Promise<void> {
-  const { pool } = deps;
+  const { pool, reportService, formatErrorForUser, countRows } = deps;
   const userId = ctx.userId;
   logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /report');
   ensureSession(ctx);
   ctx.session.reportEditMode = false;
 
   const userDateStr = await getUserLocalDate(userId, pool);
-  const weekRef = dateStrToWeekRef(userDateStr);
-  const weekId = getWeekId(weekRef);
-  const { start, end } = getWeekStartEnd(weekRef);
+  const weekId = getWeekId(userDateStr);
+  const { start, end } = getWeekStartEnd(userDateStr);
   const existing = await pool.query(
     'SELECT raw_post FROM weekly_reports WHERE user_id = $1 AND week_id = $2',
     [userId, weekId]
@@ -58,10 +89,30 @@ export async function handleReportCommand(ctx: AppContext, deps: HandlerDeps): P
     return;
   }
 
-  ctx.session.step = 'report_user_note';
-  ctx.session.reportAnswers = undefined;
   funnelStarted.inc({ type: 'report' });
-  await ctx.reply(REVIEW_USER_NOTE_QUESTION);
+  const wasFirstReport =
+    (await countRows(pool, 'SELECT COUNT(*)::int AS c FROM weekly_reports WHERE user_id = $1', [userId])) === 0;
+  try {
+    const rawPost = await reportService.createReport(userId);
+    funnelCompleted.inc({ type: 'report' });
+    logger.info({ userId }, 'Report created');
+    await sendReportAsCard(ctx, deps, userId, rawPost ?? '');
+    if (wasFirstReport) {
+      await ctx.reply(ONBOARDING_AFTER_REPORT_1);
+      await ctx.reply(ONBOARDING_AFTER_REPORT_QUESTION, {
+        reply_markup: [[
+          { text: 'Да', callback_data: 'onboard_report_cta_yes' },
+          { text: 'Позже', callback_data: 'onboard_report_cta_later' },
+        ]],
+      });
+      ensureSession(ctx);
+      ctx.session.step = 'onboard_report_cta';
+    }
+  } catch (err) {
+    logger.error({ err, userId }, 'Report creation failed');
+    ctx.alertError?.(err, 'report', userId);
+    await ctx.reply(formatErrorForUser(err));
+  }
 }
 
 export async function handleReportShow(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -72,51 +123,39 @@ export async function handleReportShow(ctx: AppContext, deps: HandlerDeps): Prom
   ctx.session.step = undefined;
 
   const userDateStr = await getUserLocalDate(userId, pool);
-  const weekId = getWeekId(dateStrToWeekRef(userDateStr));
+  const weekId = getWeekId(userDateStr);
   const row = await pool.query<{ raw_post: string }>(
     'SELECT raw_post FROM weekly_reports WHERE user_id = $1 AND week_id = $2',
     [userId, weekId]
   );
   const rawPost = row.rows[0]?.raw_post ?? '';
   await ctx.answerCallbackQuery();
-  await ctx.reply(formatLlmResponse(rawPost) || 'Report пуст.', { parse_mode: 'HTML' });
+  if (!rawPost.trim()) {
+    await ctx.reply('Report пуст.');
+    return;
+  }
+  await sendReportAsCard(ctx, deps, userId, rawPost);
 }
 
-export async function handleReportEdit(ctx: AppContext): Promise<void> {
+export async function handleNotifyReport(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  await ctx.answerCallbackQuery();
+  return handleReportCommand(ctx, deps);
+}
+
+export async function handleReportEdit(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  const { reportService, formatErrorForUser } = deps;
+  const userId = ctx.userId;
   ensureSession(ctx);
   await ctx.answerCallbackQuery();
-  ctx.session.step = 'report_user_note';
-  ctx.session.reportEditMode = true;
-  ctx.session.reportAnswers = undefined;
   funnelStarted.inc({ type: 'report' });
-  await ctx.reply(REVIEW_USER_NOTE_QUESTION);
-}
-
-export async function handleReportMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
-  const { reportService, handleLlmReply, formatErrorForUser } = deps;
-  const userId = ctx.userId;
-  if (ctx.session?.step !== 'report_user_note') return;
-  ctx.session.step = undefined;
-  const isEdit = ctx.session.reportEditMode ?? false;
-  ctx.session.reportEditMode = undefined;
-
   try {
-    if (isEdit) {
-      const rawPost = await reportService.updateReportManual(userId, text);
-      funnelCompleted.inc({ type: 'report' });
-      logger.info({ userId }, 'Report manually updated');
-      await ctx.reply('❗️ Report обновлён.\n\n' + formatLlmResponse(rawPost?.trim() || ''), {
-        parse_mode: 'HTML',
-      });
-    } else {
-      await ctx.reply('🟢 Готовлю report...');
-      const rawPost = await reportService.createReport(userId, text);
-      funnelCompleted.inc({ type: 'report' });
-      logger.info({ userId }, 'Report created');
-      await handleLlmReply(ctx, rawPost ?? '', userId, 'report');
-    }
+    const rawPost = await reportService.updateReportManual(userId);
+    funnelCompleted.inc({ type: 'report' });
+    logger.info({ userId }, 'Report manually updated');
+    await ctx.reply('❗️ Report обновлён.');
+    await sendReportAsCard(ctx, deps, userId, rawPost ?? '');
   } catch (err) {
-    logger.error({ err, userId }, isEdit ? 'Report manual update failed' : 'Report creation failed');
+    logger.error({ err, userId }, 'Report manual update failed');
     ctx.alertError?.(err, 'report', userId);
     await ctx.reply(formatErrorForUser(err));
   }
@@ -133,15 +172,10 @@ export function registerReportHandlers(bot: Bot<BotContext>, deps: HandlerDeps):
   });
   bot.callbackQuery('report_edit', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleReportEdit(appCtx);
+    await handleReportEdit(appCtx, deps);
   });
-  bot.on('message:text').filter(
-    (ctx) =>
-      ctx.session?.step === 'report_user_note' &&
-      !ctx.message.text?.trim().startsWith('/'),
-    async (ctx) => {
-      const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-      await handleReportMessage(appCtx, ctx.message.text ?? '', deps);
-    }
-  );
+  bot.callbackQuery('notify_report', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleNotifyReport(appCtx, deps);
+  });
 }

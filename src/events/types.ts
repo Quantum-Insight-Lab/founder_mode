@@ -1,15 +1,12 @@
 /**
- * Event types per PDA 4.4 and domain_graph.md
+ * Event types (PDA 4.4 event-sourced core).
  */
 export const EVENT_TYPES = {
   DeclarationCreated: 'DeclarationCreated',
   DeclarationUpdated: 'DeclarationUpdated',
   ReportCreated: 'ReportCreated',
   ReportUpdated: 'ReportUpdated',
-  PlanCreated: 'PlanCreated',
-  PlanUpdated: 'PlanUpdated',
   FixationSubmitted: 'FixationSubmitted',
-  ReviewGenerated: 'ReviewGenerated',
   UserRegistered: 'UserRegistered',
 } as const;
 
@@ -36,16 +33,6 @@ interface BaseEvent {
   schema_version: 1;
 }
 
-export interface PlanCreatedPayload {
-  user_id: string;
-  week_id: string;
-  current_state: string;
-  main_focus: string;
-  weekly_result: string;
-  week_failure: string;
-  raw_post: string;
-}
-
 export interface DeclarationCreatedPayload {
   user_id: string;
   week_id: string;
@@ -58,10 +45,6 @@ export interface DeclarationCreatedPayload {
 export interface ReportCreatedPayload {
   user_id: string;
   week_id: string;
-  result_status: string;
-  result_fact: string;
-  main_gap: string;
-  next_step: string;
   raw_post: string;
 }
 
@@ -83,24 +66,12 @@ export interface FixationSubmittedPayload {
   new_focus?: string;
 }
 
-export interface ReviewGeneratedPayload {
-  user_id: string;
-  week_id: string;
-  content: string;
-  day_range_start: string;
-  day_range_end: string;
-}
-
 export interface UserRegisteredPayload {
   user_id: string; // UUID, internal
   tg_id?: string; // Telegram platform ID
   max_id?: string; // MAX messenger platform ID (at least one of tg_id, max_id)
 }
 
-export interface PlanCreatedEvent extends BaseEvent {
-  event_type: 'PlanCreated';
-  payload: PlanCreatedPayload;
-}
 export interface DeclarationCreatedEvent extends BaseEvent {
   event_type: 'DeclarationCreated';
   payload: DeclarationCreatedPayload;
@@ -117,17 +88,9 @@ export interface ReportUpdatedEvent extends BaseEvent {
   event_type: 'ReportUpdated';
   payload: ReportCreatedPayload;
 }
-export interface PlanUpdatedEvent extends BaseEvent {
-  event_type: 'PlanUpdated';
-  payload: PlanCreatedPayload;
-}
 export interface FixationSubmittedEvent extends BaseEvent {
   event_type: 'FixationSubmitted';
   payload: FixationSubmittedPayload;
-}
-export interface ReviewGeneratedEvent extends BaseEvent {
-  event_type: 'ReviewGenerated';
-  payload: ReviewGeneratedPayload;
 }
 export interface UserRegisteredEvent extends BaseEvent {
   event_type: 'UserRegistered';
@@ -139,8 +102,5 @@ export type DomainEvent =
   | DeclarationUpdatedEvent
   | ReportCreatedEvent
   | ReportUpdatedEvent
-  | PlanCreatedEvent
-  | PlanUpdatedEvent
   | FixationSubmittedEvent
-  | ReviewGeneratedEvent
   | UserRegisteredEvent;

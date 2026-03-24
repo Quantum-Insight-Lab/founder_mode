@@ -2,10 +2,6 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { parse as parseYaml } from 'yaml';
 
-export interface ProductConfig {
-  min_reflections_for_review: number;
-}
-
 export interface ReliabilityConfig {
   llm_request_timeout_ms: number;
   llm_max_retries: number;
@@ -18,7 +14,6 @@ export interface ObservabilityConfig {
 }
 
 export interface Config {
-  product: ProductConfig;
   reliability: ReliabilityConfig;
   observability: ObservabilityConfig;
 }

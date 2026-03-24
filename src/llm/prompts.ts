@@ -10,21 +10,7 @@ function loadPrompt(name: string): string {
 }
 
 export const prompts = {
-  weeklyPlan: (dayName: string) =>
-    loadPrompt('WEEKLY_PLAN_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
-  weeklyDeclaration: (dayName: string) =>
-    loadPrompt('WEEKLY_DECLARATION_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
+  weeklyDeclaration: () => loadPrompt('WEEKLY_DECLARATION_SYSTEM_PROMPT'),
   dailyFixation: () => loadPrompt('DAILY_FIXATION_SYSTEM_PROMPT'),
-  executionLog: (dayName: string) =>
-    loadPrompt('EXECUTION_LOG_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
-  weeklyReview: (dayName: string) =>
-    loadPrompt('WEEKLY_REVIEW_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
-  weeklyReviewSoft: (dayName: string) =>
-    loadPrompt('WEEKLY_REVIEW_SOFT_PROMPT').replace(/<День недели>/g, dayName),
-  weeklyReport: (dayName: string, weekId: string) =>
-    loadPrompt('WEEKLY_REPORT_SYSTEM_PROMPT')
-      .replace(/<День недели>/g, dayName)
-      .replace(/<week_id>/g, weekId),
-  weeklyReset: (dayName: string) =>
-    loadPrompt('WEEKLY_RESET_SYSTEM_PROMPT').replace(/<День недели>/g, dayName),
+  weeklyReport: () => loadPrompt('WEEKLY_REPORT_SYSTEM_PROMPT'),
 };

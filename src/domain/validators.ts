@@ -1,5 +1,5 @@
 /**
- * Domain validators per invariants.md (pure logic, no I/O)
+ * Domain validators (pure logic, no I/O).
  */
 import { invariant } from './errors.js';
 
@@ -12,16 +12,6 @@ export function validateFixationDate(dateStr: string, todayStr: string): void {
     'Рефлексия только за прошедшие дни',
     '004'
   );
-}
-
-/** INV-003: проверка по уже загруженным данным (без запросов к БД) */
-export function validateReviewMinDataFromMeta(meta: {
-  plan_exists?: boolean;
-  ref_count?: number;
-}): void {
-  invariant(Boolean(meta?.plan_exists), 'Нужен план недели для обзора', '003');
-  const count = meta?.ref_count ?? 0;
-  invariant(count >= 1, `Нужна хотя бы одна фиксация для обзора. Сейчас: ${count}.`, '003');
 }
 
 /**

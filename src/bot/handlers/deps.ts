@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
-import type { AppContext } from '../transport/types.js';
+import type { AppContext, Channel } from '../transport/types.js';
 
-export type Channel = 'telegram' | 'max';
+export type { Channel };
 
 export interface HandlerDeps {
   pool: Pool;
@@ -15,14 +15,12 @@ export interface HandlerDeps {
     ctx: AppContext,
     rawPost: string,
     userId: string,
-    context: 'declaration' | 'plan' | 'fixation' | 'review' | 'report'
+    context: 'declaration' | 'fixation' | 'report'
   ) => Promise<void>;
   countRows: (p: Pool, query: string, params?: unknown[]) => Promise<number>;
   declarationService: ReturnType<typeof import('../../services/declaration-service.js').createDeclarationService>;
   reportService: ReturnType<typeof import('../../services/report-service.js').createReportService>;
-  planService: ReturnType<typeof import('../../services/plan-service.js').createPlanService>;
   fixationService: ReturnType<typeof import('../../services/fixation-service.js').createFixationService>;
-  reviewService: ReturnType<typeof import('../../services/review-service.js').createReviewService>;
   settingsService: ReturnType<typeof import('../../services/settings-service.js').createSettingsService>;
   showSettingsMenu: (ctx: AppContext, userId: string) => Promise<void>;
 }

@@ -3,16 +3,16 @@
  */
 export const ONBOARDING_INTRO =
   `Добро пожаловать в Founder Mode 👋\n\n` +
-  `Режим планирования и рефлексии.\n\n` +
+  `Режим фокуса и рефлексии.\n\n` +
   `<b>Цикл:</b>\n` +
-  `план недели → фиксация дня → обзор недели\n\n` +
-  `План задаёт фокус.\n` +
-  `Рефлексия фиксирует движение.\n` +
-  `Обзор собирает всё в один срез.\n\n` +
+  `declaration недели → фиксация дня → report недели\n\n` +
+  `Declaration задаёт фокус.\n` +
+  `Фиксация — движение за день.\n` +
+  `Report — срез недели.\n\n` +
   `<b>Команды:</b>\n` +
-  `/declaration - спланировать неделю\n` +
-  `/fixation - фиксировать день\n` +
-  `/report - собрать обзор недели\n` +
+  `/declaration — зафиксировать declaration недели\n` +
+  `/fixation — фиксировать день\n` +
+  `/report — итог недели\n` +
   `/settings - настройки\n` +
   `/delete - удалить данные`;
 
@@ -75,11 +75,11 @@ export const ONBOARDING_AFTER_REFLECT =
 
 export const ONBOARDING_AFTER_REFLECT_HINT = '❗️ Часть эксперимента завершена.';
 
-export const ONBOARDING_SATURDAY_REVIEW_INVITE =
+export const ONBOARDING_SATURDAY_REPORT_INVITE =
   'Неделя подходит к концу.\n\n' +
   'Давай соберём короткий обзор: что получилось, и куда двигаться дальше. Напиши (нажми) /report';
 
-export const ONBOARDING_AFTER_REVIEW_1 =
+export const ONBOARDING_AFTER_REPORT_1 =
   '❗️ Эксперимент завершён.\n\n' +
   'Теперь у тебя есть:\n' +
   'вектор недели,\n' +
@@ -87,46 +87,39 @@ export const ONBOARDING_AFTER_REVIEW_1 =
   'и сжатый обзор результата.\n\n' +
   'Если захочешь очистить историю,\nможно удалить данные командой /delete.';
 
-export const ONBOARDING_AFTER_REVIEW_QUESTION = 'Хочешь продолжить следующий недельный цикл?';
+export const ONBOARDING_AFTER_REPORT_QUESTION = 'Хочешь продолжить следующий недельный цикл?';
 
 export const ONBOARDING_CTA_LATER_MSG =
   'Хорошо.\n\n' +
   'Когда захочешь вернуться, мы начнём новый цикл с нового фокуса.\n\n' +
   'Founder Mode работает по календарной неделе\n(понедельник → воскресенье).\n\n' +
-  'Обзор недели собирается по этому периоду.\n\n' +
+  'Report собирается по этому периоду.\n\n' +
   'Команды:\n' +
-  '/declaration - спланировать неделю\n' +
-  '/fixation - фиксировать день\n' +
-  '/report - собрать обзор недели\n' +
+  '/declaration — declaration недели\n' +
+  '/fixation — фиксировать день\n' +
+  '/report — итог недели\n' +
   '/settings - настройки\n' +
   '/delete - удалить данные';
 
 export const ONBOARDING_CTA_YES_FINAL_MSG =
   'Отлично.\n\n' +
   'Founder Mode работает по календарной неделе\n(понедельник → воскресенье).\n\n' +
-  'Обзор недели собирается по этому периоду.\n\n' +
+  'Report собирается по этому периоду.\n\n' +
   'Команды:\n' +
-  '/declaration - спланировать неделю\n' +
-  '/fixation - фиксировать день\n' +
-  '/report - собрать обзор недели\n' +
+  '/declaration — declaration недели\n' +
+  '/fixation — фиксировать день\n' +
+  '/report — итог недели\n' +
   '/settings - настройки\n' +
   '/delete - удалить данные';
 
-/**
- * Planning: 4 questions flow
- */
-export const PLANNING_QUESTIONS = [
-  { key: 'current_state', text: 'С чего начинаешь неделю? (проекты, состояние)' },
-  { key: 'main_focus', text: 'Главный фокус недели?' },
-  { key: 'weekly_result', text: 'Конкретный результат недели? (измеримый итог)' },
+/** Вопросы для /declaration */
+export const WEEKLY_DECLARATION_QUESTIONS = [
+  { key: 'main_focus', text: 'Один главный приоритет на неделю?' },
+  { key: 'win_result', text: 'Какой артефакт или результат должен появиться к концу недели?' },
   { key: 'week_failure', text: 'Что будет считаться провалом недели?' },
 ] as const;
 
-/** Показывается под «Главный фокус недели?» при первом планировании пользователя */
-export const MAIN_FOCUS_FIRST_PLANNING_HINT =
-  '💡 Один приоритет — ключевой принцип.\nСписок задач рассеивает фокус. Один приоритет — это вектор.';
-
-export type PlanningAnswerKey = (typeof PLANNING_QUESTIONS)[number]['key'];
+export type WeeklyDeclarationAnswerKey = (typeof WEEKLY_DECLARATION_QUESTIONS)[number]['key'];
 
 /** Редактирование declaration заблокировано при наличии фиксаций в локальной неделе */
 export const DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS =
@@ -172,17 +165,14 @@ export const REFLECTION_QUESTIONS_WEEK_CLOSED = [
   { key: 'thought_of_day', text: 'Что стало понятнее к концу дня?' },
 ] as const;
 
-/** Вопрос перед генерацией обзора — усилитель смысла для LLM */
-export const REVIEW_USER_NOTE_QUESTION = 'Что ты считаешь главным итогом недели, если сказать одной строкой?';
-
 /** Time options for notification settings */
 export const NOTIFICATION_TIMES = ['08:00', '14:00', '20:00'] as const;
 
 /** Settings */
 export const SETTINGS_NOTIFICATIONS = 'Уведомления';
-export const SETTINGS_PLAN = 'План';
+export const SETTINGS_DECLARATION = 'Declaration';
 export const SETTINGS_FIXATION = 'Фиксация';
-export const SETTINGS_REVIEW = 'Обзор';
+export const SETTINGS_REPORT = 'Report';
 export const SETTINGS_TIMEZONE = 'Часовой пояс';
 export const SETTINGS_TIME_INPUT_QUESTION = 'Введите время (ЧЧ:ММ), например 14:30:';
 export const SETTINGS_TIME_INVALID = '❌ Неверный формат. Введите время ЧЧ:ММ (например 14:30).';

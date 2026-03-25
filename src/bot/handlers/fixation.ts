@@ -39,16 +39,18 @@ async function sendFixationAsCard(
   userId: string,
   rawPost: string
 ): Promise<void> {
-  const { handleLlmReply, pool, resolveAvatarBackgroundImage } = deps;
+  const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'Founder';
   const avatarBackgroundImage = await resolveAvatarBackgroundImage(ctx, userId);
+  const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
     const png = await renderFixationCardPng({
       username,
       content: rawPost,
       timeHHmm,
       avatarBackgroundImage,
+      rhythmLine,
     });
     if (ctx.replyImage) {
       logger.info({ userId, channel: ctx.channel }, 'Fixation card image sent');
@@ -86,7 +88,7 @@ async function proceedWithFixationDate(ctx: AppContext, date: string, userId: st
 
   if (existing.rows.length > 0) {
     ctx.session.step = 'fixation_choice';
-    await ctx.reply(`Рефлексия за ${date} уже есть.`, {
+    await ctx.reply(`Фиксация за ${date} уже есть.`, {
       reply_markup: [[
         { text: 'Показать', callback_data: 'fixation_show' },
         { text: 'Изменить', callback_data: 'fixation_edit' },

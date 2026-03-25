@@ -17,6 +17,7 @@ describe('buildCardHtmlFromTemplate', () => {
     expect(html).toContain('&lt;script&gt;');
     expect(html).not.toContain('{{USERNAME}}');
     expect(html).not.toContain('{{CONTENT}}');
+    expect(html).not.toContain('{{RHYTHM}}');
     expect(html).toContain('14:30');
   });
 

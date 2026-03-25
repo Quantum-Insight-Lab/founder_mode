@@ -19,7 +19,7 @@ export async function handleDeleteCommand(ctx: AppContext, deps: HandlerDeps): P
   }
   ensureSession(ctx);
   ctx.session.step = 'delete_confirm';
-  await ctx.reply('⚠️ Удалить все данные? Планы, рефлексии, обзоры. Необратимо.', {
+  await ctx.reply('⚠️ Удалить все данные? Планы, фиксации, отчёты. Необратимо.', {
     reply_markup: [[
       { text: 'Да, удалить', callback_data: 'delete_confirm_yes' },
       { text: 'Нет', callback_data: 'delete_confirm_no' },

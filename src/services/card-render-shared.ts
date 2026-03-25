@@ -12,6 +12,8 @@ export type CardHtmlInput = {
   content: string;
   timeHHmm: string;
   avatarBackgroundImage: string;
+  /** «Ритм N» или пусто — скрывает левую часть подвала */
+  rhythmLine?: string;
 };
 
 export type CardPreset = { name: string; template: string };
@@ -57,6 +59,7 @@ export async function buildCardHtmlFromTemplate(
     CONTENT: input.content,
     TIME: input.timeHHmm,
     AVATAR_BG_IMAGE: input.avatarBackgroundImage,
+    RHYTHM: input.rhythmLine ?? '',
   };
   let html = template;
   for (const [key, value] of Object.entries(data)) {

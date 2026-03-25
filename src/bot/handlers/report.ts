@@ -20,16 +20,18 @@ async function sendReportAsCard(
   userId: string,
   rawPost: string
 ): Promise<void> {
-  const { handleLlmReply, pool, resolveAvatarBackgroundImage } = deps;
+  const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'Founder';
   const avatarBackgroundImage = await resolveAvatarBackgroundImage(ctx, userId);
+  const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
     const png = await renderReportCardPng({
       username,
       content: rawPost,
       timeHHmm,
       avatarBackgroundImage,
+      rhythmLine,
     });
     if (ctx.replyImage) {
       logger.info({ userId, channel: ctx.channel }, 'Report card image sent');

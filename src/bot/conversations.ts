@@ -5,13 +5,13 @@ export const ONBOARDING_INTRO =
   `Добро пожаловать в Founder Mode 👋\n\n` +
   `Режим фокуса и рефлексии.\n\n` +
   `<b>Цикл:</b>\n` +
-  `declaration недели → фиксация дня → report недели\n\n` +
-  `Declaration задаёт фокус.\n` +
+  `приоритет недели → фиксация дня → недельный отчёт\n\n` +
+  `Приоритет задаёт фокус.\n` +
   `Фиксация — движение за день.\n` +
-  `Report — срез недели.\n\n` +
+  `Отчёт — срез недели.\n\n` +
   `<b>Команды:</b>\n` +
-  `/declaration — зафиксировать declaration недели\n` +
-  `/fixation — фиксировать день\n` +
+  `/declaration — задать приоритет\n` +
+  `/fixation — зафиксировать день\n` +
   `/report — итог недели\n` +
   `/settings - настройки\n` +
   `/delete - удалить данные`;
@@ -68,14 +68,14 @@ export const ONBOARDING_FIRST_REFLECT_INTRO =
   'Давай быстро посмотрим, что на самом деле произошло сегодня.\n\nЭто займёт около минуты.';
 
 export const ONBOARDING_NEXT_REFLECT_INTRO =
-  'Время коротко зафиксировать день. Посмотрим, было ли движение по главному.';
+  'Время коротко зафиксировать день. Посмотрим, было ли движение.';
 
 export const ONBOARDING_AFTER_REFLECT =
   'День зафиксирован.\n\nЗавтра проверим,\nполучится ли сделать следующий шаг.';
 
 export const ONBOARDING_AFTER_REFLECT_HINT = '❗️ Часть эксперимента завершена.';
 
-export const ONBOARDING_SATURDAY_REPORT_INVITE =
+export const ONBOARDING_SUNDAY_REPORT_INVITE =
   'Неделя подходит к концу.\n\n' +
   'Давай соберём короткий обзор: что получилось, и куда двигаться дальше. Напиши (нажми) /report';
 
@@ -87,16 +87,16 @@ export const ONBOARDING_AFTER_REPORT_1 =
   'и сжатый обзор результата.\n\n' +
   'Если захочешь очистить историю,\nможно удалить данные командой /delete.';
 
-export const ONBOARDING_AFTER_REPORT_QUESTION = 'Хочешь продолжить следующий недельный цикл?';
+export const ONBOARDING_AFTER_REPORT_QUESTION = 'Хочешь продолжить?';
 
 export const ONBOARDING_CTA_LATER_MSG =
   'Хорошо.\n\n' +
   'Когда захочешь вернуться, мы начнём новый цикл с нового фокуса.\n\n' +
   'Founder Mode работает по календарной неделе\n(понедельник → воскресенье).\n\n' +
-  'Report собирается по этому периоду.\n\n' +
+  'Отчёт собирается по этому периоду.\n\n' +
   'Команды:\n' +
-  '/declaration — declaration недели\n' +
-  '/fixation — фиксировать день\n' +
+  '/declaration — задать приоритет\n' +
+  '/fixation — зафиксировать день\n' +
   '/report — итог недели\n' +
   '/settings - настройки\n' +
   '/delete - удалить данные';
@@ -104,10 +104,10 @@ export const ONBOARDING_CTA_LATER_MSG =
 export const ONBOARDING_CTA_YES_FINAL_MSG =
   'Отлично.\n\n' +
   'Founder Mode работает по календарной неделе\n(понедельник → воскресенье).\n\n' +
-  'Report собирается по этому периоду.\n\n' +
+  'Отчёт собирается по этому периоду.\n\n' +
   'Команды:\n' +
-  '/declaration — declaration недели\n' +
-  '/fixation — фиксировать день\n' +
+  '/declaration — задать приоритет\n' +
+  '/fixation — зафиксировать день\n' +
   '/report — итог недели\n' +
   '/settings - настройки\n' +
   '/delete - удалить данные';
@@ -128,7 +128,7 @@ export const DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS =
 /**
  * Reflection: intro + branched flow by had_movement
  */
-export const REFLECTION_DATE_QUESTION = 'За какой день рефлексия?';
+export const REFLECTION_DATE_QUESTION = 'За какой день фиксация?';
 
 /** Подсказка при первом пропуске рефлексии (косой текст) */
 export const REFLECTION_SKIP_HINT =
@@ -166,10 +166,12 @@ export const NOTIFICATION_TIMES = ['08:00', '14:00', '20:00'] as const;
 
 /** Settings */
 export const SETTINGS_NOTIFICATIONS = 'Уведомления';
-export const SETTINGS_DECLARATION = 'Declaration';
+export const SETTINGS_DECLARATION = 'Приоритет';
 export const SETTINGS_FIXATION = 'Фиксация';
-export const SETTINGS_REPORT = 'Report';
+export const SETTINGS_REPORT = 'Отчёт';
 export const SETTINGS_TIMEZONE = 'Часовой пояс';
 export const SETTINGS_AVATAR = 'Аватар';
+/** Главное меню /settings — вход в подменю напоминаний */
+export const SETTINGS_CONFIGURE_NOTIFICATIONS = 'Настроить уведомления';
 export const SETTINGS_TIME_INPUT_QUESTION = 'Введите время (ЧЧ:ММ), например 14:30:';
 export const SETTINGS_TIME_INVALID = '❌ Неверный формат. Введите время ЧЧ:ММ (например 14:30).';

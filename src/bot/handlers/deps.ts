@@ -23,6 +23,9 @@ export interface HandlerDeps {
   fixationService: ReturnType<typeof import('../../services/fixation-service.js').createFixationService>;
   settingsService: ReturnType<typeof import('../../services/settings-service.js').createSettingsService>;
   showSettingsMenu: (ctx: AppContext, userId: string) => Promise<void>;
+  showNotificationsSettingsMenu: (ctx: AppContext, userId: string) => Promise<void>;
   saveUploadedAvatar: (userId: string, bytes: Buffer, mime?: string | null) => Promise<void>;
   resolveAvatarBackgroundImage: (ctx: AppContext, userId: string) => Promise<string>;
+  /** Строка «Ритм N» для подвала карточки или null (скрыть). */
+  getRhythmLineForCard: (userId: string) => Promise<string | null>;
 }

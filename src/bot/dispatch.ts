@@ -46,6 +46,8 @@ import {
 } from './handlers/fixation.js';
 import {
   handleSettingsCommand,
+  handleSettingsNotificationsMenu,
+  handleSettingsNotificationsBack,
   handleSettingsNotifToggle,
   handleSettingsDeclaration,
   handleSettingsDeclarationDay,
@@ -145,6 +147,10 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleNotifyFixation(ctx, deps);
       case 'notify_report':
         return handleNotifyReport(ctx, deps);
+      case 'settings_notifications':
+        return handleSettingsNotificationsMenu(ctx, deps);
+      case 'settings_notifications_back':
+        return handleSettingsNotificationsBack(ctx, deps);
       case 'settings_notif_toggle':
         return handleSettingsNotifToggle(ctx, deps);
       case 'settings_declaration':

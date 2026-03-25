@@ -29,3 +29,11 @@ export function getWeekStartEnd(localCalendarYmd: string): { start: string; end:
     end: end.toISOString().slice(0, 10),
   };
 }
+
+/** ISO week id (Monday YYYYMMDD) for the calendar week immediately before `localCalendarYmd`'s week. */
+export function getPreviousWeekId(localCalendarYmd: string): string {
+  const { start } = getWeekStartEnd(localCalendarYmd);
+  const dt = new Date(start + 'T12:00:00Z');
+  dt.setUTCDate(dt.getUTCDate() - 7);
+  return getWeekId(dt.toISOString().slice(0, 10));
+}

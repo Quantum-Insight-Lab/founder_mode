@@ -59,13 +59,13 @@ export function matchesFixationNotificationWindow(
   return userMins >= targetMins - windowMin && userMins <= targetMins + windowMin;
 }
 
-/** Saturday 20:00 local, onboarding report invite slot. */
-export function isOnboardingSaturdayReportInviteSlot(
+/** Sunday 12:00 local, onboarding report invite slot. */
+export function isOnboardingSundayReportInviteSlot(
   userDay: number,
   userMins: number,
   windowMin: number
 ): boolean {
-  if (userDay !== 6) return false;
-  const targetMins = 20 * 60;
+  if (userDay !== 0) return false;
+  const targetMins = 12 * 60;
   return userMins >= targetMins - windowMin && userMins <= targetMins + windowMin;
 }

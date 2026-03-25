@@ -15,6 +15,7 @@ import { createFixationService } from '../../services/fixation-service.js';
 import { createSettingsService, formatDay, formatDays, formatTime } from '../../services/settings-service.js';
 import { loadAvatarDataUrl, storeNormalizedAvatar } from '../../services/avatar-storage.js';
 import { resolveAvatarBackgroundImageValue } from '../../services/avatar-resolver.js';
+import { getRhythmLineForCard as fetchRhythmLineForCard } from '../../services/rhythm-card.js';
 import { createLLMClient } from '../../llm/client.js';
 import { getPool, getUserByTgId, getUserByMaxId, markOnboarded, countRows } from '../../db/index.js';
 import { initTokenSpikeChecker } from '../../observability/token-spike.js';
@@ -25,6 +26,7 @@ import {
   SETTINGS_REPORT,
   SETTINGS_TIMEZONE,
   SETTINGS_AVATAR,
+  SETTINGS_CONFIGURE_NOTIFICATIONS,
 } from '../conversations.js';
 import type { HandlerDeps } from './deps.js';
 import { registerOnboardingHandlers } from './onboarding.js';
@@ -137,6 +139,36 @@ export function createAppDeps(): HandlerDeps {
       `<b>${SETTINGS_AVATAR}</b>: ${avatarStr}`;
 
     const reply_markup: import('../transport/types.js').InlineButton[][] = [
+      [{ text: SETTINGS_CONFIGURE_NOTIFICATIONS, callback_data: 'settings_notifications' }],
+      [{ text: 'Настроить аватар', callback_data: 'settings_avatar' }],
+      [{ text: 'Часовой пояс', callback_data: 'settings_tz' }],
+    ];
+    await ctx.reply(text, { parse_mode: 'HTML', reply_markup });
+  }
+
+  async function showNotificationsSettingsMenu(
+    ctx: import('../transport/types.js').AppContext,
+    userId: string
+  ): Promise<void> {
+    const settings = await settingsService.getOrCreate(userId);
+    const notif = settings.notifications_enabled ? 'Вкл' : 'Выкл';
+    const declarationStr = settings.declaration_notify_day != null
+      ? `${formatDay(settings.declaration_notify_day)} ${formatTime(settings.declaration_notify_time)}`
+      : '—';
+    const reflectStr = settings.fixation_notify_days
+      ? `${formatDays(settings.fixation_notify_days)} ${formatTime(settings.fixation_notify_time)}`
+      : '—';
+    const reportStr = settings.report_notify_day != null
+      ? `${formatDay(settings.report_notify_day)} ${formatTime(settings.report_notify_time)}`
+      : '—';
+
+    const text =
+      `<b>${SETTINGS_NOTIFICATIONS}</b>: ${notif}\n` +
+      `<b>${SETTINGS_DECLARATION}</b>: ${declarationStr}\n` +
+      `<b>${SETTINGS_FIXATION}</b>: ${reflectStr}\n` +
+      `<b>${SETTINGS_REPORT}</b>: ${reportStr}`;
+
+    const reply_markup: import('../transport/types.js').InlineButton[][] = [
       [
         {
           text: notif === 'Вкл' ? 'Выкл уведомления' : 'Вкл уведомления',
@@ -144,12 +176,11 @@ export function createAppDeps(): HandlerDeps {
         },
       ],
       [
-        { text: 'Декларация', callback_data: 'settings_declaration' },
+        { text: 'Приоритет', callback_data: 'settings_declaration' },
         { text: 'Фиксация', callback_data: 'settings_fixation' },
         { text: 'Отчёт', callback_data: 'settings_report' },
       ],
-      [{ text: 'Настроить аватар', callback_data: 'settings_avatar' }],
-      [{ text: 'Часовой пояс', callback_data: 'settings_tz' }],
+      [{ text: 'Назад', callback_data: 'settings_notifications_back' }],
     ];
     await ctx.reply(text, { parse_mode: 'HTML', reply_markup });
   }
@@ -180,6 +211,11 @@ export function createAppDeps(): HandlerDeps {
     });
   }
 
+  async function getRhythmLineForCard(userId: string): Promise<string | null> {
+    const today = await getUserLocalDate(userId, pool);
+    return fetchRhythmLineForCard(pool, userId, today);
+  }
+
   return {
     pool,
     getUserByTgId: (tgId) => getUserByTgId(pool, tgId),
@@ -195,8 +231,10 @@ export function createAppDeps(): HandlerDeps {
     fixationService,
     settingsService,
     showSettingsMenu,
+    showNotificationsSettingsMenu,
     saveUploadedAvatar,
     resolveAvatarBackgroundImage,
+    getRhythmLineForCard,
   };
 }
 

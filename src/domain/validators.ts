@@ -9,7 +9,7 @@ import { invariant } from './errors.js';
 export function validateFixationDate(dateStr: string, todayStr: string): void {
   invariant(
     dateStr <= todayStr,
-    'Рефлексия только за прошедшие дни',
+    'Фиксация только за прошедшие дни',
     '004'
   );
 }
@@ -44,17 +44,17 @@ export function validateFixationBranch(data: {
   } else if (branch === 'partial') {
     invariant(
       filled(data.what_moved) &&
-        filled(data.why_partial) &&
-        filled(data.attention_sink) &&
-        filled(data.tomorrow_step),
+      filled(data.why_partial) &&
+      filled(data.attention_sink) &&
+      filled(data.tomorrow_step),
       'В ветке «Частично» заполни: что удалось сделать, почему частично, что ещё заняло внимание, шаг на завтра',
       '008'
     );
   } else if (branch === 'week_closed') {
     invariant(
       filled(data.new_focus) &&
-        filled(data.what_moved) &&
-        filled(data.tomorrow_step),
+      filled(data.what_moved) &&
+      filled(data.tomorrow_step),
       'В ветке «Результат недели закрыт» заполни: новый фокус, что сделано, следующий шаг',
       '008'
     );

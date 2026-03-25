@@ -43,6 +43,21 @@ function avatarModeLabel(mode: 'uploaded' | 'messenger' | 'default'): string {
   return 'стандартный';
 }
 
+/** Parse data URL from getAvatarDataUrl for optional preview send. */
+function tryBufferFromDataUrl(dataUrl: string): { buffer: Buffer; filename: string } | null {
+  const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
+  if (!m) return null;
+  const mime = m[1];
+  try {
+    const buffer = Buffer.from(m[2], 'base64');
+    if (buffer.length === 0) return null;
+    const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
+    return { buffer, filename: `avatar-preview.${ext}` };
+  } catch {
+    return null;
+  }
+}
+
 function avatarSettingsRows(): InlineButton[][] {
   return [
     [{ text: 'Загрузить', callback_data: 'settings_avatar_upload' }],
@@ -59,13 +74,25 @@ export async function handleSettingsCommand(ctx: AppContext, deps: HandlerDeps):
   await deps.showSettingsMenu(ctx, ctx.userId);
 }
 
+export async function handleSettingsNotificationsMenu(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  await ctx.answerCallbackQuery();
+  ensureSession(ctx);
+  await deps.showNotificationsSettingsMenu(ctx, ctx.userId);
+}
+
+export async function handleSettingsNotificationsBack(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  await ctx.answerCallbackQuery();
+  ensureSession(ctx);
+  await deps.showSettingsMenu(ctx, ctx.userId);
+}
+
 export async function handleSettingsNotifToggle(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   const { settingsService } = deps;
   const userId = ctx.userId;
   await ctx.answerCallbackQuery();
   await settingsService.toggleNotifications(userId);
   logger.info({ userId }, 'Settings notifications toggled');
-  await deps.showSettingsMenu(ctx, userId);
+  await deps.showNotificationsSettingsMenu(ctx, userId);
 }
 
 export async function handleSettingsDeclaration(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -73,7 +100,7 @@ export async function handleSettingsDeclaration(ctx: AppContext, deps: HandlerDe
   ensureSession(ctx);
   ctx.session.step = 'settings_declaration_day';
   ctx.session.settingsData = { editing: 'declaration' };
-  await ctx.reply('День напоминания о declaration недели:', { reply_markup: getDayPickerRows('settings_declaration_day') });
+  await ctx.reply('День напоминания о приоритете недели:', { reply_markup: getDayPickerRows('settings_declaration_day') });
 }
 
 export async function handleSettingsDeclarationDay(ctx: AppContext, day: number, deps: HandlerDeps): Promise<void> {
@@ -102,7 +129,7 @@ export async function handleSettingsDeclarationTime(ctx: AppContext, time: strin
   ensureSession(ctx);
   ctx.session.step = undefined;
   ctx.session.settingsData = undefined;
-  await deps.showSettingsMenu(ctx, userId);
+  await deps.showNotificationsSettingsMenu(ctx, userId);
 }
 
 export async function handleSettingsFixation(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -147,7 +174,7 @@ export async function handleSettingsFixationTime(ctx: AppContext, time: string, 
   ensureSession(ctx);
   ctx.session.step = undefined;
   ctx.session.settingsData = undefined;
-  await deps.showSettingsMenu(ctx, userId);
+  await deps.showNotificationsSettingsMenu(ctx, userId);
 }
 
 export async function handleSettingsReport(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -155,7 +182,7 @@ export async function handleSettingsReport(ctx: AppContext, deps: HandlerDeps): 
   ensureSession(ctx);
   ctx.session.step = 'settings_report_day';
   ctx.session.settingsData = { editing: 'report' };
-  await ctx.reply('День напоминания о report недели:', { reply_markup: getDayPickerRows('settings_report_day') });
+  await ctx.reply('День напоминания о недельном отчёте:', { reply_markup: getDayPickerRows('settings_report_day') });
 }
 
 export async function handleSettingsReportDay(ctx: AppContext, day: number, deps: HandlerDeps): Promise<void> {
@@ -184,7 +211,7 @@ export async function handleSettingsReportTime(ctx: AppContext, time: string, de
   ensureSession(ctx);
   ctx.session.step = undefined;
   ctx.session.settingsData = undefined;
-  await deps.showSettingsMenu(ctx, userId);
+  await deps.showNotificationsSettingsMenu(ctx, userId);
 }
 
 export async function handleSettingsTz(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -223,7 +250,29 @@ export async function handleSettingsAvatarMessenger(ctx: AppContext, deps: Handl
   await settingsService.setAvatarModeMessenger(ctx.userId);
   ctx.session.step = undefined;
   ctx.session.settingsData = undefined;
-  await ctx.reply('Готово. Теперь используем аватар мессенджера (если доступен).');
+
+  // Same source as loadMessenger in resolveAvatarBackgroundImage (card render).
+  const messengerAvatar = (await ctx.getAvatarDataUrl?.()) ?? null;
+
+  if (messengerAvatar) {
+    await ctx.reply('Готово. Аватар мессенджера доступен — он будет на карточках.');
+    if (ctx.replyImage) {
+      const parsed = tryBufferFromDataUrl(messengerAvatar);
+      if (parsed) {
+        try {
+          await ctx.replyImage(parsed.buffer, parsed.filename, 'Предпросмотр');
+        } catch (err) {
+          logger.warn({ err, userId: ctx.userId }, 'Avatar messenger preview send failed');
+        }
+      }
+    }
+  } else {
+    await ctx.reply(
+      'Режим «из мессенджера» включён, но сейчас аватар недоступен.\n\n' +
+      'Загрузите изображение вручную, иначе будет использован стандартный аватар.'
+    );
+  }
+
   await deps.showSettingsMenu(ctx, ctx.userId);
 }
 
@@ -306,7 +355,7 @@ export async function handleSettingsTimeInput(ctx: AppContext, text: string, dep
   }
   ctx.session!.step = undefined;
   ctx.session!.settingsData = undefined;
-  await deps.showSettingsMenu(ctx, userId);
+  await deps.showNotificationsSettingsMenu(ctx, userId);
 }
 
 export async function handleSettingsTzInput(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
@@ -359,6 +408,14 @@ export function registerSettingsHandlers(bot: import('grammy').Bot<BotContext>, 
   bot.command('settings', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleSettingsCommand(appCtx, deps);
+  });
+  bot.callbackQuery('settings_notifications', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleSettingsNotificationsMenu(appCtx, deps);
+  });
+  bot.callbackQuery('settings_notifications_back', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleSettingsNotificationsBack(appCtx, deps);
   });
   bot.callbackQuery('settings_notif_toggle', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });

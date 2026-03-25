@@ -91,7 +91,7 @@ describe.skipIf(!dbUrl)('services', () => {
         tomorrow_step: 'z',
       };
       await expect(fixationService.submitFixation(userId, data)).rejects.toThrow(
-        /Рефлексия только за прошедшие дни/
+        /Фиксация только за прошедшие дни/
       );
       expect(mockComplete).not.toHaveBeenCalled();
     });

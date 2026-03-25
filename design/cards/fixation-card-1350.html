@@ -150,13 +150,30 @@
       font-weight: 400;
     }
 
-    .time {
+    .footer-bar {
       position: absolute;
+      left: 54px;
       right: 54px;
       bottom: 34px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 24px;
+    }
+
+    .rhythm {
       font-family: "Roboto", sans-serif;
       font-size: 38px;
       color: #000;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .time {
+      font-family: "Roboto", sans-serif;
+      font-size: 38px;
+      color: #000;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -183,7 +200,10 @@
           <p class="field">{{CONTENT}}</p>
         </div>
 
-        <div class="time">{{TIME}}</div>
+        <div class="footer-bar">
+          <span class="rhythm">{{RHYTHM}}</span>
+          <span class="time">{{TIME}}</span>
+        </div>
       </div>
     </div>
   </div>

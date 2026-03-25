@@ -1,6 +1,6 @@
 /**
  * Notification scheduler: sends "Время X" + [Продолжить] at configured day+time per user.
- * Also sends onboarding first-Saturday report invite (no notification settings required).
+ * Also sends onboarding first-Sunday report invite (no notification settings required).
  */
 import cron from 'node-cron';
 import type { Pool } from 'pg';
@@ -9,12 +9,12 @@ import { parseTimezoneOffset } from '../domain/timezone.js';
 import { getWeekStartEnd } from '../services/week-service.js';
 import {
   computeUserLocalNotificationClock,
-  isOnboardingSaturdayReportInviteSlot,
+  isOnboardingSundayReportInviteSlot,
   matchesFixationNotificationWindow,
   matchesNotificationTimeInWindow,
 } from './notification-logic.js';
 import type { InlineButton } from '../bot/transport/types.js';
-import { ONBOARDING_SATURDAY_REPORT_INVITE } from '../bot/conversations.js';
+import { ONBOARDING_SUNDAY_REPORT_INVITE } from '../bot/conversations.js';
 
 const NOTIFY_WINDOW_MIN = 7;
 
@@ -155,7 +155,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
         const offsetMin = r.timezone ? parseTimezoneOffset(r.timezone) : null;
         if (offsetMin === null) continue;
         const { userDay, userMins, userDateStr } = computeUserLocalNotificationClock(now, offsetMin);
-        if (!isOnboardingSaturdayReportInviteSlot(userDay, userMins, NOTIFY_WINDOW_MIN)) continue;
+        if (!isOnboardingSundayReportInviteSlot(userDay, userMins, NOTIFY_WINDOW_MIN)) continue;
         const { start: weekStart, end: weekEnd } = getWeekStartEnd(userDateStr);
         const refCount = await pool.query<{ c: number }>(
           'SELECT COUNT(*)::int AS c FROM daily_fixations WHERE user_id = $1 AND date >= $2 AND date <= $3',
@@ -182,7 +182,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           }
           return ok;
         };
-        const ok = await sendOnboard(ONBOARDING_SATURDAY_REPORT_INVITE);
+        const ok = await sendOnboard(ONBOARDING_SUNDAY_REPORT_INVITE);
         if (ok) {
           await pool.query(
             `INSERT INTO user_settings (user_id, onboarding_report_invite_sent_at) VALUES ($1, NOW())

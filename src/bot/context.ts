@@ -1,6 +1,6 @@
 import type { Context, SessionFlavor } from 'grammy';
 
-/** Данные сессии рефлексии при заполнении по веткам movement_branch */
+/** Данные сессии фиксации при заполнении по веткам movement_branch */
 export interface FixationSessionData {
   date?: string;
   had_movement?: boolean;

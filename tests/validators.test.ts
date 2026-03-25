@@ -6,7 +6,7 @@ describe('validators', () => {
   describe('INV-004: validateFixationDate', () => {
     it('throws when date is in the future', () => {
       expect(() => validateFixationDate('2026-03-10', '2026-03-09')).toThrow(InvariantViolationError);
-      expect(() => validateFixationDate('2026-03-10', '2026-03-09')).toThrow('Рефлексия только за прошедшие дни');
+      expect(() => validateFixationDate('2026-03-10', '2026-03-09')).toThrow('Фиксация только за прошедшие дни');
     });
 
     it('passes when date is today', () => {

@@ -6,7 +6,7 @@ import type { DomainEvent } from '../events/types.js';
 import { EVENT_TYPES } from '../events/types.js';
 import { prompts } from '../llm/prompts.js';
 import type { ServiceDeps } from './deps.js';
-import { stripTrailingDotsPerLine } from '../domain/text-format.js';
+import { ensureDoubleNewlinesIfMultiline, stripTrailingDotsPerLine } from '../domain/text-format.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from './week-service.js';
 import { InvariantViolationError } from '../domain/errors.js';
@@ -48,12 +48,11 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
       tomorrow_step: string | null;
       what_stopped: string | null;
       attention_sink: string | null;
-      thought_of_day: string;
       why_partial: string | null;
       new_focus: string | null;
     }>(
       `SELECT day, had_movement, movement_branch, what_moved, tomorrow_step, what_stopped,
-              attention_sink, thought_of_day, why_partial, new_focus
+              attention_sink, why_partial, new_focus
        FROM daily_fixations
        WHERE user_id = $1 AND date >= $2 AND date <= $3
        ORDER BY date`,
@@ -80,7 +79,7 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
         traceId: getTraceId(),
         callType: 'report',
       });
-      renderedCard = stripTrailingDotsPerLine((response.content ?? '').trim());
+      renderedCard = ensureDoubleNewlinesIfMultiline(stripTrailingDotsPerLine((response.content ?? '').trim()));
       if (renderedCard.length > 0) break;
       logger.warn({ userId, weekId, attempt }, 'Report text response is empty');
     }

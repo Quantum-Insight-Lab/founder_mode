@@ -64,7 +64,6 @@ describe.skipIf(!dbUrl)('services', () => {
         what_moved: 'a',
         attention_sink: 'b',
         tomorrow_step: 'c',
-        thought_of_day: 't1',
       };
       const data2 = {
         date: today,
@@ -72,7 +71,6 @@ describe.skipIf(!dbUrl)('services', () => {
         what_stopped: 'x',
         attention_sink: 'z',
         tomorrow_step: 'r',
-        thought_of_day: 't2',
       };
 
       await fixationService.submitFixation(userId, data1);
@@ -91,7 +89,6 @@ describe.skipIf(!dbUrl)('services', () => {
         what_moved: 'x',
         attention_sink: 'y',
         tomorrow_step: 'z',
-        thought_of_day: 't',
       };
       await expect(fixationService.submitFixation(userId, data)).rejects.toThrow(
         /Рефлексия только за прошедшие дни/
@@ -107,7 +104,6 @@ describe.skipIf(!dbUrl)('services', () => {
         what_moved: 'x',
         attention_sink: 'y',
         tomorrow_step: 'z',
-        thought_of_day: 'thought',
       };
 
       const result = await fixationService.submitFixation(userId, data);

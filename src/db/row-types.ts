@@ -33,7 +33,7 @@ export interface DailyFixationRow {
   tomorrow_step: string | null;
   what_stopped: string | null;
   attention_sink: string | null;
-  thought_of_day: string;
+  thought_of_day: string | null;
   raw_post: string;
   why_partial: string | null;
   new_focus: string | null;

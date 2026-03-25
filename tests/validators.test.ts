@@ -35,7 +35,6 @@ describe('validators', () => {
           what_stopped: '',
           attention_sink: '',
           tomorrow_step: '',
-          thought_of_day: '',
         })
       ).toThrow(/заполни/);
     });
@@ -53,7 +52,6 @@ describe('validators', () => {
           what_stopped: 'a',
           attention_sink: 'c',
           tomorrow_step: 'd',
-          thought_of_day: 'x',
         })
       ).not.toThrow();
     });
@@ -66,7 +64,6 @@ describe('validators', () => {
           why_partial: 'b',
           attention_sink: 'c',
           tomorrow_step: 'd',
-          thought_of_day: 'x',
         })
       ).not.toThrow();
     });
@@ -78,7 +75,6 @@ describe('validators', () => {
           new_focus: 'f',
           what_moved: 'd',
           tomorrow_step: 's',
-          thought_of_day: 'x',
         })
       ).not.toThrow();
     });

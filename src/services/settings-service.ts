@@ -12,6 +12,13 @@ export interface UserSettingsRow {
   fixation_notify_time: string | null;
   report_notify_day: number | null;
   report_notify_time: string | null;
+  avatar_mode: 'uploaded' | 'messenger' | 'default';
+  avatar_storage_key: string | null;
+  avatar_mime: string | null;
+  avatar_width: number | null;
+  avatar_height: number | null;
+  avatar_updated_at: Date | null;
+  avatar_version: number;
 }
 
 export { formatDay, formatDays, formatTime };
@@ -31,7 +38,10 @@ export function createSettingsService(pool: Pool) {
                 COALESCE(notifications_enabled, false) AS notifications_enabled,
                 declaration_notify_day, declaration_notify_time,
                 fixation_notify_days, fixation_notify_time,
-                report_notify_day, report_notify_time
+                report_notify_day, report_notify_time,
+                COALESCE(avatar_mode, 'messenger') AS avatar_mode,
+                avatar_storage_key, avatar_mime, avatar_width, avatar_height,
+                avatar_updated_at, COALESCE(avatar_version, 0)::int AS avatar_version
          FROM user_settings WHERE user_id = $1`,
         [userId]
       );
@@ -162,6 +172,70 @@ export function createSettingsService(pool: Pool) {
         [userId, tz]
       );
       logger.debug({ userId, tz }, 'Settings: timezone updated');
+    },
+
+    async setAvatarUploaded(
+      userId: string,
+      payload: { storageKey: string; mime: string; width: number; height: number }
+    ): Promise<void> {
+      await pool.query(
+        `INSERT INTO user_settings (
+           user_id, avatar_mode, avatar_storage_key, avatar_mime, avatar_width, avatar_height,
+           avatar_updated_at, avatar_version, updated_at
+         ) VALUES ($1, 'uploaded', $2, $3, $4, $5, NOW(), 1, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET
+           avatar_mode = 'uploaded',
+           avatar_storage_key = $2,
+           avatar_mime = $3,
+           avatar_width = $4,
+           avatar_height = $5,
+           avatar_updated_at = NOW(),
+           avatar_version = COALESCE(user_settings.avatar_version, 0) + 1,
+           updated_at = NOW()`,
+        [userId, payload.storageKey, payload.mime, payload.width, payload.height]
+      );
+      logger.debug({ userId, storageKey: payload.storageKey }, 'Settings: avatar uploaded');
+    },
+
+    async setAvatarModeMessenger(userId: string): Promise<void> {
+      await pool.query(
+        `INSERT INTO user_settings (user_id, avatar_mode, updated_at) VALUES ($1, 'messenger', NOW())
+         ON CONFLICT (user_id) DO UPDATE SET avatar_mode = 'messenger', updated_at = NOW()`,
+        [userId]
+      );
+      logger.debug({ userId }, 'Settings: avatar mode messenger');
+    },
+
+    async setAvatarModeDefault(userId: string): Promise<void> {
+      await pool.query(
+        `INSERT INTO user_settings (
+           user_id, avatar_mode, avatar_storage_key, avatar_mime, avatar_width, avatar_height,
+           avatar_updated_at, updated_at
+         ) VALUES ($1, 'default', NULL, NULL, NULL, NULL, NULL, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET
+           avatar_mode = 'default',
+           avatar_storage_key = NULL,
+           avatar_mime = NULL,
+           avatar_width = NULL,
+           avatar_height = NULL,
+           avatar_updated_at = NULL,
+           updated_at = NOW()`,
+        [userId]
+      );
+      logger.debug({ userId }, 'Settings: avatar mode default');
+    },
+
+    async getAvatarPreference(userId: string): Promise<{
+      mode: 'uploaded' | 'messenger' | 'default';
+      storageKey: string | null;
+      mime: string | null;
+    }> {
+      const row = await this.getOrCreate(userId);
+      return {
+        mode: row.avatar_mode,
+        storageKey: row.avatar_storage_key,
+        mime: row.avatar_mime,
+      };
     },
 
   };

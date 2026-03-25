@@ -13,9 +13,17 @@ export interface ObservabilityConfig {
   token_spike_window_minutes: number;
 }
 
+export interface AvatarsConfig {
+  avatars_dir: string;
+  max_file_size_mb: number;
+  min_side_px: number;
+  normalized_size_px: number;
+}
+
 export interface Config {
   reliability: ReliabilityConfig;
   observability: ObservabilityConfig;
+  avatars: AvatarsConfig;
 }
 
 let cached: Config | null = null;

@@ -39,11 +39,10 @@ async function sendFixationAsCard(
   userId: string,
   rawPost: string
 ): Promise<void> {
-  const { handleLlmReply, pool } = deps;
+  const { handleLlmReply, pool, resolveAvatarBackgroundImage } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'Founder';
-  const avatarDataUrl = await ctx.getAvatarDataUrl?.();
-  const avatarBackgroundImage = avatarDataUrl ? `url(${avatarDataUrl})` : 'none';
+  const avatarBackgroundImage = await resolveAvatarBackgroundImage(ctx, userId);
   try {
     const png = await renderFixationCardPng({
       username,
@@ -339,12 +338,10 @@ export async function handleFixationMessage(ctx: AppContext, text: string, deps:
     ctx.session!.fixationData = undefined;
     ctx.session!.fixationEditMode = undefined;
 
-    const thoughtOfDay = String(data.thought_of_day ?? '');
     const payload = {
       date: data.date!,
       movement_branch: movementBranch,
       had_movement: movementBranch === 'yes',
-      thought_of_day: thoughtOfDay,
       what_moved: data.what_moved as string | undefined,
       tomorrow_step: data.tomorrow_step as string | undefined,
       what_stopped: data.what_stopped as string | undefined,

@@ -20,7 +20,9 @@ interface MaxUpdate {
   message?: {
     sender?: { user_id?: number };
     recipient?: { user_id?: number; chat_id?: number };
-    body?: { text?: string };
+    body?: { text?: string; attachments?: unknown[]; [k: string]: unknown };
+    attachments?: unknown[];
+    [k: string]: unknown;
   };
   /** message_callback: button payload (top-level or inside callback) */
   payload?: string;
@@ -89,6 +91,60 @@ function toAbsoluteMaxUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
   if (url.startsWith('/')) return `${MAX_API_BASE}${url}`;
   return `${MAX_API_BASE}/${url}`;
+}
+
+function looksLikeImageUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return (
+    lower.includes('.png') ||
+    lower.includes('.jpg') ||
+    lower.includes('.jpeg') ||
+    lower.includes('.webp') ||
+    lower.includes('.gif')
+  );
+}
+
+function tryGetImageAttachment(u: MaxUpdate): { url: string; mime: string; filename?: string } | null {
+  const msg = (u.message ?? {}) as Record<string, unknown>;
+  const body = (msg.body ?? {}) as Record<string, unknown>;
+  const rootAttachments = (msg.attachments ?? []) as unknown[];
+  const bodyAttachments = (body.attachments ?? []) as unknown[];
+  const attachments = [...rootAttachments, ...bodyAttachments];
+  for (const raw of attachments) {
+    const a = raw as Record<string, unknown>;
+    const payload = (a.payload ?? a.data ?? a.media ?? {}) as Record<string, unknown>;
+    const candidateUrl =
+      (typeof payload.url === 'string' && payload.url) ||
+      (typeof payload.media_url === 'string' && payload.media_url) ||
+      (typeof payload.download_url === 'string' && payload.download_url) ||
+      (typeof payload.file_url === 'string' && payload.file_url) ||
+      (typeof a.url === 'string' && a.url) ||
+      (typeof a.media_url === 'string' && a.media_url) ||
+      '';
+    if (!candidateUrl) continue;
+    const candidateMime =
+      (typeof payload.mime_type === 'string' && payload.mime_type) ||
+      (typeof payload.content_type === 'string' && payload.content_type) ||
+      (typeof a.mime_type === 'string' && a.mime_type) ||
+      (typeof a.content_type === 'string' && a.content_type) ||
+      '';
+    const mime = candidateMime.trim().toLowerCase();
+    const type = ((typeof a.type === 'string' && a.type) || (typeof payload.type === 'string' && payload.type) || '')
+      .trim()
+      .toLowerCase();
+    if (mime.startsWith('image/') || type.includes('image') || looksLikeImageUrl(candidateUrl)) {
+      const filename =
+        (typeof payload.file_name === 'string' && payload.file_name) ||
+        (typeof a.file_name === 'string' && a.file_name) ||
+        undefined;
+      return {
+        url: candidateUrl.trim(),
+        mime: mime || guessImageContentType(candidateUrl.trim()),
+        filename,
+      };
+    }
+  }
+  return null;
 }
 
 function extractAvatarUrl(u: MaxUpdate): string | null {
@@ -263,7 +319,7 @@ function getCallbackPayload(u: MaxUpdate): string {
   return s;
 }
 
-function updateToEvent(u: MaxUpdate): IncomingEvent | null {
+async function updateToEvent(u: MaxUpdate, token: string): Promise<IncomingEvent | null> {
   const type = u.update_type;
   if (type === 'bot_started') {
     return { type: 'command', name: 'start' };
@@ -279,6 +335,27 @@ function updateToEvent(u: MaxUpdate): IncomingEvent | null {
     const text = getMessageText(u);
     const cmd = parseCommand(text);
     if (cmd) return { type: 'command', name: cmd.name };
+    const attachment = tryGetImageAttachment(u);
+    if (attachment) {
+      const absoluteUrl = toAbsoluteMaxUrl(attachment.url);
+      const tryFetch = async (withAuth: boolean): Promise<Response> =>
+        fetch(absoluteUrl, {
+          method: 'GET',
+          headers: withAuth ? { Authorization: token } : undefined,
+        });
+      try {
+        let res = await tryFetch(true);
+        if (!res.ok) res = await tryFetch(false);
+        if (res.ok) {
+          const bytes = Buffer.from(await res.arrayBuffer());
+          const headerType = res.headers.get('content-type')?.split(';')[0] || '';
+          const mime = headerType.startsWith('image/') ? headerType : attachment.mime;
+          return { type: 'photo', bytes, mime, filename: attachment.filename };
+        }
+      } catch {
+        // ignore image fetch failures and fall back to text event
+      }
+    }
     return { type: 'message', text };
   }
   return null;
@@ -375,7 +452,7 @@ export function runMaxPolling(
       );
       const ctx = buildMaxAppContext(internalUserId, maxUserId, displayName, session, token, sessionStore, avatarUrl, chatId);
 
-      const event = updateToEvent(u);
+      const event = await updateToEvent(u, token);
       if (!event) {
         logger.debug({ maxUserId, update_type: u.update_type }, 'MAX update skipped: unknown event type');
         continue;

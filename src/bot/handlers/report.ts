@@ -20,11 +20,10 @@ async function sendReportAsCard(
   userId: string,
   rawPost: string
 ): Promise<void> {
-  const { handleLlmReply, pool } = deps;
+  const { handleLlmReply, pool, resolveAvatarBackgroundImage } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'Founder';
-  const avatarDataUrl = await ctx.getAvatarDataUrl?.();
-  const avatarBackgroundImage = avatarDataUrl ? `url(${avatarDataUrl})` : 'none';
+  const avatarBackgroundImage = await resolveAvatarBackgroundImage(ctx, userId);
   try {
     const png = await renderReportCardPng({
       username,

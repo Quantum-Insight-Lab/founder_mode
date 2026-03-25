@@ -1,5 +1,5 @@
 -- Founder Mode: PDA Event Core + Read Models
--- Полная начальная схема (единственный файл миграции). Чистая БД: применить этот файл.
+-- Базовая начальная схема.
 
 -- Events (append-only, PDA 4.4)
 CREATE TABLE IF NOT EXISTS events (
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS daily_fixations (
   tomorrow_step TEXT,
   what_stopped TEXT,
   attention_sink TEXT,
-  thought_of_day TEXT NOT NULL,
+  thought_of_day TEXT,
   raw_post TEXT NOT NULL,
   why_partial TEXT,
   new_focus TEXT,

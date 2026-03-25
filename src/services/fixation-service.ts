@@ -8,7 +8,7 @@ import { prompts } from '../llm/prompts.js';
 import { validateFixationDate, validateFixationBranch } from '../domain/validators.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
-import { stripTrailingDotsPerLine } from '../domain/text-format.js';
+import { ensureDoubleNewlinesIfMultiline, stripTrailingDotsPerLine } from '../domain/text-format.js';
 import { getWeekId } from './week-service.js';
 import { InvariantViolationError } from '../domain/errors.js';
 import type { ServiceDeps } from './deps.js';
@@ -26,7 +26,6 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       tomorrow_step?: string;
       what_stopped?: string;
       attention_sink?: string;
-      thought_of_day: string;
       why_partial?: string;
       new_focus?: string;
     },
@@ -70,7 +69,6 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       day,
       had_movement,
       movement_branch: data.movement_branch,
-      thought_of_day: data.thought_of_day,
       raw_post: '', // will be set after LLM
     };
     if (data.movement_branch === 'yes') {
@@ -94,13 +92,13 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
 
     let userMessage: string;
     if (data.movement_branch === 'yes') {
-      userMessage = `Движение по главному фокусу: Да\nЧто продвинуло: ${data.what_moved ?? ''}\nДвижение вне фокуса: ${data.attention_sink ?? ''}\nШаг на завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
+      userMessage = `Движение по главному фокусу: Да\nЧто продвинуло: ${data.what_moved ?? ''}\nДвижение вне фокуса: ${data.attention_sink ?? ''}\nШаг на завтра: ${data.tomorrow_step ?? ''}`;
     } else if (data.movement_branch === 'no') {
-      userMessage = `Движение по главному фокусу: Нет\nЧто остановило: ${data.what_stopped ?? ''}\nЧто заняло внимание: ${data.attention_sink ?? ''}\nКак вернуть вектор завтра: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
+      userMessage = `Движение по главному фокусу: Нет\nЧто остановило: ${data.what_stopped ?? ''}\nЧто заняло внимание: ${data.attention_sink ?? ''}\nКак вернуть вектор завтра: ${data.tomorrow_step ?? ''}`;
     } else if (data.movement_branch === 'partial') {
-      userMessage = `Движение по главному фокусу: Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day}`;
+      userMessage = `Движение по главному фокусу: Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}`;
     } else {
-      userMessage = `Движение по главному фокусу: Результат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}\nЧто стало понятнее к концу дня: ${data.thought_of_day ?? ''}`;
+      userMessage = `Движение по главному фокусу: Результат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}`;
     }
 
     const idempotencyKey = idempotencyKeyOverride ?? `fixation:${userId}:${data.date}`;
@@ -111,7 +109,7 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       traceId: getTraceId(),
       callType: 'fixation',
     });
-    const rawPost = stripTrailingDotsPerLine(response.content ?? '');
+    const rawPost = ensureDoubleNewlinesIfMultiline(stripTrailingDotsPerLine(response.content ?? ''));
     payload.raw_post = rawPost;
 
     const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
@@ -142,7 +140,6 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
         tomorrow_step?: string;
         what_stopped?: string;
         attention_sink?: string;
-        thought_of_day: string;
         why_partial?: string;
         new_focus?: string;
       }
@@ -160,7 +157,6 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
         tomorrow_step?: string;
         what_stopped?: string;
         attention_sink?: string;
-        thought_of_day: string;
         why_partial?: string;
         new_focus?: string;
       }

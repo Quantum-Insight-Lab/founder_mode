@@ -13,6 +13,8 @@ import { createDeclarationService } from '../../services/declaration-service.js'
 import { createReportService } from '../../services/report-service.js';
 import { createFixationService } from '../../services/fixation-service.js';
 import { createSettingsService, formatDay, formatDays, formatTime } from '../../services/settings-service.js';
+import { loadAvatarDataUrl, storeNormalizedAvatar } from '../../services/avatar-storage.js';
+import { resolveAvatarBackgroundImageValue } from '../../services/avatar-resolver.js';
 import { createLLMClient } from '../../llm/client.js';
 import { getPool, getUserByTgId, getUserByMaxId, markOnboarded, countRows } from '../../db/index.js';
 import { initTokenSpikeChecker } from '../../observability/token-spike.js';
@@ -22,6 +24,7 @@ import {
   SETTINGS_FIXATION,
   SETTINGS_REPORT,
   SETTINGS_TIMEZONE,
+  SETTINGS_AVATAR,
 } from '../conversations.js';
 import type { HandlerDeps } from './deps.js';
 import { registerOnboardingHandlers } from './onboarding.js';
@@ -118,13 +121,20 @@ export function createAppDeps(): HandlerDeps {
       ? `${formatDay(settings.report_notify_day)} ${formatTime(settings.report_notify_time)}`
       : '—';
     const tzStr = settings.timezone ?? '—';
+    const avatarStr =
+      settings.avatar_mode === 'uploaded'
+        ? 'Загружен'
+        : settings.avatar_mode === 'messenger'
+          ? 'Из мессенджера'
+          : 'Стандартный';
 
     const text =
       `<b>${SETTINGS_NOTIFICATIONS}</b>: ${notif}\n` +
       `<b>${SETTINGS_DECLARATION}</b>: ${declarationStr}\n` +
       `<b>${SETTINGS_FIXATION}</b>: ${reflectStr}\n` +
       `<b>${SETTINGS_REPORT}</b>: ${reportStr}\n` +
-      `<b>${SETTINGS_TIMEZONE}</b>: ${tzStr}`;
+      `<b>${SETTINGS_TIMEZONE}</b>: ${tzStr}\n` +
+      `<b>${SETTINGS_AVATAR}</b>: ${avatarStr}`;
 
     const reply_markup: import('../transport/types.js').InlineButton[][] = [
       [
@@ -138,9 +148,36 @@ export function createAppDeps(): HandlerDeps {
         { text: 'Фиксация', callback_data: 'settings_fixation' },
         { text: 'Отчёт', callback_data: 'settings_report' },
       ],
+      [{ text: 'Настроить аватар', callback_data: 'settings_avatar' }],
       [{ text: 'Часовой пояс', callback_data: 'settings_tz' }],
     ];
     await ctx.reply(text, { parse_mode: 'HTML', reply_markup });
+  }
+
+  async function saveUploadedAvatar(userId: string, bytes: Buffer, mime?: string | null): Promise<void> {
+    const before = await settingsService.getOrCreate(userId);
+    const stored = await storeNormalizedAvatar(userId, bytes, mime);
+    await settingsService.setAvatarUploaded(userId, {
+      storageKey: stored.storageKey,
+      mime: stored.mime,
+      width: stored.width,
+      height: stored.height,
+    });
+    logger.info(
+      { userId, prevStorageKey: before.avatar_storage_key, storageKey: stored.storageKey },
+      'Avatar uploaded'
+    );
+  }
+
+  async function resolveAvatarBackgroundImage(
+    ctx: import('../transport/types.js').AppContext,
+    userId: string
+  ): Promise<string> {
+    const pref = await settingsService.getAvatarPreference(userId);
+    return resolveAvatarBackgroundImageValue(pref, {
+      loadUploaded: loadAvatarDataUrl,
+      loadMessenger: async () => (await ctx.getAvatarDataUrl?.()) ?? null,
+    });
   }
 
   return {
@@ -158,6 +195,8 @@ export function createAppDeps(): HandlerDeps {
     fixationService,
     settingsService,
     showSettingsMenu,
+    saveUploadedAvatar,
+    resolveAvatarBackgroundImage,
   };
 }
 

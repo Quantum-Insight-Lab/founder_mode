@@ -116,7 +116,6 @@ describe.skipIf(!dbUrl)('projectors', () => {
           had_movement: true,
           movement_branch: 'yes',
           what_moved: 'w',
-          thought_of_day: 't',
           raw_post: 'rp',
         },
         causation_id: null,
@@ -133,7 +132,7 @@ describe.skipIf(!dbUrl)('projectors', () => {
       day: 'Вторник',
       had_movement: true,
       movement_branch: 'yes',
-      thought_of_day: 't',
+      thought_of_day: null,
       raw_post: 'rp',
     });
   });

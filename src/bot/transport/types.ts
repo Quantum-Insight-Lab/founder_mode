@@ -31,4 +31,5 @@ export interface AppContext {
 export type IncomingEvent =
   | { type: 'command'; name: string }
   | { type: 'callback'; data: string }
-  | { type: 'message'; text: string };
+  | { type: 'message'; text: string }
+  | { type: 'photo'; bytes: Buffer; mime: string; filename?: string };

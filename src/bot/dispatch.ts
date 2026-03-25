@@ -62,6 +62,12 @@ import {
   handleSettingsTz,
   handleSettingsTimeInput,
   handleSettingsTzInput,
+  handleSettingsAvatar,
+  handleSettingsAvatarUpload,
+  handleSettingsAvatarMessenger,
+  handleSettingsAvatarReset,
+  handleSettingsAvatarBack,
+  handleSettingsAvatarPhotoUpload,
 } from './handlers/settings.js';
 import { handleDeleteCommand, handleDeleteConfirmYes, handleDeleteConfirmNo } from './handlers/delete.js';
 
@@ -155,6 +161,16 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleSettingsReportTimeCustom(ctx, deps);
       case 'settings_tz':
         return handleSettingsTz(ctx, deps);
+      case 'settings_avatar':
+        return handleSettingsAvatar(ctx, deps);
+      case 'settings_avatar_upload':
+        return handleSettingsAvatarUpload(ctx, deps);
+      case 'settings_avatar_messenger':
+        return handleSettingsAvatarMessenger(ctx, deps);
+      case 'settings_avatar_reset':
+        return handleSettingsAvatarReset(ctx, deps);
+      case 'settings_avatar_back':
+        return handleSettingsAvatarBack(ctx, deps);
       case 'delete_confirm_yes':
         return handleDeleteConfirmYes(ctx, deps);
       case 'delete_confirm_no':
@@ -206,5 +222,14 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
     if (step === 'settings_tz_input') return handleSettingsTzInput(ctx, text, deps);
     if (!text.startsWith('/')) return handleIdleMessage(ctx);
     logger.debug({ channel: ctx.channel, userId: ctx.userId, step }, 'Message not for any step, skip');
+  }
+
+  if (event.type === 'photo') {
+    const step = ctx.session?.step;
+    logger.debug({ channel: ctx.channel, userId: ctx.userId, step, mime: event.mime }, 'Dispatch photo');
+    if (step === 'settings_avatar_upload_wait') {
+      return handleSettingsAvatarPhotoUpload(ctx, deps, event.bytes, event.mime);
+    }
+    return;
   }
 }

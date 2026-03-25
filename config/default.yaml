@@ -6,3 +6,9 @@ reliability:
 observability:
   token_spike_threshold: 100000
   token_spike_window_minutes: 60
+
+avatars:
+  avatars_dir: avatars
+  max_file_size_mb: 5
+  min_side_px: 256
+  normalized_size_px: 512

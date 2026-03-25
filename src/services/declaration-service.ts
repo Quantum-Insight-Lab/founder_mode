@@ -8,7 +8,7 @@ import { prompts } from '../llm/prompts.js';
 import type { ServiceDeps } from './deps.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { getWeekId } from './week-service.js';
-import { stripTrailingDotsPerLine } from '../domain/text-format.js';
+import { ensureDoubleNewlinesIfMultiline, stripTrailingDotsPerLine } from '../domain/text-format.js';
 
 interface DeclarationAnswers {
   main_focus: string;
@@ -50,7 +50,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
         traceId: getTraceId(),
         callType: 'declaration',
       });
-      rawPost = stripTrailingDotsPerLine((response.content ?? '').trim());
+      rawPost = ensureDoubleNewlinesIfMultiline(stripTrailingDotsPerLine((response.content ?? '').trim()));
       if (rawPost.length > 0) break;
       logger.warn({ userId, weekId, attempt }, 'Declaration text response is empty');
     }

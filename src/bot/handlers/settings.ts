@@ -1,4 +1,5 @@
 import type { Bot } from 'grammy';
+import type { File } from 'grammy/types';
 import type { BotContext } from '../context.js';
 import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
@@ -34,6 +35,21 @@ function getDayPickerRows(prefix: string): InlineButton[][] {
 function timeFromCallback(match: string | RegExpMatchArray): string {
   const s = Array.isArray(match) ? match[1] : match;
   return String(s ?? '').replace('-', ':');
+}
+
+function avatarModeLabel(mode: 'uploaded' | 'messenger' | 'default'): string {
+  if (mode === 'uploaded') return 'загружен';
+  if (mode === 'messenger') return 'из мессенджера';
+  return 'стандартный';
+}
+
+function avatarSettingsRows(): InlineButton[][] {
+  return [
+    [{ text: 'Загрузить', callback_data: 'settings_avatar_upload' }],
+    [{ text: 'Использовать аватар мессенджера', callback_data: 'settings_avatar_messenger' }],
+    [{ text: 'Сбросить', callback_data: 'settings_avatar_reset' }],
+    [{ text: 'Назад', callback_data: 'settings_avatar_back' }],
+  ];
 }
 
 export async function handleSettingsCommand(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -178,6 +194,82 @@ export async function handleSettingsTz(ctx: AppContext, deps: HandlerDeps): Prom
   await ctx.reply(ONBOARDING_TIMEZONE_QUESTION);
 }
 
+export async function handleSettingsAvatar(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  const { settingsService } = deps;
+  await ctx.answerCallbackQuery();
+  ensureSession(ctx);
+  ctx.session.step = undefined;
+  ctx.session.settingsData = { editing: 'avatar' };
+  const pref = await settingsService.getAvatarPreference(ctx.userId);
+  await ctx.reply(`Текущий аватар: ${avatarModeLabel(pref.mode)}.`, {
+    reply_markup: avatarSettingsRows(),
+  });
+}
+
+export async function handleSettingsAvatarUpload(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  await ctx.answerCallbackQuery();
+  ensureSession(ctx);
+  ctx.session.step = 'settings_avatar_upload_wait';
+  ctx.session.settingsData = { editing: 'avatar' };
+  await ctx.reply(
+    'Пришли изображение аватара (JPG/PNG/WebP, до 5 MB). Мы обрежем его по центру и сохраним.'
+  );
+}
+
+export async function handleSettingsAvatarMessenger(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  const { settingsService } = deps;
+  await ctx.answerCallbackQuery();
+  ensureSession(ctx);
+  await settingsService.setAvatarModeMessenger(ctx.userId);
+  ctx.session.step = undefined;
+  ctx.session.settingsData = undefined;
+  await ctx.reply('Готово. Теперь используем аватар мессенджера (если доступен).');
+  await deps.showSettingsMenu(ctx, ctx.userId);
+}
+
+export async function handleSettingsAvatarReset(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  const { settingsService } = deps;
+  await ctx.answerCallbackQuery();
+  ensureSession(ctx);
+  await settingsService.setAvatarModeDefault(ctx.userId);
+  ctx.session.step = undefined;
+  ctx.session.settingsData = undefined;
+  await ctx.reply('Аватар сброшен на стандартный.');
+  await deps.showSettingsMenu(ctx, ctx.userId);
+}
+
+export async function handleSettingsAvatarBack(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  await ctx.answerCallbackQuery();
+  ensureSession(ctx);
+  ctx.session.step = undefined;
+  ctx.session.settingsData = undefined;
+  await deps.showSettingsMenu(ctx, ctx.userId);
+}
+
+export async function handleSettingsAvatarPhotoUpload(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  bytes: Buffer,
+  mime?: string | null
+): Promise<void> {
+  ensureSession(ctx);
+  if (ctx.session.step !== 'settings_avatar_upload_wait') {
+    await ctx.reply('Чтобы загрузить аватар, открой /settings → Настроить аватар → Загрузить.');
+    return;
+  }
+  try {
+    await deps.saveUploadedAvatar(ctx.userId, bytes, mime);
+  } catch (err) {
+    logger.warn({ err, userId: ctx.userId }, 'Avatar upload failed');
+    await ctx.reply('Не удалось сохранить аватар. Пришли JPG/PNG/WebP не больше 5 MB.');
+    return;
+  }
+  ctx.session.step = undefined;
+  ctx.session.settingsData = undefined;
+  await ctx.reply('Аватар сохранён.');
+  await deps.showSettingsMenu(ctx, ctx.userId);
+}
+
 export async function handleSettingsTimeInput(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
   const { settingsService } = deps;
   const userId = ctx.userId;
@@ -241,6 +333,29 @@ export async function handleSettingsTzInput(ctx: AppContext, text: string, deps:
 }
 
 export function registerSettingsHandlers(bot: import('grammy').Bot<BotContext>, deps: HandlerDeps): void {
+  async function loadTelegramFileBytes(ctx: BotContext, file: File): Promise<{ bytes: Buffer; mime: string } | null> {
+    const token = process.env.BOT_TOKEN?.trim() || process.env.TELEGRAM_BOT_TOKEN?.trim();
+    if (!token || !file.file_path) return null;
+    try {
+      const res = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`);
+      if (!res.ok) return null;
+      const bytes = Buffer.from(await res.arrayBuffer());
+      const headerType = res.headers.get('content-type')?.split(';')[0] || '';
+      const ext = file.file_path.split('.').pop()?.toLowerCase() || '';
+      const mime =
+        headerType.startsWith('image/')
+          ? headerType
+          : ext === 'png'
+            ? 'image/png'
+            : ext === 'webp'
+              ? 'image/webp'
+              : 'image/jpeg';
+      return { bytes, mime };
+    } catch {
+      return null;
+    }
+  }
+
   bot.command('settings', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleSettingsCommand(appCtx, deps);
@@ -301,6 +416,26 @@ export function registerSettingsHandlers(bot: import('grammy').Bot<BotContext>, 
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleSettingsTz(appCtx, deps);
   });
+  bot.callbackQuery(/^settings_avatar$/, async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleSettingsAvatar(appCtx, deps);
+  });
+  bot.callbackQuery(/^settings_avatar_upload$/, async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleSettingsAvatarUpload(appCtx, deps);
+  });
+  bot.callbackQuery(/^settings_avatar_messenger$/, async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleSettingsAvatarMessenger(appCtx, deps);
+  });
+  bot.callbackQuery(/^settings_avatar_reset$/, async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleSettingsAvatarReset(appCtx, deps);
+  });
+  bot.callbackQuery(/^settings_avatar_back$/, async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleSettingsAvatarBack(appCtx, deps);
+  });
   bot.on('message:text').filter(
     (ctx) => {
       const step = ctx.session?.step;
@@ -323,6 +458,38 @@ export function registerSettingsHandlers(bot: import('grammy').Bot<BotContext>, 
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
       await handleSettingsTzInput(appCtx, ctx.message.text?.trim() ?? '', deps);
+    }
+  );
+  bot.on('message:photo').filter(
+    (ctx) => ctx.session?.step === 'settings_avatar_upload_wait',
+    async (ctx) => {
+      const photo = ctx.message.photo?.[ctx.message.photo.length - 1];
+      if (!photo) return;
+      const file = await ctx.api.getFile(photo.file_id);
+      const payload = await loadTelegramFileBytes(ctx, file);
+      const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+      if (!payload) {
+        await appCtx.reply('Не удалось скачать изображение. Попробуй ещё раз.');
+        return;
+      }
+      await handleSettingsAvatarPhotoUpload(appCtx, deps, payload.bytes, payload.mime);
+    }
+  );
+  bot.on('message:document').filter(
+    (ctx) =>
+      ctx.session?.step === 'settings_avatar_upload_wait' &&
+      (ctx.message.document?.mime_type?.startsWith('image/') ?? false),
+    async (ctx) => {
+      const doc = ctx.message.document;
+      if (!doc) return;
+      const file = await ctx.api.getFile(doc.file_id);
+      const payload = await loadTelegramFileBytes(ctx, file);
+      const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+      if (!payload) {
+        await appCtx.reply('Не удалось скачать изображение. Попробуй ещё раз.');
+        return;
+      }
+      await handleSettingsAvatarPhotoUpload(appCtx, deps, payload.bytes, doc.mime_type ?? payload.mime);
     }
   );
 }

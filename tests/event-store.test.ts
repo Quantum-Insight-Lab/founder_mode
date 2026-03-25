@@ -24,7 +24,7 @@ describe.skipIf(!dbUrl)('event-store', () => {
     event_type: EVENT_TYPES.FixationSubmitted as const,
     actor: { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', role: 'user' as const },
     subject: { entity: 'DailyReflection', id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:2026-03-09' },
-    payload: { user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', date: '2026-03-09', thought_of_day: 'test' },
+    payload: { user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', date: '2026-03-09' },
     causation_id: null,
     correlation_id: null,
     idempotency_key: 'test-key-123',

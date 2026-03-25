@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import { logger } from '../observability/logger.js';
+import { deleteAvatarFiles } from './avatar-storage.js';
 
 export async function deleteUserData(pool: Pool, userId: string): Promise<void> {
   const client = await pool.connect();
@@ -35,6 +36,9 @@ export async function deleteUserData(pool: Pool, userId: string): Promise<void> 
     }
     await client.query('DELETE FROM users WHERE user_id = $1', [userId]);
     await client.query('COMMIT');
+    await deleteAvatarFiles(userId).catch((err) => {
+      logger.warn({ err, userId }, 'Failed to delete avatar files');
+    });
     logger.info({ userId }, 'User data deleted');
   } catch (err) {
     await client.query('ROLLBACK');

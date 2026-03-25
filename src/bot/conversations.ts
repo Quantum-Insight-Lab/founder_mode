@@ -139,30 +139,26 @@ export const REFLECTION_MOVEMENT_QUESTION = 'Было ли движение по
 export const REFLECTION_QUESTIONS_MOVEMENT = [
   { key: 'what_moved', text: 'Расскажи о прогрессе по главному:' },
   { key: 'attention_sink', text: 'Что ещё заняло внимание?' },
-  { key: 'tomorrow_step', text: 'Какой следующий шаг по главному фокусу?' },
-  { key: 'thought_of_day', text: 'Что стало понятнее к концу дня?' },
+  { key: 'tomorrow_step', text: 'Какой шаг по главному фокусу на завтра?' },
 ] as const;
 
 export const REFLECTION_QUESTIONS_NO_MOVEMENT = [
   { key: 'what_stopped', text: 'Что остановило?' },
   { key: 'attention_sink', text: 'Что заняло основное внимание?' },
-  { key: 'tomorrow_step', text: 'Как мягко вернуть вектор? (одно дело <15 минут)' },
-  { key: 'thought_of_day', text: 'Что стало понятнее к концу дня?' },
+  { key: 'tomorrow_step', text: 'Как мягко вернуть вектор завтра? (одно дело <15 минут)' },
 ] as const;
 
 export const REFLECTION_QUESTIONS_PARTIAL = [
   { key: 'what_moved', text: 'Что удалось сделать по главному?' },
   { key: 'why_partial', text: 'Почему движение осталось частичным?' },
   { key: 'attention_sink', text: 'Что ещё заняло внимание?' },
-  { key: 'tomorrow_step', text: 'Следующий шаг по главному фокусу:' },
-  { key: 'thought_of_day', text: 'Что стало понятнее к концу дня?' },
+  { key: 'tomorrow_step', text: 'Какой шаг по главному фокусу на завтра?' },
 ] as const;
 
 export const REFLECTION_QUESTIONS_WEEK_CLOSED = [
   { key: 'new_focus', text: 'Какой новый фокус выбран?' },
   { key: 'what_moved', text: 'Что удалось сделать по нему?' },
-  { key: 'tomorrow_step', text: 'Какой следующий шаг?' },
-  { key: 'thought_of_day', text: 'Что стало понятнее к концу дня?' },
+  { key: 'tomorrow_step', text: 'Какой следующий шаг на завтра?' },
 ] as const;
 
 /** Time options for notification settings */
@@ -174,5 +170,6 @@ export const SETTINGS_DECLARATION = 'Declaration';
 export const SETTINGS_FIXATION = 'Фиксация';
 export const SETTINGS_REPORT = 'Report';
 export const SETTINGS_TIMEZONE = 'Часовой пояс';
+export const SETTINGS_AVATAR = 'Аватар';
 export const SETTINGS_TIME_INPUT_QUESTION = 'Введите время (ЧЧ:ММ), например 14:30:';
 export const SETTINGS_TIME_INVALID = '❌ Неверный формат. Введите время ЧЧ:ММ (например 14:30).';

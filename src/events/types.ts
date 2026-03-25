@@ -60,7 +60,6 @@ export interface FixationSubmittedPayload {
   tomorrow_step?: string;
   what_stopped?: string;
   attention_sink?: string;
-  thought_of_day: string;
   raw_post: string;
   why_partial?: string;
   new_focus?: string;

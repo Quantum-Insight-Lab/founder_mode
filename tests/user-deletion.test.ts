@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { randomUUID } from 'crypto';
 import { Pool } from 'pg';
+import sharp from 'sharp';
 import { applyAllMigrations } from './apply-migrations.js';
 import { deleteUserData } from '../src/services/user-deletion.js';
+import { loadAvatarDataUrl, storeNormalizedAvatar } from '../src/services/avatar-storage.js';
 
 const dbUrl = process.env.TEST_DATABASE_URL;
 
@@ -16,6 +18,11 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
   });
 
   beforeEach(async () => {
+    await pool.query('DELETE FROM daily_fixations WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM weekly_reports WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM weekly_declarations WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM user_settings WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM events WHERE actor_id = $1', [userId]);
     await pool.query('DELETE FROM users WHERE user_id = $1', [userId]);
     await pool.query(
       'INSERT INTO users (user_id, tg_id) VALUES ($1, $2) ON CONFLICT (tg_id) DO NOTHING',
@@ -62,8 +69,8 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
     );
     await pool.query(
       `INSERT INTO daily_fixations (
-         user_id, date, day, had_movement, movement_branch, thought_of_day, raw_post
-       ) VALUES ($1, '2026-03-05', 'Чт', true, 'yes', 't', 'raw')`,
+         user_id, date, day, had_movement, movement_branch, raw_post
+       ) VALUES ($1, '2026-03-05', 'Чт', true, 'yes', 'raw')`,
       [userId]
     );
     await pool.query(
@@ -83,6 +90,27 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
        VALUES ($1, 'x', 1, 1, 1, NOW() + interval '1 day')`,
       ['user:telegram:delete-test-user']
     );
+    const image = await sharp({
+      create: {
+        width: 600,
+        height: 600,
+        channels: 3,
+        background: { r: 50, g: 120, b: 200 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const storedAvatar = await storeNormalizedAvatar(userId, image, 'image/png');
+    await pool.query(
+      `UPDATE user_settings
+          SET avatar_mode = 'uploaded',
+              avatar_storage_key = $2,
+              avatar_mime = 'image/webp',
+              avatar_width = 512,
+              avatar_height = 512
+        WHERE user_id = $1`,
+      [userId, storedAvatar.storageKey]
+    );
 
     await deleteUserData(pool, userId);
 
@@ -95,10 +123,12 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
     const userRegKey = await pool.query('SELECT 1 FROM idempotency_cache WHERE idempotency_key = $1', [
       'user:telegram:delete-test-user',
     ]);
+    const avatarAfterDelete = await loadAvatarDataUrl(storedAvatar.storageKey, 'image/webp');
     expect(ev.rows.length).toBe(0);
     expect(fx.rows.length).toBe(0);
     expect(wr.rows.length).toBe(0);
     expect(ic.rows.length).toBe(0);
     expect(userRegKey.rows.length).toBe(0);
+    expect(avatarAfterDelete).toBeNull();
   });
 });

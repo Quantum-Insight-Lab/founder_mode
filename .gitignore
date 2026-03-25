@@ -25,3 +25,6 @@ coverage/
 
 # Cursor debug logs
 .cursor/debug-*.log
+
+# User-uploaded avatars (local storage; path from config)
+avatars/

@@ -117,7 +117,7 @@ export function createProjectors(pool: Pool) {
         p.tomorrow_step ?? null,
         p.what_stopped ?? null,
         p.attention_sink ?? null,
-        p.thought_of_day,
+        null,
         p.raw_post,
         p.why_partial ?? null,
         p.new_focus ?? null,

@@ -24,7 +24,6 @@ export function validateFixationBranch(data: {
   tomorrow_step?: string;
   what_stopped?: string;
   attention_sink?: string;
-  thought_of_day?: string;
   why_partial?: string;
   new_focus?: string;
 }): void {
@@ -38,8 +37,8 @@ export function validateFixationBranch(data: {
     );
   } else if (branch === 'no') {
     invariant(
-      filled(data.what_stopped) && filled(data.attention_sink) && filled(data.tomorrow_step) && filled(data.thought_of_day),
-      'Без движения заполни: что остановило, что заняло внимание, как вернуть вектор, что стало понятнее',
+      filled(data.what_stopped) && filled(data.attention_sink) && filled(data.tomorrow_step),
+      'Без движения заполни: что остановило, что заняло внимание, как вернуть вектор',
       '008'
     );
   } else if (branch === 'partial') {
@@ -47,18 +46,16 @@ export function validateFixationBranch(data: {
       filled(data.what_moved) &&
         filled(data.why_partial) &&
         filled(data.attention_sink) &&
-        filled(data.tomorrow_step) &&
-        filled(data.thought_of_day),
-      'В ветке «Частично» заполни все поля',
+        filled(data.tomorrow_step),
+      'В ветке «Частично» заполни: что удалось сделать, почему частично, что ещё заняло внимание, шаг на завтра',
       '008'
     );
   } else if (branch === 'week_closed') {
     invariant(
       filled(data.new_focus) &&
         filled(data.what_moved) &&
-        filled(data.tomorrow_step) &&
-        filled(data.thought_of_day),
-      'В ветке «Результат недели закрыт» заполни: новый фокус, что сделано, следующий шаг, что стало понятнее',
+        filled(data.tomorrow_step),
+      'В ветке «Результат недели закрыт» заполни: новый фокус, что сделано, следующий шаг',
       '008'
     );
   } else {

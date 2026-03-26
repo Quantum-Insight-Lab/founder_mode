@@ -14,6 +14,8 @@ export type CardHtmlInput = {
   avatarBackgroundImage: string;
   /** «Ритм N» или пусто — скрывает левую часть подвала */
   rhythmLine?: string;
+  /** Optional badge image (data URL). If not provided, default badge is used. */
+  badgeImage?: string;
 };
 
 export type CardPreset = {
@@ -27,6 +29,7 @@ export type CardPreset = {
 
 let browserSingleton: Browser | null = null;
 let embeddedVariableFontDataUrl: string | null = null;
+let embeddedDefaultBadgeDataUrl: string | null = null;
 
 async function getBrowser(): Promise<Browser> {
   if (!browserSingleton) {
@@ -54,6 +57,27 @@ async function ensureEmbeddedRobotoFont(): Promise<string> {
   return embeddedVariableFontDataUrl;
 }
 
+async function ensureEmbeddedDefaultBadge(): Promise<string | null> {
+  if (embeddedDefaultBadgeDataUrl !== null) return embeddedDefaultBadgeDataUrl;
+  {
+    const tryRead = async (filename: string): Promise<Buffer | null> => {
+      try {
+        return await readFile(path.join(process.cwd(), 'design', 'assets', filename));
+      } catch {
+        return null;
+      }
+    };
+    // Prefer webp, fall back to png for local/dev convenience.
+    const webp = await tryRead('default_badge.webp');
+    const png = webp ? null : await tryRead('default_badge.png');
+    const buf = webp ?? png;
+    if (!buf) return null;
+    const mime = webp ? 'image/webp' : 'image/png';
+    embeddedDefaultBadgeDataUrl = `data:${mime};base64,${buf.toString('base64')}`;
+  }
+  return embeddedDefaultBadgeDataUrl;
+}
+
 export async function buildCardHtmlFromTemplate(
   templateFile: string,
   input: CardHtmlInput,
@@ -62,12 +86,15 @@ export async function buildCardHtmlFromTemplate(
 ): Promise<string> {
   const templatePath = path.join(process.cwd(), 'design/cards', templateFile);
   const template = await readFile(templatePath, 'utf8');
+  const badgeImage = input.badgeImage ?? (await ensureEmbeddedDefaultBadge()) ?? '';
   const data: Record<string, string> = {
     USERNAME: input.username,
     CONTENT: input.content,
     TIME: input.timeHHmm,
     AVATAR_BG_IMAGE: input.avatarBackgroundImage,
     RHYTHM: input.rhythmLine ?? '',
+    BADGE_IMAGE: badgeImage,
+    BADGE_DISPLAY: badgeImage ? 'block' : 'none',
     DESIGN_H: String(layout.designH),
     CARD_MIN_H: String(layout.cardMinH),
   };

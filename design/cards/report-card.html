@@ -100,7 +100,7 @@
       flex-direction: column;
       justify-content: center;
       line-height: normal;
-      margin-top: 12px;
+      margin-top: 0px;
     }
 
     .title-block .username {
@@ -108,15 +108,15 @@
       font-size: 52px;
       font-weight: 500;
       color: #000;
-      margin: 0px 0 0 0;
+      margin: 16px 0 0 0;
     }
 
     .title-block .badge {
-      font-family: "Roboto", sans-serif;
-      font-size: 42px;
-      font-weight: 400;
-      color: #000;
-      margin: 32px 0 0 0;
+      width: 64px;
+      height: 64px;
+      margin: 26px 0 0 0;
+      object-fit: contain;
+      display: block;
     }
 
     .divider {
@@ -189,7 +189,7 @@
 
           <div class="title-block">
             <h1 class="username">{{USERNAME}}</h1>
-            <div class="badge">no badges yet</div>
+            <img class="badge" style="display: {{BADGE_DISPLAY}};" src="{{BADGE_IMAGE}}" alt="badge" />
           </div>
         </div>
 

@@ -19,6 +19,7 @@ describe('buildCardHtmlFromTemplate', () => {
     expect(html).not.toContain('{{USERNAME}}');
     expect(html).not.toContain('{{CONTENT}}');
     expect(html).not.toContain('{{RHYTHM}}');
+    expect(html).not.toContain('{{BADGE_IMAGE}}');
     expect(html).toContain('14:30');
   });
 

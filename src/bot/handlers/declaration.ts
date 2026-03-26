@@ -154,7 +154,7 @@ export async function handleDeclarationMessage(ctx: AppContext, text: string, de
         const { rawPost } = await declarationService.updateDeclarationManual(userId, record);
         funnelCompleted.inc({ type: 'declaration' });
         logger.info({ userId }, 'Declaration manually updated');
-        await ctx.reply('❗️ Declaration обновлён.');
+        await ctx.reply('❗️ Приоритет обновлён.');
         await sendDeclarationAsCard(ctx, deps, userId, rawPost);
       } else {
         const { rawPost } = await declarationService.createDeclaration(userId, record);

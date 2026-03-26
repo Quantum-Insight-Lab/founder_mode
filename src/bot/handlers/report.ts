@@ -153,7 +153,7 @@ export async function handleReportEdit(ctx: AppContext, deps: HandlerDeps): Prom
     const rawPost = await reportService.updateReportManual(userId);
     funnelCompleted.inc({ type: 'report' });
     logger.info({ userId }, 'Report manually updated');
-    await ctx.reply('❗️ Report обновлён.');
+    await ctx.reply('❗️ Отчёт обновлён.');
     await sendReportAsCard(ctx, deps, userId, rawPost ?? '');
   } catch (err) {
     logger.error({ err, userId }, 'Report manual update failed');

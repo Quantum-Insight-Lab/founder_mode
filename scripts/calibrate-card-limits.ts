@@ -60,7 +60,13 @@ async function fits(
   mode: 'dense' | 'paragraphs'
 ): Promise<boolean> {
   const content = buildFiller(contentLen, mode);
-  const html = await buildCardHtmlFromTemplate(template, { ...BASE_INPUT, content }, kind);
+  // Calibration always targets our “default” layout (1080×1350).
+  const html = await buildCardHtmlFromTemplate(
+    template,
+    { ...BASE_INPUT, content },
+    { designH: 1350, cardMinH: 1314 },
+    kind
+  );
   const { fits: ok } = await measureCardLayout(html);
   return ok;
 }

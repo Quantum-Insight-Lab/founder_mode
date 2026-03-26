@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Declaration Card</title>
+  <title>Fixation Card</title>
   <style>
     @font-face {
       font-family: "Roboto";
@@ -19,8 +19,7 @@
 
     :root {
       --design-w: 1080px;
-      /* board padding 18+18 + card min-height 1884 = 1920 */
-      --design-h: 1920px;
+      --design-h: {{DESIGN_H}}px;
       --pad-x: 48px;
       --pad-y: 48px;
       --scale: min(1,
@@ -59,7 +58,7 @@
     .card {
       position: relative;
       width: 100%;
-      min-height: 1884px;
+      min-height: {{CARD_MIN_H}}px;
       background: #f7f6f2;
       border: 2px solid #c7c3bc;
       border-radius: 32px;
@@ -197,7 +196,7 @@
         <div class="divider"></div>
 
         <div class="content">
-          <h2 class="section-title">Приоритет недели</h2>
+          <h2 class="section-title">Фиксация дня</h2>
           <p class="field">{{CONTENT}}</p>
         </div>
 

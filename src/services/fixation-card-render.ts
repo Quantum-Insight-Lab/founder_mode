@@ -4,16 +4,17 @@ import { buildCardHtmlFromTemplate, renderCardPngWithPresets } from './card-rend
 export type FixationCardPngInput = CardHtmlInput;
 
 export const FIXATION_CARD_PRESETS = [
-  { name: '1080x1080', template: 'fixation-card-1080.html' },
-  { name: '1080x1350', template: 'fixation-card-1350.html' },
-  { name: '1080x1920', template: 'fixation-card-1920.html' },
+  { name: '1080x1080', template: 'fixation-card.html', designH: 1080, cardMinH: 1044 },
+  { name: '1080x1350', template: 'fixation-card.html', designH: 1350, cardMinH: 1314 },
+  { name: '1080x1920', template: 'fixation-card.html', designH: 1920, cardMinH: 1884 },
 ] as const;
 
 export async function buildFixationCardHtml(
   input: FixationCardPngInput,
-  templateFile = 'fixation-card-1350.html'
+  templateFile = 'fixation-card.html',
+  layout: { designH: number; cardMinH: number } = { designH: 1350, cardMinH: 1314 }
 ): Promise<string> {
-  return buildCardHtmlFromTemplate(templateFile, input, 'fixation');
+  return buildCardHtmlFromTemplate(templateFile, input, layout, 'fixation');
 }
 
 export async function renderFixationCardPng(input: FixationCardPngInput): Promise<Buffer> {

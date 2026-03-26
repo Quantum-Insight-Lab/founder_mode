@@ -16,7 +16,14 @@ export type CardHtmlInput = {
   rhythmLine?: string;
 };
 
-export type CardPreset = { name: string; template: string };
+export type CardPreset = {
+  name: string;
+  template: string;
+  /** Height of the design board in px (e.g. 1080/1350/1920). */
+  designH: number;
+  /** Card min-height in px (usually designH - board padding*2). */
+  cardMinH: number;
+};
 
 let browserSingleton: Browser | null = null;
 let embeddedVariableFontDataUrl: string | null = null;
@@ -50,6 +57,7 @@ async function ensureEmbeddedRobotoFont(): Promise<string> {
 export async function buildCardHtmlFromTemplate(
   templateFile: string,
   input: CardHtmlInput,
+  layout: { designH: number; cardMinH: number },
   kind: 'declaration' | 'fixation' | 'report'
 ): Promise<string> {
   const templatePath = path.join(process.cwd(), 'design/cards', templateFile);
@@ -60,6 +68,8 @@ export async function buildCardHtmlFromTemplate(
     TIME: input.timeHHmm,
     AVATAR_BG_IMAGE: input.avatarBackgroundImage,
     RHYTHM: input.rhythmLine ?? '',
+    DESIGN_H: String(layout.designH),
+    CARD_MIN_H: String(layout.cardMinH),
   };
   let html = template;
   for (const [key, value] of Object.entries(data)) {
@@ -128,7 +138,12 @@ export async function renderCardPngWithPresets(
 ): Promise<Buffer> {
   let fallback: Buffer | null = null;
   for (const preset of presets) {
-    const html = await buildCardHtmlFromTemplate(preset.template, input, kind);
+    const html = await buildCardHtmlFromTemplate(
+      preset.template,
+      input,
+      { designH: preset.designH, cardMinH: preset.cardMinH },
+      kind
+    );
     const rendered = await measureCardLayout(html);
     if (!fallback) fallback = rendered.png;
     logger.info({ preset: preset.name, kind, fits: rendered.fits, ...rendered.metrics }, 'Card preset check');

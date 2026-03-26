@@ -8,6 +8,7 @@ import type { SessionData } from '../context.js';
 import { sendMaxImage, sendMaxMessage } from './max-send.js';
 import { dispatch } from '../dispatch.js';
 import type { HandlerDeps } from '../handlers/deps.js';
+import { notifyDeveloperMax } from '../../observability/alert.js';
 
 const MAX_UPDATES_URL = 'https://platform-api.max.ru/updates';
 const MAX_API_BASE = 'https://platform-api.max.ru';
@@ -309,6 +310,7 @@ function buildMaxAppContext(
     },
     alertError(err: unknown, context: string, uid?: string) {
       logger.error({ err, context, userId: uid }, 'MAX handler error');
+      notifyDeveloperMax(err, context, uid);
     },
   };
 }

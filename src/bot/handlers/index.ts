@@ -1,5 +1,7 @@
 import type { Bot } from 'grammy';
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import type { BotContext } from '../context.js';
 import { InvariantViolationError } from '../../domain/errors.js';
 import { invariantViolations } from '../../observability/metrics.js';
@@ -36,6 +38,16 @@ import { registerFixationHandlers } from './fixation.js';
 import { registerSettingsHandlers } from './settings.js';
 import { registerDeleteHandlers } from './delete.js';
 import { formatUserFacingError, USER_SERVICE_ERROR_FALLBACK } from '../user-facing-error.js';
+
+let defaultAvatarPngDataUrl: string | null = null;
+async function ensureDefaultAvatarDataUrl(): Promise<string> {
+  if (!defaultAvatarPngDataUrl) {
+    const p = path.join(process.cwd(), 'design', 'assets', 'default_avatar.png');
+    const buf = await readFile(p);
+    defaultAvatarPngDataUrl = `data:image/png;base64,${buf.toString('base64')}`;
+  }
+  return defaultAvatarPngDataUrl;
+}
 
 function formatErrorForUser(err: unknown): string {
   if (err instanceof InvariantViolationError) {
@@ -205,10 +217,13 @@ export function createAppDeps(): HandlerDeps {
     userId: string
   ): Promise<string> {
     const pref = await settingsService.getAvatarPreference(userId);
-    return resolveAvatarBackgroundImageValue(pref, {
+    const bg = await resolveAvatarBackgroundImageValue(pref, {
       loadUploaded: loadAvatarDataUrl,
       loadMessenger: async () => (await ctx.getAvatarDataUrl?.()) ?? null,
     });
+    if (bg !== 'none') return bg;
+    const dataUrl = await ensureDefaultAvatarDataUrl();
+    return `url(${dataUrl})`;
   }
 
   async function getRhythmLineForCard(userId: string): Promise<string | null> {

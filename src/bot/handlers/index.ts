@@ -2,6 +2,7 @@ import type { Bot } from 'grammy';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
+import sharp from 'sharp';
 import type { BotContext } from '../context.js';
 import { InvariantViolationError } from '../../domain/errors.js';
 import { invariantViolations } from '../../observability/metrics.js';
@@ -42,11 +43,41 @@ import { formatUserFacingError, USER_SERVICE_ERROR_FALLBACK } from '../user-faci
 let defaultAvatarPngDataUrl: string | null = null;
 async function ensureDefaultAvatarDataUrl(): Promise<string> {
   if (!defaultAvatarPngDataUrl) {
-    const p = path.join(process.cwd(), 'design', 'assets', 'default_avatar.png');
-    const buf = await readFile(p);
-    defaultAvatarPngDataUrl = `data:image/png;base64,${buf.toString('base64')}`;
+    const tryRead = async (filename: string): Promise<Buffer | null> => {
+      try {
+        return await readFile(path.join(process.cwd(), 'design', 'assets', filename));
+      } catch {
+        return null;
+      }
+    };
+    const buf = (await tryRead('default_avatar.webp')) ?? (await tryRead('default_avatar.png'));
+    if (!buf) {
+      throw new Error('Default avatar asset not found (design/assets/default_avatar.webp|png)');
+    }
+    const out = await sharp(buf, { failOn: 'none' })
+      .rotate()
+      .resize(180, 180, { fit: 'cover', position: 'centre' })
+      .webp({ quality: 92 })
+      .toBuffer();
+    defaultAvatarPngDataUrl = `data:image/webp;base64,${out.toString('base64')}`;
   }
   return defaultAvatarPngDataUrl;
+}
+
+async function normalizeAvatarDataUrl180(dataUrl: string): Promise<string | null> {
+  const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
+  if (!m) return null;
+  const bytes = Buffer.from(m[2], 'base64');
+  try {
+    const out = await sharp(bytes, { failOn: 'none' })
+      .rotate()
+      .resize(180, 180, { fit: 'cover', position: 'centre' })
+      .webp({ quality: 92 })
+      .toBuffer();
+    return `data:image/webp;base64,${out.toString('base64')}`;
+  } catch {
+    return null;
+  }
 }
 
 function formatErrorForUser(err: unknown): string {
@@ -219,11 +250,16 @@ export function createAppDeps(): HandlerDeps {
     const pref = await settingsService.getAvatarPreference(userId);
     const bg = await resolveAvatarBackgroundImageValue(pref, {
       loadUploaded: loadAvatarDataUrl,
-      loadMessenger: async () => (await ctx.getAvatarDataUrl?.()) ?? null,
+      loadMessenger: async () => {
+        const raw = (await ctx.getAvatarDataUrl?.()) ?? null;
+        if (!raw) return null;
+        return (await normalizeAvatarDataUrl180(raw)) ?? raw;
+      },
     });
     if (bg !== 'none') return bg;
     const dataUrl = await ensureDefaultAvatarDataUrl();
-    return `url(${dataUrl})`;
+    const out = `url(${dataUrl})`;
+    return out;
   }
 
   async function getRhythmLineForCard(userId: string): Promise<string | null> {

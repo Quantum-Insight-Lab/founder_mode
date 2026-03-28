@@ -123,7 +123,7 @@ export type WeeklyDeclarationAnswerKey = (typeof WEEKLY_DECLARATION_QUESTIONS)[n
 
 /** Редактирование declaration заблокировано при наличии фиксаций в локальной неделе */
 export const DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS =
-  '⚠️ На этой неделе уже есть фиксации дня. Declaration изменить нельзя — он задаёт контекст для уже записанных дней.';
+  '⚠️ На этой неделе уже есть фиксации дня. Приоритет изменить нельзя — он задаёт контекст для уже записанных дней.';
 
 /**
  * Reflection: intro + branched flow by had_movement

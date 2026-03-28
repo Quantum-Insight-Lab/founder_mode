@@ -59,6 +59,13 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
       [userId, start, end]
     );
 
+    if (reflectionsRow.rows.length === 0) {
+      throw new InvariantViolationError(
+        'Сначала нужно зафиксировать хотя бы одну фиксацию недели. Напиши (нажми) /fixation',
+        'NO_FIXATIONS'
+      );
+    }
+
     const input = {
       WEEKLY_DECLARATION: declaration,
       daily_fixations: reflectionsRow.rows,

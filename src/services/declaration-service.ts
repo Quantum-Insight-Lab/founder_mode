@@ -7,8 +7,9 @@ import { EVENT_TYPES } from '../events/types.js';
 import { prompts } from '../llm/prompts.js';
 import type { ServiceDeps } from './deps.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
-import { getWeekId } from './week-service.js';
+import { getWeekId, getWeekStartEnd } from './week-service.js';
 import { ensureDoubleNewlinesIfMultiline, stripTrailingDotsPerLine } from '../domain/text-format.js';
+import { InvariantViolationError } from '../domain/errors.js';
 
 interface DeclarationAnswers {
   main_focus: string;
@@ -109,6 +110,18 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       const userDateStr = await getUserLocalDate(userId, pool);
       const weekId = getWeekId(userDateStr);
       logger.debug({ userId, weekId }, 'updateDeclarationManual');
+
+      const { start, end } = getWeekStartEnd(userDateStr);
+      const fixCount = await pool.query<{ c: number }>(
+        'SELECT COUNT(*)::int AS c FROM daily_fixations WHERE user_id = $1 AND date >= $2 AND date <= $3',
+        [userId, start, end]
+      );
+      if ((fixCount.rows[0]?.c ?? 0) > 0) {
+        throw new InvariantViolationError(
+          '⚠️ На этой неделе уже есть фиксации дня. Приоритет изменить нельзя — он задаёт контекст для уже записанных дней.',
+          'DECLARATION_LOCKED'
+        );
+      }
 
       const idempotencyKey = `declaration:${userId}:${weekId}:manual:${randomUUID()}`;
       const { rawPost } = await generateDeclarationContent(userId, weekId, answers, idempotencyKey);

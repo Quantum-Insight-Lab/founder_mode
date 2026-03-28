@@ -132,8 +132,21 @@ describe.skipIf(!dbUrl)('services', () => {
       return weekId;
     }
 
+    /** Инвариант отчёта: минимум одна фиксация в локальной неделе (как в report-service). */
+    async function seedOneFixationInCurrentWeek() {
+      const today = new Date().toISOString().slice(0, 10);
+      await pool.query(
+        `INSERT INTO daily_fixations (
+           user_id, date, day, had_movement, movement_branch, what_moved, attention_sink, tomorrow_step, raw_post
+         ) VALUES ($1, $2, 'Monday', true, 'yes', 'x', 'y', 'z', 'raw')
+         ON CONFLICT (user_id, date) DO UPDATE SET raw_post = EXCLUDED.raw_post`,
+        [userId, today]
+      );
+    }
+
     it('renders deterministic card from text response', async () => {
       const weekId = await seedDeclarationForCurrentWeek();
+      await seedOneFixationInCurrentWeek();
       mockComplete.mockResolvedValueOnce({
         content: 'Статус: частично\n\nФакт: Продукт запущен\n\nРазрыв: Нет канала пользователей',
         usage: { prompt_tokens: 0, completion_tokens: 0 },
@@ -156,6 +169,7 @@ describe.skipIf(!dbUrl)('services', () => {
 
     it('retries once when first LLM response is empty', async () => {
       await seedDeclarationForCurrentWeek();
+      await seedOneFixationInCurrentWeek();
       mockComplete
         .mockResolvedValueOnce({
           content: '   ',
@@ -178,6 +192,7 @@ describe.skipIf(!dbUrl)('services', () => {
 
     it('keeps single event per week with same idempotency key', async () => {
       await seedDeclarationForCurrentWeek();
+      await seedOneFixationInCurrentWeek();
       mockComplete.mockResolvedValue({
         content: 'Статус: достигнут\n\nФакт: Факт\n\nРазрыв: Разрыв',
         usage: { prompt_tokens: 0, completion_tokens: 0 },
@@ -202,8 +217,17 @@ describe.skipIf(!dbUrl)('services', () => {
       expect(mockComplete).not.toHaveBeenCalled();
     });
 
+    it('throws when there are no fixations for the week', async () => {
+      await seedDeclarationForCurrentWeek();
+      await expect(reportService.createReport(userId)).rejects.toThrow(
+        /зафиксировать хотя бы одну фиксацию/
+      );
+      expect(mockComplete).not.toHaveBeenCalled();
+    });
+
     it('throws when both LLM attempts return empty text', async () => {
       await seedDeclarationForCurrentWeek();
+      await seedOneFixationInCurrentWeek();
       mockComplete
         .mockResolvedValueOnce({
           content: '  ',
@@ -278,6 +302,32 @@ describe.skipIf(!dbUrl)('services', () => {
         [userId]
       );
       expect(upd.rows[0]?.c).toBe(1);
+    });
+
+    it('updateDeclarationManual rejects when week has fixations', async () => {
+      mockComplete.mockResolvedValue({
+        content: 'Фокус: X\n\nРезультат: Y\n\nПровал: Z',
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+      await declarationService.createDeclaration(userId, answers);
+      const today = new Date().toISOString().slice(0, 10);
+      await pool.query(
+        `INSERT INTO daily_fixations (
+           user_id, date, day, had_movement, movement_branch, what_moved, attention_sink, tomorrow_step, raw_post
+         ) VALUES ($1, $2, 'Monday', true, 'yes', 'a', 'b', 'c', 'raw')`,
+        [userId, today]
+      );
+      mockComplete.mockClear();
+      await expect(
+        declarationService.updateDeclarationManual(userId, {
+          main_focus: 'mf2',
+          win_result: 'wr2',
+          week_failure: 'wf2',
+        })
+      ).rejects.toThrow(/Приоритет изменить нельзя/);
+      expect(mockComplete).not.toHaveBeenCalled();
     });
 
     it('throws when declaration LLM returns empty twice', async () => {

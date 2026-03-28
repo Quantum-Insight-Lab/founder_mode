@@ -64,7 +64,7 @@ export async function handleDeclarationCommand(ctx: AppContext, deps: HandlerDep
   if (existing.rows.length > 0) {
     ctx.session.isFirstDeclaration = undefined;
     ctx.session.step = 'declaration_choice';
-    await ctx.reply('Declaration на эту неделю уже есть.', {
+    await ctx.reply('Приоритет на эту неделю уже есть.', {
       reply_markup: [[
         { text: 'Показать', callback_data: 'declaration_show' },
         { text: 'Изменить', callback_data: 'declaration_edit' },
@@ -193,7 +193,7 @@ export async function handleNotifyDeclaration(ctx: AppContext, deps: HandlerDeps
   if (existing.rows.length > 0) {
     ctx.session.isFirstDeclaration = undefined;
     ctx.session.step = 'declaration_choice';
-    await ctx.reply('Declaration на эту неделю уже есть.', {
+    await ctx.reply('Приоритет на эту неделю уже есть.', {
       reply_markup: [[
         { text: 'Показать', callback_data: 'declaration_show' },
         { text: 'Изменить', callback_data: 'declaration_edit' },

@@ -15,6 +15,8 @@ export interface FixationSessionData {
 }
 
 export interface SessionData {
+  /** Имя для карточек (MAX): кеш, если в апдейте без полного sender (callback и т.д.). */
+  maxDisplayName?: string;
   step?: string;
   declarationEditMode?: boolean; // true = ручное редактирование declaration, без LLM
   declarationAnswers?: Record<string, string>;

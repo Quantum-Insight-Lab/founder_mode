@@ -20,6 +20,7 @@
     :root {
       --design-w: 1080px;
       --design-h: {{DESIGN_H}}px;
+      --type-scale: {{TYPE_SCALE}};
       --pad-x: 48px;
       --pad-y: 48px;
       --scale: min(1,
@@ -132,14 +133,14 @@
     }
 
     .section-title {
-      font-size: 62px;
+      font-size: calc(62px * var(--type-scale));
       font-weight: 500;
       color: #000;
       margin: 38px 0 62px 0;
     }
 
     .field {
-      font-size: 50px;
+      font-size: calc(50px * var(--type-scale));
       font-weight: 400;
       color: #000;
       margin: 0 0 72px 0;

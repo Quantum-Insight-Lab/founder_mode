@@ -27,6 +27,23 @@ export type CardPreset = {
   cardMinH: number;
 };
 
+/** Smaller scales tried on the tallest preset when default typography overflows. */
+export const CARD_LAST_PRESET_TYPE_SCALE_STEPS = [0.9, 0.82, 0.74, 0.66, 0.58] as const;
+
+const ALLOWED_TYPE_SCALES = new Set<number>([1, ...CARD_LAST_PRESET_TYPE_SCALE_STEPS]);
+
+function typeScaleToken(layout: { typeScale?: number }): string {
+  const t = layout.typeScale ?? 1;
+  return ALLOWED_TYPE_SCALES.has(t) ? String(t) : '1';
+}
+
+export type CardLayoutOptions = {
+  designH: number;
+  cardMinH: number;
+  /** Typography scale (1 = design defaults). Only allowlisted values are substituted. */
+  typeScale?: number;
+};
+
 let browserSingleton: Browser | null = null;
 let embeddedVariableFontDataUrl: string | null = null;
 let embeddedDefaultBadgeDataUrl: string | null = null;
@@ -81,7 +98,7 @@ async function ensureEmbeddedDefaultBadge(): Promise<string | null> {
 export async function buildCardHtmlFromTemplate(
   templateFile: string,
   input: CardHtmlInput,
-  layout: { designH: number; cardMinH: number },
+  layout: CardLayoutOptions,
   kind: 'declaration' | 'fixation' | 'report'
 ): Promise<string> {
   const templatePath = path.join(process.cwd(), 'design/cards', templateFile);
@@ -97,6 +114,7 @@ export async function buildCardHtmlFromTemplate(
     BADGE_DISPLAY: badgeImage ? 'block' : 'none',
     DESIGN_H: String(layout.designH),
     CARD_MIN_H: String(layout.cardMinH),
+    TYPE_SCALE: typeScaleToken(layout),
   };
   let html = template;
   for (const [key, value] of Object.entries(data)) {
@@ -164,17 +182,39 @@ export async function renderCardPngWithPresets(
   kind: 'declaration' | 'fixation' | 'report'
 ): Promise<Buffer> {
   let fallback: Buffer | null = null;
+  const lastPreset = presets.length > 0 ? presets[presets.length - 1] : null;
+
   for (const preset of presets) {
-    const html = await buildCardHtmlFromTemplate(
-      preset.template,
-      input,
-      { designH: preset.designH, cardMinH: preset.cardMinH },
-      kind
-    );
-    const rendered = await measureCardLayout(html);
+    const isLastPreset = lastPreset !== null && preset === lastPreset;
+    const baseLayout = { designH: preset.designH, cardMinH: preset.cardMinH };
+
+    const measureAtScale = async (typeScale: number) => {
+      const html = await buildCardHtmlFromTemplate(preset.template, input, { ...baseLayout, typeScale }, kind);
+      return measureCardLayout(html);
+    };
+
+    let rendered = await measureAtScale(1);
     if (!fallback) fallback = rendered.png;
-    logger.info({ preset: preset.name, kind, fits: rendered.fits, ...rendered.metrics }, 'Card preset check');
+    logger.info(
+      { preset: preset.name, kind, typeScale: 1, fits: rendered.fits, ...rendered.metrics },
+      'Card preset check'
+    );
     if (rendered.fits) return rendered.png;
+
+    if (isLastPreset) {
+      let lastPng = rendered.png;
+      for (const typeScale of CARD_LAST_PRESET_TYPE_SCALE_STEPS) {
+        rendered = await measureAtScale(typeScale);
+        lastPng = rendered.png;
+        logger.info(
+          { preset: preset.name, kind, typeScale, fits: rendered.fits, ...rendered.metrics },
+          'Card preset check'
+        );
+        if (rendered.fits) return rendered.png;
+      }
+      return lastPng;
+    }
   }
+
   return fallback ?? Buffer.alloc(0);
 }

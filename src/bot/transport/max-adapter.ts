@@ -55,18 +55,45 @@ function getMessageText(u: MaxUpdate): string {
   return u.message?.body?.text ?? '';
 }
 
-function getMaxDisplayName(u: MaxUpdate, fallbackExternalId: string): string {
-  const sender = u.message?.sender as Record<string, unknown> | undefined;
-  if (sender) {
-    const isBot = sender.is_bot === true;
-    if (!isBot) {
-      const first = typeof sender.first_name === 'string' ? sender.first_name.trim() : '';
-      const last = typeof sender.last_name === 'string' ? sender.last_name.trim() : '';
-      const full = [first, last].filter(Boolean).join(' ').trim();
-      if (full) return full;
-      if (typeof sender.name === 'string' && sender.name.trim()) return sender.name.trim();
-    }
+function displayNameFromUserRecord(user: Record<string, unknown> | null | undefined): string | null {
+  if (!user) return null;
+  if (user.is_bot === true) return null;
+  const first = typeof user.first_name === 'string' ? user.first_name.trim() : '';
+  const last = typeof user.last_name === 'string' ? user.last_name.trim() : '';
+  const full = [first, last].filter(Boolean).join(' ').trim();
+  if (full) return full;
+  if (typeof user.name === 'string' && user.name.trim()) return user.name.trim();
+  if (typeof user.username === 'string' && user.username.trim()) {
+    const u = user.username.trim();
+    if (!/^\d+$/.test(u)) return u;
   }
+  return null;
+}
+
+/** Имя из текущего апдейта (message.sender / callback.user / top-level user), как для аватара. */
+function getMaxDisplayNameFromUpdate(u: MaxUpdate): string | null {
+  const sender = (u.message?.sender ?? null) as Record<string, unknown> | null;
+  const callbackUser = (u.callback?.user ?? null) as Record<string, unknown> | null;
+  const topUser = (u.user ?? null) as Record<string, unknown> | null;
+  for (const src of [sender, callbackUser, topUser]) {
+    const n = displayNameFromUserRecord(src);
+    if (n) return n;
+  }
+  return null;
+}
+
+function resolveMaxDisplayName(
+  u: MaxUpdate,
+  fallbackExternalId: string,
+  session: SessionData
+): string {
+  const fromUpdate = getMaxDisplayNameFromUpdate(u);
+  if (fromUpdate) {
+    session.maxDisplayName = fromUpdate;
+    return fromUpdate;
+  }
+  const cached = session.maxDisplayName?.trim();
+  if (cached) return cached;
   return fallbackExternalId;
 }
 
@@ -438,7 +465,7 @@ export function runMaxPolling(
       }
 
       const session = sessionStore.get(internalUserId) ?? {};
-      const displayName = getMaxDisplayName(u, maxUserId);
+      const displayName = resolveMaxDisplayName(u, maxUserId, session);
       const avatarUrl = extractAvatarUrl(u);
       const chatId = u.message?.recipient?.chat_id != null ? String(u.message.recipient.chat_id) : null;
       logger.debug(

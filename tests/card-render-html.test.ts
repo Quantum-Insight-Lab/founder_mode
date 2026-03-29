@@ -1,6 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { buildCardHtmlFromTemplate } from '../src/services/card-render-shared.js';
 
+/** ~90 слов, 5 абзацев — реалистичный длинный пост для подстановки в карточку. */
+const LONG_CARD_CONTENT = `Первый реальный выход в рынок
+
+На этой неделе сделал важный шаг — вышел в кофейни с продуктом. Формально всё просто: зашёл в пять точек, пообщался, понял, как они работают с поставщиками и кто у них отвечает за закупку кофе.
+
+Фактически это был барьер. Самое сложное — решиться на первый холодный заход и начать разговор без тёплого знакомства.
+
+Результат: договорился о трёх дегустациях с ЛПР. Инсайт — интерес есть почти сразу, главное дойти до живого диалога.
+
+Дальше начинается настоящая проверка: конверсия дегустаций в закупки и обратная связь по продукту.`;
+
 describe('buildCardHtmlFromTemplate', () => {
   it('replaces placeholders and escapes HTML in content', async () => {
     const html = await buildCardHtmlFromTemplate(
@@ -37,5 +48,23 @@ describe('buildCardHtmlFromTemplate', () => {
     );
     expect(html).toContain('data:font/ttf;base64,');
     expect(html).not.toContain('../../fonts/Roboto-Variable.ttf');
+  });
+
+  it('substitutes type scale for card typography', async () => {
+    const html = await buildCardHtmlFromTemplate(
+      'fixation-card.html',
+      {
+        username: 'U',
+        content: LONG_CARD_CONTENT,
+        timeHHmm: '09:00',
+        avatarBackgroundImage: 'none',
+      },
+      { designH: 1920, cardMinH: 1884, typeScale: 0.9 },
+      'fixation'
+    );
+    expect(html).toContain('--type-scale: 0.9');
+    expect(html).not.toContain('{{TYPE_SCALE}}');
+    expect(html).toContain('Первый реальный выход в рынок');
+    expect(html).toContain('конверсия дегустаций в закупки');
   });
 });

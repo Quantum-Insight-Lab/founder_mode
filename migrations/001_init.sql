@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
   user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tg_id VARCHAR(64) UNIQUE NULL,
   max_id VARCHAR(64) UNIQUE NULL,
+  onboarding_started_at TIMESTAMPTZ NULL,
   onboarding_completed_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT users_at_least_one_channel CHECK (tg_id IS NOT NULL OR max_id IS NOT NULL)

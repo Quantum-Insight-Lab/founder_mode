@@ -45,17 +45,7 @@ import { formatUserFacingError, USER_SERVICE_ERROR_FALLBACK } from '../user-faci
 let defaultAvatarPngDataUrl: string | null = null;
 async function ensureDefaultAvatarDataUrl(): Promise<string> {
   if (!defaultAvatarPngDataUrl) {
-    const tryRead = async (filename: string): Promise<Buffer | null> => {
-      try {
-        return await readFile(path.join(process.cwd(), 'design', 'assets', filename));
-      } catch {
-        return null;
-      }
-    };
-    const buf = (await tryRead('default_avatar.webp')) ?? (await tryRead('default_avatar.png'));
-    if (!buf) {
-      throw new Error('Default avatar asset not found (design/assets/default_avatar.webp|png)');
-    }
+    const buf = await readFile(path.join(process.cwd(), 'design', 'assets', 'default_avatar.png'));
     const out = await sharp(buf, { failOn: 'none' })
       .rotate()
       .resize(180, 180, { fit: 'cover', position: 'centre' })

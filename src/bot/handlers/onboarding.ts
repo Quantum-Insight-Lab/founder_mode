@@ -27,14 +27,17 @@ export async function handleStart(ctx: AppContext, deps: HandlerDeps): Promise<v
   const { pool } = deps;
   botOpens.inc();
   const userId = ctx.userId;
-  const r = await pool.query<{ onboarding_completed_at: Date | null }>(
-    'SELECT onboarding_completed_at FROM users WHERE user_id = $1',
+  const r = await pool.query<{ onboarding_completed_at: Date | null; onboarding_started_at: Date | null }>(
+    'SELECT onboarding_completed_at, onboarding_started_at FROM users WHERE user_id = $1',
     [userId]
   );
   const onboardingCompleted = r.rows[0]?.onboarding_completed_at != null;
+  const onboardingStarted = r.rows[0]?.onboarding_started_at != null;
   logger.info({ channel: ctx.channel, externalId: ctx.externalId, userId, onboardingCompleted }, 'Command /start');
 
-  if (onboardingCompleted) {
+  // Once the user explicitly opted into the experiment (CTA "Да"), /start should show the concise intro.
+  // Completion is tracked separately (e.g. after first report CTA).
+  if (onboardingStarted || onboardingCompleted) {
     await ctx.reply(ONBOARDING_INTRO, { parse_mode: 'HTML' });
     return;
   }
@@ -80,13 +83,13 @@ export async function handleOnboardTimezone(ctx: AppContext, text: string, deps:
 }
 
 export async function handleOnboardCtaYes(ctx: AppContext, deps: HandlerDeps): Promise<void> {
-  const { markOnboarded } = deps;
+  const { pool } = deps;
   const userId = ctx.userId;
   logger.info({ userId }, 'Onboarding: CTA yes');
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
   ctx.session.step = 'onboard_timezone';
-  await markOnboarded(userId);
+  await pool.query('UPDATE users SET onboarding_started_at = NOW() WHERE user_id = $1', [userId]);
   await ctx.reply(ONBOARDING_AFTER_CTA_YES);
   await ctx.reply(ONBOARDING_TIMEZONE_QUESTION);
 }

@@ -106,10 +106,12 @@ async function proceedWithFixationDate(ctx: AppContext, date: string, userId: st
   );
   const totalFixations = meta.rows[0]?.total ?? 0;
   const reportCount = meta.rows[0]?.report_count ?? 0;
-  if (totalFixations === 0) {
-    await ctx.reply(ONBOARDING_FIRST_REFLECT_INTRO);
-  } else if (reportCount === 0) {
-    await ctx.reply(ONBOARDING_NEXT_REFLECT_INTRO);
+  if (reportCount === 0) {
+    if (totalFixations === 0) {
+      await ctx.reply(ONBOARDING_FIRST_REFLECT_INTRO);
+    } else {
+      await ctx.reply(ONBOARDING_NEXT_REFLECT_INTRO);
+    }
   }
   await ctx.reply(REFLECTION_MOVEMENT_QUESTION, {
     reply_markup: MOVEMENT_MARKUP,
@@ -349,18 +351,25 @@ export async function handleFixationMessage(ctx: AppContext, text: string, deps:
         funnelCompleted.inc({ type: 'fixation' });
         logger.info({ userId, date: data.date }, 'Fixation submitted');
         await sendFixationAsCard(ctx, deps, userId, rawPost ?? '');
-        await ctx.reply(ONBOARDING_AFTER_REFLECT);
-        const hintRow = await pool.query<{ fixation_onboarding_hint_shown_at: Date | null }>(
-          'SELECT fixation_onboarding_hint_shown_at FROM user_settings WHERE user_id = $1',
+        const reportMeta = await pool.query<{ report_count: number }>(
+          'SELECT COUNT(*)::int AS report_count FROM weekly_reports WHERE user_id = $1',
           [userId]
         );
-        if (hintRow.rows[0]?.fixation_onboarding_hint_shown_at == null) {
-          await ctx.reply(`<i>${ONBOARDING_AFTER_REFLECT_HINT}</i>`, { parse_mode: 'HTML' });
-          await pool.query(
-            `INSERT INTO user_settings (user_id, fixation_onboarding_hint_shown_at) VALUES ($1, NOW())
-             ON CONFLICT (user_id) DO UPDATE SET fixation_onboarding_hint_shown_at = NOW(), updated_at = NOW()`,
+        const reportCount = reportMeta.rows[0]?.report_count ?? 0;
+        if (reportCount === 0) {
+          await ctx.reply(ONBOARDING_AFTER_REFLECT);
+          const hintRow = await pool.query<{ fixation_onboarding_hint_shown_at: Date | null }>(
+            'SELECT fixation_onboarding_hint_shown_at FROM user_settings WHERE user_id = $1',
             [userId]
           );
+          if (hintRow.rows[0]?.fixation_onboarding_hint_shown_at == null) {
+            await ctx.reply(`<i>${ONBOARDING_AFTER_REFLECT_HINT}</i>`, { parse_mode: 'HTML' });
+            await pool.query(
+              `INSERT INTO user_settings (user_id, fixation_onboarding_hint_shown_at) VALUES ($1, NOW())
+               ON CONFLICT (user_id) DO UPDATE SET fixation_onboarding_hint_shown_at = NOW(), updated_at = NOW()`,
+              [userId]
+            );
+          }
         }
       }
     } catch (err) {

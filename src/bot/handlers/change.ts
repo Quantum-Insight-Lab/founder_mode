@@ -8,6 +8,7 @@ import {
   type WeeklyPriorityChangeAnswerKey,
 } from '../conversations.js';
 import { logger } from '../../observability/logger.js';
+import { cardEditClicks, funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from '../../services/week-service.js';
 import type { HandlerDeps } from './deps.js';
@@ -80,6 +81,7 @@ export async function handleChangeCommand(ctx: AppContext, deps: HandlerDeps): P
     return;
   }
 
+  funnelStarted.inc({ type: 'change' });
   ctx.session.step = 'change_0';
   ctx.session.changeAnswers = {};
   await ctx.reply(WEEKLY_PRIORITY_CHANGE_QUESTIONS[0].text);
@@ -115,6 +117,7 @@ export async function handleChangeEdit(ctx: AppContext, deps: HandlerDeps): Prom
   logger.debug({ userId }, 'Change edit');
   ensureSession(ctx);
   await ctx.answerCallbackQuery();
+  cardEditClicks.inc({ kind: 'change' });
 
   const userDateStr = await getUserLocalDate(userId, pool);
   const weekId = getWeekId(userDateStr);
@@ -166,12 +169,13 @@ export async function handleChangeMessage(ctx: AppContext, text: string, deps: H
       const { rawPost } = isEdit
         ? await priorityChangeService.updatePriorityChangeManual(userId, record)
         : await priorityChangeService.createPriorityChange(userId, record);
+      funnelCompleted.inc({ type: 'change' });
       logger.info({ userId, isEdit }, 'Priority change saved');
       await ctx.reply(isEdit ? '❗️ Смена приоритета обновлена.' : '❗️ Приоритет изменён.');
       await sendChangeAsCard(ctx, deps, userId, rawPost);
     } catch (err) {
       logger.error({ err, userId }, 'Priority change failed');
-      ctx.alertError?.(err, 'declaration', userId);
+      ctx.alertError?.(err, 'change', userId);
       await ctx.reply(formatErrorForUser(err));
     }
   } else {

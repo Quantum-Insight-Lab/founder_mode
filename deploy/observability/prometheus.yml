@@ -1,0 +1,12 @@
+# Main config. Edit targets/founder_mode.json to point at your bot (see README).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: founder_mode
+    metrics_path: /metrics
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/founder_mode.json
+        refresh_interval: 30s

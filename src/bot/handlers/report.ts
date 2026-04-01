@@ -8,7 +8,7 @@ import {
   ONBOARDING_AFTER_REPORT_QUESTION,
 } from '../conversations.js';
 import { logger } from '../../observability/logger.js';
-import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
+import { cardEditClicks, funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from '../../services/week-service.js';
 import { renderReportCardPng } from '../../services/report-card-render.js';
@@ -148,6 +148,7 @@ export async function handleReportEdit(ctx: AppContext, deps: HandlerDeps): Prom
   const userId = ctx.userId;
   ensureSession(ctx);
   await ctx.answerCallbackQuery();
+  cardEditClicks.inc({ kind: 'report' });
   funnelStarted.inc({ type: 'report' });
   try {
     const rawPost = await reportService.updateReportManual(userId);

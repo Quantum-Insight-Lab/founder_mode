@@ -19,7 +19,7 @@ import {
   ONBOARDING_CTA_LATER_MSG,
 } from '../conversations.js';
 import { logger } from '../../observability/logger.js';
-import { botOpens } from '../../observability/metrics.js';
+import { botOpens, experimentCompleted, experimentStarted } from '../../observability/metrics.js';
 import { userTimeToTimezone } from '../../domain/timezone.js';
 import type { HandlerDeps } from './deps.js';
 
@@ -90,6 +90,7 @@ export async function handleOnboardCtaYes(ctx: AppContext, deps: HandlerDeps): P
   ensureSession(ctx);
   ctx.session.step = 'onboard_timezone';
   await pool.query('UPDATE users SET onboarding_started_at = NOW() WHERE user_id = $1', [userId]);
+  experimentStarted.inc();
   await ctx.reply(ONBOARDING_AFTER_CTA_YES);
   await ctx.reply(ONBOARDING_TIMEZONE_QUESTION);
 }
@@ -110,6 +111,7 @@ export async function handleOnboardReportCtaYes(ctx: AppContext, deps: HandlerDe
   ensureSession(ctx);
   ctx.session.step = undefined;
   await pool.query('UPDATE users SET onboarding_completed_at = NOW() WHERE user_id = $1', [userId]);
+  experimentCompleted.inc();
   await ctx.reply(ONBOARDING_CTA_YES_FINAL_MSG);
 }
 
@@ -121,6 +123,7 @@ export async function handleOnboardReportCtaLater(ctx: AppContext, deps: Handler
   ensureSession(ctx);
   ctx.session.step = undefined;
   await pool.query('UPDATE users SET onboarding_completed_at = NOW() WHERE user_id = $1', [userId]);
+  experimentCompleted.inc();
   await ctx.reply(ONBOARDING_CTA_LATER_MSG);
 }
 

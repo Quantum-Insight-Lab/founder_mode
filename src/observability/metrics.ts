@@ -47,5 +47,24 @@ export const botOpens = new Counter({
   registers: [register],
 });
 
+export const cardEditClicks = new Counter({
+  name: 'card_edit_clicks_total',
+  help: 'Total clicks on "Edit" button for cards',
+  labelNames: ['kind'],
+  registers: [register],
+});
+
+export const experimentStarted = new Counter({
+  name: 'experiment_started_total',
+  help: 'Total experiment starts (CTA "Да")',
+  registers: [register],
+});
+
+export const experimentCompleted = new Counter({
+  name: 'experiment_completed_total',
+  help: 'Total experiment completions (after first report CTA)',
+  registers: [register],
+});
+
 // Default Node.js metrics (event loop, memory, etc.)
 collectDefaultMetrics({ register });

@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: Founder Mode
+    folder: Founder Mode
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/dashboards

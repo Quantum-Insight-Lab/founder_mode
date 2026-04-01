@@ -10,7 +10,7 @@ import {
 } from '../conversations.js';
 import { WEEKLY_DECLARATION_QUESTIONS, type WeeklyDeclarationAnswerKey } from '../conversations.js';
 import { logger } from '../../observability/logger.js';
-import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
+import { cardEditClicks, funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from '../../services/week-service.js';
 import { renderDeclarationCardPng } from '../../services/declaration-card-render.js';
@@ -109,6 +109,7 @@ export async function handleDeclarationEdit(ctx: AppContext, deps: HandlerDeps):
   logger.debug({ userId }, 'Declaration edit');
   ensureSession(ctx);
   await ctx.answerCallbackQuery();
+  cardEditClicks.inc({ kind: 'declaration' });
 
   const userDateStr = await getUserLocalDate(userId, pool);
   const { start, end } = getWeekStartEnd(userDateStr);

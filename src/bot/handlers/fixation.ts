@@ -16,7 +16,7 @@ import {
   ONBOARDING_AFTER_REFLECT_HINT,
 } from '../conversations.js';
 import { logger } from '../../observability/logger.js';
-import { funnelCompleted, funnelStarted } from '../../observability/metrics.js';
+import { cardEditClicks, funnelCompleted, funnelStarted } from '../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../db/user-timezone.js';
 import { instantToUserLocalDateString, parseTimezoneOffset } from '../../domain/timezone.js';
 import { getWeekId } from '../../services/week-service.js';
@@ -198,6 +198,7 @@ export async function handleFixationCommandBase(ctx: AppContext, deps: HandlerDe
 export async function handleFixationCommand(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /fixation');
   ensureSession(ctx);
+  funnelStarted.inc({ type: 'fixation' });
   await handleFixationCommandBase(ctx, deps);
 }
 
@@ -250,6 +251,7 @@ export async function handleFixationEdit(ctx: AppContext, deps: HandlerDeps): Pr
   ctx.session.step = 'fixation_movement';
   ctx.session.fixationEditMode = true;
   await ctx.answerCallbackQuery();
+  cardEditClicks.inc({ kind: 'fixation' });
   await ctx.reply(REFLECTION_MOVEMENT_QUESTION, {
     reply_markup: MOVEMENT_MARKUP,
   });
@@ -274,7 +276,6 @@ export async function handleFixationNo(ctx: AppContext, deps: HandlerDeps): Prom
   ctx.session.fixationData.had_movement = false;
   ctx.session.fixationData.movement_branch = 'no';
   ctx.session.step = 'fixation_nomovement_0';
-  funnelStarted.inc({ type: 'fixation' });
   await ctx.answerCallbackQuery();
   await ctx.reply(REFLECTION_QUESTIONS_NO_MOVEMENT[0].text);
 }
@@ -285,7 +286,6 @@ export async function handleFixationPartial(ctx: AppContext, deps: HandlerDeps):
   ctx.session.fixationData.had_movement = false;
   ctx.session.fixationData.movement_branch = 'partial';
   ctx.session.step = 'fixation_partial_0';
-  funnelStarted.inc({ type: 'fixation' });
   await ctx.answerCallbackQuery();
   await ctx.reply(REFLECTION_QUESTIONS_PARTIAL[0].text);
 }
@@ -296,7 +296,6 @@ export async function handleFixationYes(ctx: AppContext, deps: HandlerDeps): Pro
   ctx.session.fixationData.had_movement = true;
   ctx.session.fixationData.movement_branch = 'yes';
   ctx.session.step = 'fixation_movement_0';
-  funnelStarted.inc({ type: 'fixation' });
   await ctx.answerCallbackQuery();
   await ctx.reply(REFLECTION_QUESTIONS_MOVEMENT[0].text);
 }

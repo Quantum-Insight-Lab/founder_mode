@@ -96,8 +96,8 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
       case 'delete':
         return handleDeleteCommand(ctx, deps);
       default:
-        logger.debug({ channel: ctx.channel, userId: ctx.userId, command: event.name }, 'Unknown command, skip');
-        return;
+        logger.debug({ channel: ctx.channel, userId: ctx.userId, command: event.name }, 'Unknown command, idle reply');
+        return handleIdleMessage(ctx);
     }
   }
 
@@ -232,7 +232,8 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
     }
     if (step === 'settings_tz_input') return handleSettingsTzInput(ctx, text, deps);
     if (!text.startsWith('/')) return handleIdleMessage(ctx);
-    logger.debug({ channel: ctx.channel, userId: ctx.userId, step }, 'Message not for any step, skip');
+    logger.debug({ channel: ctx.channel, userId: ctx.userId, step }, 'Slash message not for any step, idle reply');
+    return handleIdleMessage(ctx);
   }
 
   if (event.type === 'photo') {

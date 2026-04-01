@@ -11,6 +11,7 @@ export const ONBOARDING_INTRO =
   `Отчёт — срез недели.\n\n` +
   `<b>Команды:</b>\n` +
   `/declaration — задать приоритет\n` +
+  `/change — сменить приоритет\n` +
   `/fixation — зафиксировать день\n` +
   `/report — итог недели\n` +
   `/settings - настройки\n` +
@@ -96,6 +97,7 @@ export const ONBOARDING_CTA_LATER_MSG =
   'Отчёт собирается по этому периоду.\n\n' +
   'Команды:\n' +
   '/declaration — задать приоритет\n' +
+  '/change — сменить приоритет\n' +
   '/fixation — зафиксировать день\n' +
   '/report — итог недели\n' +
   '/settings - настройки\n' +
@@ -107,6 +109,7 @@ export const ONBOARDING_CTA_YES_FINAL_MSG =
   'Отчёт собирается по этому периоду.\n\n' +
   'Команды:\n' +
   '/declaration — задать приоритет\n' +
+  '/change — сменить приоритет\n' +
   '/fixation — зафиксировать день\n' +
   '/report — итог недели\n' +
   '/settings - настройки\n' +
@@ -121,9 +124,19 @@ export const WEEKLY_DECLARATION_QUESTIONS = [
 
 export type WeeklyDeclarationAnswerKey = (typeof WEEKLY_DECLARATION_QUESTIONS)[number]['key'];
 
+/** Вопросы для /change (смена приоритета недели) */
+export const WEEKLY_PRIORITY_CHANGE_QUESTIONS = [
+  { key: 'reason', text: 'Почему меняешь приоритет?' },
+  { key: 'new_focus', text: 'Какой новый приоритет до конца недели?' },
+  { key: 'new_win', text: 'Какой артефакт или результат должен появиться?' },
+  { key: 'new_failure', text: 'Что будет считаться провалом?' },
+] as const;
+
+export type WeeklyPriorityChangeAnswerKey = (typeof WEEKLY_PRIORITY_CHANGE_QUESTIONS)[number]['key'];
+
 /** Редактирование declaration заблокировано при наличии фиксаций в локальной неделе */
 export const DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS =
-  '⚠️ На этой неделе уже есть фиксации дня. Приоритет изменить нельзя — он задаёт контекст для уже записанных дней.';
+  '⚠️ На этой неделе уже есть фиксации дня. Приоритет можно изменить через /change.';
 
 /**
  * Reflection: intro + branched flow by had_movement
@@ -153,12 +166,6 @@ export const REFLECTION_QUESTIONS_PARTIAL = [
   { key: 'why_partial', text: 'Почему движение осталось частичным?' },
   { key: 'attention_sink', text: 'Что ещё заняло внимание?' },
   { key: 'tomorrow_step', text: 'Какой шаг по главному фокусу на завтра?' },
-] as const;
-
-export const REFLECTION_QUESTIONS_WEEK_CLOSED = [
-  { key: 'new_focus', text: 'Какой новый фокус выбран?' },
-  { key: 'what_moved', text: 'Что удалось сделать по нему?' },
-  { key: 'tomorrow_step', text: 'Какой следующий шаг на завтра?' },
 ] as const;
 
 /** Time options for notification settings */

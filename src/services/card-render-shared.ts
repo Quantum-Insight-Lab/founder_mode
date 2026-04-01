@@ -99,7 +99,7 @@ export async function buildCardHtmlFromTemplate(
   templateFile: string,
   input: CardHtmlInput,
   layout: CardLayoutOptions,
-  kind: 'declaration' | 'fixation' | 'report'
+  kind: 'declaration' | 'fixation' | 'report' | 'change'
 ): Promise<string> {
   const templatePath = path.join(process.cwd(), 'design/cards', templateFile);
   const template = await readFile(templatePath, 'utf8');
@@ -179,7 +179,7 @@ export async function measureCardLayout(
 export async function renderCardPngWithPresets(
   input: CardHtmlInput,
   presets: readonly CardPreset[],
-  kind: 'declaration' | 'fixation' | 'report'
+  kind: 'declaration' | 'fixation' | 'report' | 'change'
 ): Promise<Buffer> {
   let fallback: Buffer | null = null;
   const lastPreset = presets.length > 0 ? presets[presets.length - 1] : null;

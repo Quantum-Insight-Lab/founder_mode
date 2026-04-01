@@ -6,7 +6,11 @@ import type { DomainEvent } from '../events/types.js';
 import { EVENT_TYPES } from '../events/types.js';
 import { prompts } from '../llm/prompts.js';
 import type { ServiceDeps } from './deps.js';
-import { ensureDoubleNewlinesIfMultiline, stripTrailingDotsPerLine } from '../domain/text-format.js';
+import {
+  ensureDoubleNewlinesIfMultiline,
+  lowercaseFirstLetterAfterColonPerLine,
+  stripTrailingDotsPerLine,
+} from '../domain/text-format.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from './week-service.js';
 import { InvariantViolationError } from '../domain/errors.js';
@@ -59,6 +63,21 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
       [userId, start, end]
     );
 
+    const priorityChangeRow = await pool.query<{
+      reason: string;
+      new_focus: string;
+      new_win: string;
+      new_failure: string;
+      raw_post: string;
+      created_at: string;
+    }>(
+      `SELECT reason, new_focus, new_win, new_failure, raw_post, created_at
+       FROM weekly_priority_changes
+       WHERE user_id = $1 AND week_id = $2
+       LIMIT 1`,
+      [userId, weekId]
+    );
+
     if (reflectionsRow.rows.length === 0) {
       throw new InvariantViolationError(
         'Сначала нужно зафиксировать хотя бы одну фиксацию недели. Напиши (нажми) /fixation',
@@ -69,6 +88,7 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
     const input = {
       WEEKLY_DECLARATION: declaration,
       daily_fixations: reflectionsRow.rows,
+      priority_change: priorityChangeRow.rows[0] ?? null,
     };
     const userMessage = JSON.stringify(input, null, 2);
 
@@ -86,7 +106,9 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
         traceId: getTraceId(),
         callType: 'report',
       });
-      renderedCard = ensureDoubleNewlinesIfMultiline(stripTrailingDotsPerLine((response.content ?? '').trim()));
+      renderedCard = ensureDoubleNewlinesIfMultiline(
+        lowercaseFirstLetterAfterColonPerLine(stripTrailingDotsPerLine((response.content ?? '').trim()))
+      );
       if (renderedCard.length > 0) break;
       logger.warn({ userId, weekId, attempt }, 'Report text response is empty');
     }

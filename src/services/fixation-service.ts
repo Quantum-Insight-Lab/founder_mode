@@ -8,7 +8,11 @@ import { prompts } from '../llm/prompts.js';
 import { validateFixationDate, validateFixationBranch } from '../domain/validators.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { formatDayFull } from '../domain/date-format.js';
-import { ensureDoubleNewlinesIfMultiline, stripTrailingDotsPerLine } from '../domain/text-format.js';
+import {
+  ensureDoubleNewlinesIfMultiline,
+  lowercaseFirstLetterAfterColonPerLine,
+  stripTrailingDotsPerLine,
+} from '../domain/text-format.js';
 import { getWeekId } from './week-service.js';
 import { InvariantViolationError } from '../domain/errors.js';
 import type { ServiceDeps } from './deps.js';
@@ -109,7 +113,9 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       traceId: getTraceId(),
       callType: 'fixation',
     });
-    const rawPost = ensureDoubleNewlinesIfMultiline(stripTrailingDotsPerLine(response.content ?? ''));
+    const rawPost = ensureDoubleNewlinesIfMultiline(
+      lowercaseFirstLetterAfterColonPerLine(stripTrailingDotsPerLine(response.content ?? ''))
+    );
     payload.raw_post = rawPost;
 
     const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {

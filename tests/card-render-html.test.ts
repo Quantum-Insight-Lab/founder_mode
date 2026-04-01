@@ -67,4 +67,21 @@ describe('buildCardHtmlFromTemplate', () => {
     expect(html).toContain('Первый реальный выход в рынок');
     expect(html).toContain('конверсия дегустаций в закупки');
   });
+
+  it('renders change card template placeholders', async () => {
+    const html = await buildCardHtmlFromTemplate(
+      'change-card.html',
+      {
+        username: 'Founder',
+        content: 'Причина: pivot',
+        timeHHmm: '10:10',
+        avatarBackgroundImage: 'none',
+      },
+      { designH: 1350, cardMinH: 1314 },
+      'change'
+    );
+    expect(html).toContain('Смена приоритета');
+    expect(html).not.toContain('{{TYPE_SCALE}}');
+    expect(html).not.toContain('{{CONTENT}}');
+  });
 });

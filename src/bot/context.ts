@@ -20,6 +20,8 @@ export interface SessionData {
   step?: string;
   declarationEditMode?: boolean; // true = ручное редактирование declaration, без LLM
   declarationAnswers?: Record<string, string>;
+  changeAnswers?: Record<string, string>;
+  changeEditMode?: boolean; // true = ручное редактирование change, без LLM
   reportEditMode?: boolean; // true = ручное редактирование report, без LLM
   isFirstDeclaration?: boolean; // true = первый declaration пользователя — онбординг после карточки
   fixationEditMode?: boolean; // true = ручное редактирование, без LLM

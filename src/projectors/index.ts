@@ -8,6 +8,7 @@ import type {
   DeclarationUpdatedEvent,
   DomainEvent,
   FixationSubmittedEvent,
+  PriorityChangedEvent,
   ReportCreatedEvent,
   ReportUpdatedEvent,
   UserRegisteredEvent,
@@ -20,6 +21,9 @@ export function createProjectors(pool: Pool) {
         case EVENT_TYPES.DeclarationCreated:
         case EVENT_TYPES.DeclarationUpdated:
           await projectDeclaration(event);
+          break;
+        case EVENT_TYPES.PriorityChanged:
+          await projectPriorityChange(event);
           break;
         case EVENT_TYPES.ReportCreated:
         case EVENT_TYPES.ReportUpdated:
@@ -83,6 +87,23 @@ export function createProjectors(pool: Pool) {
         raw_post = EXCLUDED.raw_post,
         updated_at = NOW()`,
       [p.user_id, p.week_id, p.raw_post]
+    );
+  }
+
+  async function projectPriorityChange(event: PriorityChangedEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO weekly_priority_changes (
+        user_id, week_id, reason, new_focus, new_win, new_failure, raw_post, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      ON CONFLICT (user_id, week_id) DO UPDATE SET
+        reason = EXCLUDED.reason,
+        new_focus = EXCLUDED.new_focus,
+        new_win = EXCLUDED.new_win,
+        new_failure = EXCLUDED.new_failure,
+        raw_post = EXCLUDED.raw_post,
+        updated_at = NOW()`,
+      [p.user_id, p.week_id, p.reason, p.new_focus, p.new_win, p.new_failure, p.raw_post]
     );
   }
 

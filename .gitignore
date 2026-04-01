@@ -28,3 +28,4 @@ coverage/
 
 # User-uploaded avatars (local storage; path from config)
 avatars/
+founder_mode_dump.sql

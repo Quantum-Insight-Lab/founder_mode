@@ -4,7 +4,7 @@ import { computeRhythmScore, type RhythmDay } from '../domain/rhythm-score.js';
 import { lastNWeekdaysOldestFirst } from '../domain/rhythm-weekdays.js';
 import { getWeekId, getPreviousWeekId } from './week-service.js';
 
-const RHYTHM_LABEL = 'Ритм';
+const RHYTHM_LABEL = 'Ритм:';
 
 const RHYTHM_WINDOW_WEEKDAYS = 14;
 

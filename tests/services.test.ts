@@ -6,6 +6,7 @@ import { createProjectors } from '../src/projectors/index.js';
 import { createFixationService } from '../src/services/fixation-service.js';
 import { createReportService } from '../src/services/report-service.js';
 import { createDeclarationService } from '../src/services/declaration-service.js';
+import { createPriorityChangeService } from '../src/services/priority-change-service.js';
 import { getWeekId } from '../src/services/week-service.js';
 
 const dbUrl = process.env.TEST_DATABASE_URL;
@@ -19,6 +20,7 @@ describe.skipIf(!dbUrl)('services', () => {
   let fixationService: ReturnType<typeof createFixationService>;
   let reportService: ReturnType<typeof createReportService>;
   let declarationService: ReturnType<typeof createDeclarationService>;
+  let priorityChangeService: ReturnType<typeof createPriorityChangeService>;
 
   const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
   const tgId = 'test-user-123';
@@ -42,6 +44,7 @@ describe.skipIf(!dbUrl)('services', () => {
     fixationService = createFixationService(eventStore, serviceDeps);
     reportService = createReportService(eventStore, serviceDeps);
     declarationService = createDeclarationService(eventStore, serviceDeps);
+    priorityChangeService = createPriorityChangeService(eventStore, serviceDeps);
   });
 
   describe('fixationService', () => {
@@ -157,8 +160,8 @@ describe.skipIf(!dbUrl)('services', () => {
       const out = await reportService.createReport(userId);
 
       expect(out).toContain('Статус: частично');
-      expect(out).toContain('Факт: Продукт запущен');
-      expect(out).toContain('Разрыв: Нет канала пользователей');
+      expect(out).toContain('Факт: продукт запущен');
+      expect(out).toContain('Разрыв: нет канала пользователей');
 
       const rows = await pool.query('SELECT * FROM weekly_reports WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
       expect(rows.rows.length).toBe(1);
@@ -247,6 +250,36 @@ describe.skipIf(!dbUrl)('services', () => {
       );
       expect(mockComplete).toHaveBeenCalledTimes(2);
     });
+
+    it('passes priority_change into report LLM input when change exists', async () => {
+      await seedDeclarationForCurrentWeek();
+      await seedOneFixationInCurrentWeek();
+      const weekId = getWeekId(new Date().toISOString().slice(0, 10));
+      await pool.query(
+        `INSERT INTO weekly_priority_changes
+           (user_id, week_id, reason, new_focus, new_win, new_failure, raw_post)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [userId, weekId, 'r', 'focus2', 'win2', 'fail2', 'raw']
+      );
+      mockComplete.mockResolvedValueOnce({
+        content: 'Недельный отчёт',
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+
+      await reportService.createReport(userId);
+
+      expect(mockComplete).toHaveBeenCalledTimes(1);
+      const userMessage = mockComplete.mock.calls[0]?.[1] as string;
+      const parsed = JSON.parse(userMessage);
+      expect(parsed.priority_change).toMatchObject({
+        reason: 'r',
+        new_focus: 'focus2',
+        new_win: 'win2',
+        new_failure: 'fail2',
+      });
+    });
   });
 
   describe('declarationService', () => {
@@ -326,7 +359,7 @@ describe.skipIf(!dbUrl)('services', () => {
           win_result: 'wr2',
           week_failure: 'wf2',
         })
-      ).rejects.toThrow(/Приоритет изменить нельзя/);
+      ).rejects.toThrow(/через \/change/);
       expect(mockComplete).not.toHaveBeenCalled();
     });
 
@@ -349,6 +382,96 @@ describe.skipIf(!dbUrl)('services', () => {
         /Declaration: не удалось получить текст карточки/
       );
       expect(mockComplete).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('priorityChangeService', () => {
+    const declAnswers = { main_focus: 'фокус', win_result: 'результат', week_failure: 'провал' };
+    const changeAnswers = {
+      reason: 'Гипотеза не подтвердилась',
+      new_focus: 'Новый фокус',
+      new_win: 'Новый результат',
+      new_failure: 'Новый провал',
+    };
+
+    it('creates priority change once per week', async () => {
+      mockComplete.mockResolvedValue({
+        content: 'Причина: A\n\nНовый фокус: B\n\nНовый результат: C\n\nНовый провал: D',
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+      await declarationService.createDeclaration(userId, declAnswers);
+      mockComplete.mockClear();
+
+      const out = await priorityChangeService.createPriorityChange(userId, changeAnswers);
+      expect(out.rawPost).toContain('Причина:');
+      const weekId = getWeekId(new Date().toISOString().slice(0, 10));
+      const row = await pool.query(
+        'SELECT reason, new_focus, new_win, new_failure FROM weekly_priority_changes WHERE user_id = $1 AND week_id = $2',
+        [userId, weekId]
+      );
+      expect(row.rows[0]).toMatchObject({
+        reason: 'Гипотеза не подтвердилась',
+        new_focus: 'Новый фокус',
+        new_win: 'Новый результат',
+        new_failure: 'Новый провал',
+      });
+    });
+
+    it('rejects second priority change in same week', async () => {
+      mockComplete.mockResolvedValue({
+        content: 'Причина: A\n\nНовый фокус: B\n\nНовый результат: C\n\nНовый провал: D',
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+      await declarationService.createDeclaration(userId, declAnswers);
+      await priorityChangeService.createPriorityChange(userId, changeAnswers);
+      mockComplete.mockClear();
+
+      await expect(priorityChangeService.createPriorityChange(userId, changeAnswers)).rejects.toThrow(
+        /Смена приоритета на эту неделю уже есть/
+      );
+      expect(mockComplete).not.toHaveBeenCalled();
+    });
+
+    it('allows manual update if no fixations after change', async () => {
+      mockComplete.mockResolvedValue({
+        content: 'Причина: A\n\nНовый фокус: B\n\nНовый результат: C\n\nНовый провал: D',
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+      await declarationService.createDeclaration(userId, declAnswers);
+      await priorityChangeService.createPriorityChange(userId, changeAnswers);
+      mockComplete.mockClear();
+
+      await expect(priorityChangeService.updatePriorityChangeManual(userId, changeAnswers)).resolves.toBeTruthy();
+      expect(mockComplete).toHaveBeenCalled();
+    });
+
+    it('rejects manual update if there is a fixation after change', async () => {
+      mockComplete.mockResolvedValue({
+        content: 'Причина: A\n\nНовый фокус: B\n\nНовый результат: C\n\nНовый провал: D',
+        usage: { prompt_tokens: 0, completion_tokens: 0 },
+        model: 'test',
+        latencyMs: 0,
+      });
+      await declarationService.createDeclaration(userId, declAnswers);
+      await priorityChangeService.createPriorityChange(userId, changeAnswers);
+      // Create a fixation after change within the same week.
+      const today = new Date().toISOString().slice(0, 10);
+      await pool.query(
+        `INSERT INTO daily_fixations (
+           user_id, date, day, had_movement, movement_branch, what_moved, attention_sink, tomorrow_step, raw_post, created_at
+         ) VALUES ($1, $2, 'Monday', true, 'yes', 'a', 'b', 'c', 'raw', NOW() + interval '1 second')`,
+        [userId, today]
+      );
+      mockComplete.mockClear();
+
+      await expect(priorityChangeService.updatePriorityChangeManual(userId, changeAnswers)).rejects.toThrow(/После смены приоритета/);
+      expect(mockComplete).not.toHaveBeenCalled();
     });
   });
 });

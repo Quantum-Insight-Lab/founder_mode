@@ -15,11 +15,12 @@ export interface HandlerDeps {
     ctx: AppContext,
     rawPost: string,
     userId: string,
-    context: 'declaration' | 'fixation' | 'report'
+    context: 'declaration' | 'fixation' | 'report' | 'change'
   ) => Promise<void>;
   countRows: (p: Pool, query: string, params?: unknown[]) => Promise<number>;
   declarationService: ReturnType<typeof import('../../services/declaration-service.js').createDeclarationService>;
   reportService: ReturnType<typeof import('../../services/report-service.js').createReportService>;
+  priorityChangeService: ReturnType<typeof import('../../services/priority-change-service.js').createPriorityChangeService>;
   fixationService: ReturnType<typeof import('../../services/fixation-service.js').createFixationService>;
   settingsService: ReturnType<typeof import('../../services/settings-service.js').createSettingsService>;
   showSettingsMenu: (ctx: AppContext, userId: string) => Promise<void>;

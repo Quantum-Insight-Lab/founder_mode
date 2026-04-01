@@ -20,7 +20,7 @@ describe.skipIf(!dbUrl)('projectors', () => {
   const extraUserId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 
   beforeEach(async () => {
-    await pool.query('TRUNCATE events, weekly_declarations, weekly_reports, daily_fixations CASCADE');
+    await pool.query('TRUNCATE events, weekly_declarations, weekly_reports, weekly_priority_changes, daily_fixations CASCADE');
     await pool.query('DELETE FROM users WHERE user_id = $1 OR user_id = $2', [userId, extraUserId]);
     await pool.query('INSERT INTO users (user_id, tg_id) VALUES ($1, $2)', [userId, 'proj-test-tg']);
   });
@@ -97,6 +97,44 @@ describe.skipIf(!dbUrl)('projectors', () => {
     );
     const r = await pool.query('SELECT raw_post FROM weekly_reports WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
     expect(r.rows[0]?.raw_post).toBe('report body');
+  });
+
+  it('PriorityChanged upserts weekly_priority_changes', async () => {
+    const projectors = createProjectors(pool);
+    const weekId = '20260309';
+    await projectors.handleEvent(
+      ev({
+        event_id: randomUUID(),
+        event_type: EVENT_TYPES.PriorityChanged,
+        occurred_at: new Date().toISOString(),
+        actor: { id: userId, role: 'user' },
+        subject: { entity: 'WeeklyPriorityChange', id: `${userId}:${weekId}` },
+        payload: {
+          user_id: userId,
+          week_id: weekId,
+          reason: 'r1',
+          new_focus: 'f1',
+          new_win: 'w1',
+          new_failure: 'x1',
+          raw_post: 'raw1',
+        },
+        causation_id: null,
+        correlation_id: null,
+        idempotency_key: null,
+        schema_version: 1,
+      })
+    );
+    const r = await pool.query(
+      'SELECT reason, new_focus, new_win, new_failure, raw_post FROM weekly_priority_changes WHERE user_id = $1 AND week_id = $2',
+      [userId, weekId]
+    );
+    expect(r.rows[0]).toMatchObject({
+      reason: 'r1',
+      new_focus: 'f1',
+      new_win: 'w1',
+      new_failure: 'x1',
+      raw_post: 'raw1',
+    });
   });
 
   it('FixationSubmitted upserts daily_fixations', async () => {

@@ -23,6 +23,7 @@ import {
   handleDeclarationShow,
   handleNotifyDeclaration,
 } from './handlers/declaration.js';
+import { handleChangeCommand, handleChangeEdit, handleChangeMessage, handleChangeShow } from './handlers/change.js';
 import {
   handleReportCommand,
   handleReportEdit,
@@ -38,7 +39,6 @@ import {
   handleFixationEditConfirmNo,
   handleFixationNo,
   handleFixationPartial,
-  handleFixationWeekClosed,
   handleFixationYes,
   handleFixationCommand,
   handleFixationMessage,
@@ -85,6 +85,8 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleStart(ctx, deps);
       case 'declaration':
         return handleDeclarationCommand(ctx, deps);
+      case 'change':
+        return handleChangeCommand(ctx, deps);
       case 'report':
         return handleReportCommand(ctx, deps);
       case 'fixation':
@@ -115,6 +117,10 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleDeclarationShow(ctx, deps);
       case 'declaration_edit':
         return handleDeclarationEdit(ctx, deps);
+      case 'change_show':
+        return handleChangeShow(ctx, deps);
+      case 'change_edit':
+        return handleChangeEdit(ctx, deps);
       case 'report_show':
         return handleReportShow(ctx, deps);
       case 'report_edit':
@@ -139,8 +145,6 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleFixationNo(ctx, deps);
       case 'fixation_partial':
         return handleFixationPartial(ctx, deps);
-      case 'fixation_week_closed':
-        return handleFixationWeekClosed(ctx, deps);
       case 'fixation_yes':
         return handleFixationYes(ctx, deps);
       case 'notify_fixation':
@@ -217,7 +221,8 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
 
     if (step === 'onboard_timezone') return handleOnboardTimezone(ctx, text, deps);
     if (step?.startsWith('declaration_')) return handleDeclarationMessage(ctx, text, deps);
-    if (step?.match(/^fixation_(movement|nomovement|partial|weekclosed)_\d+$/)) return handleFixationMessage(ctx, text, deps);
+    if (step?.match(/^fixation_(movement|nomovement|partial)_\d+$/)) return handleFixationMessage(ctx, text, deps);
+    if (step?.startsWith('change_')) return handleChangeMessage(ctx, text, deps);
     if (
       step === 'settings_declaration_time_input' ||
       step === 'settings_fixation_time_input' ||

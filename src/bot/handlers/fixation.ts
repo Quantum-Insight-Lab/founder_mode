@@ -10,7 +10,6 @@ import {
   REFLECTION_QUESTIONS_MOVEMENT,
   REFLECTION_QUESTIONS_NO_MOVEMENT,
   REFLECTION_QUESTIONS_PARTIAL,
-  REFLECTION_QUESTIONS_WEEK_CLOSED,
   ONBOARDING_FIRST_REFLECT_INTRO,
   ONBOARDING_NEXT_REFLECT_INTRO,
   ONBOARDING_AFTER_REFLECT,
@@ -30,7 +29,6 @@ const MOVEMENT_MARKUP: import('../transport/types.js').InlineButton[][] = [
     { text: 'Нет', callback_data: 'fixation_no' },
     { text: 'Частично', callback_data: 'fixation_partial' },
   ],
-  [{ text: 'Результат недели уже закрыт', callback_data: 'fixation_week_closed' }],
 ];
 
 async function sendFixationAsCard(
@@ -290,17 +288,6 @@ export async function handleFixationPartial(ctx: AppContext, deps: HandlerDeps):
   await ctx.reply(REFLECTION_QUESTIONS_PARTIAL[0].text);
 }
 
-export async function handleFixationWeekClosed(ctx: AppContext, deps: HandlerDeps): Promise<void> {
-  ensureSession(ctx);
-  ctx.session.fixationData ??= {};
-  ctx.session.fixationData.had_movement = false;
-  ctx.session.fixationData.movement_branch = 'week_closed';
-  ctx.session.step = 'fixation_weekclosed_0';
-  funnelStarted.inc({ type: 'fixation' });
-  await ctx.answerCallbackQuery();
-  await ctx.reply(REFLECTION_QUESTIONS_WEEK_CLOSED[0].text);
-}
-
 export async function handleFixationYes(ctx: AppContext, deps: HandlerDeps): Promise<void> {
   ensureSession(ctx);
   ctx.session.fixationData ??= {};
@@ -312,12 +299,11 @@ export async function handleFixationYes(ctx: AppContext, deps: HandlerDeps): Pro
   await ctx.reply(REFLECTION_QUESTIONS_MOVEMENT[0].text);
 }
 
-const fixationStepRe = /^fixation_(movement|nomovement|partial|weekclosed)_(\d+)$/;
+const fixationStepRe = /^fixation_(movement|nomovement|partial)_(\d+)$/;
 const branchToQuestions = {
   movement: REFLECTION_QUESTIONS_MOVEMENT,
   nomovement: REFLECTION_QUESTIONS_NO_MOVEMENT,
   partial: REFLECTION_QUESTIONS_PARTIAL,
-  weekclosed: REFLECTION_QUESTIONS_WEEK_CLOSED,
 } as const;
 
 export async function handleFixationMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
@@ -349,7 +335,6 @@ export async function handleFixationMessage(ctx: AppContext, text: string, deps:
       what_stopped: data.what_stopped as string | undefined,
       attention_sink: data.attention_sink as string | undefined,
       why_partial: data.why_partial as string | undefined,
-      new_focus: data.new_focus as string | undefined,
     };
 
     try {
@@ -437,10 +422,6 @@ export function registerFixationHandlers(bot: import('grammy').Bot<BotContext>, 
   bot.callbackQuery('fixation_partial', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleFixationPartial(appCtx, deps);
-  });
-  bot.callbackQuery('fixation_week_closed', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationWeekClosed(appCtx, deps);
   });
   bot.callbackQuery('fixation_yes', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });

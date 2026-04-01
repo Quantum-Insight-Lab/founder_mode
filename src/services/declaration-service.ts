@@ -8,7 +8,11 @@ import { prompts } from '../llm/prompts.js';
 import type { ServiceDeps } from './deps.js';
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from './week-service.js';
-import { ensureDoubleNewlinesIfMultiline, stripTrailingDotsPerLine } from '../domain/text-format.js';
+import {
+  ensureDoubleNewlinesIfMultiline,
+  lowercaseFirstLetterAfterColonPerLine,
+  stripTrailingDotsPerLine,
+} from '../domain/text-format.js';
 import { InvariantViolationError } from '../domain/errors.js';
 
 interface DeclarationAnswers {
@@ -51,7 +55,9 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
         traceId: getTraceId(),
         callType: 'declaration',
       });
-      rawPost = ensureDoubleNewlinesIfMultiline(stripTrailingDotsPerLine((response.content ?? '').trim()));
+      rawPost = ensureDoubleNewlinesIfMultiline(
+        lowercaseFirstLetterAfterColonPerLine(stripTrailingDotsPerLine((response.content ?? '').trim()))
+      );
       if (rawPost.length > 0) break;
       logger.warn({ userId, weekId, attempt }, 'Declaration text response is empty');
     }
@@ -118,7 +124,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       );
       if ((fixCount.rows[0]?.c ?? 0) > 0) {
         throw new InvariantViolationError(
-          '⚠️ На этой неделе уже есть фиксации дня. Приоритет изменить нельзя — он задаёт контекст для уже записанных дней.',
+          '⚠️ На этой неделе уже есть фиксации дня. Приоритет можно изменить только 1 раз за неделю через /change.',
           'DECLARATION_LOCKED'
         );
       }

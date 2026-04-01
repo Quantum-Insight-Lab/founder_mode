@@ -4,6 +4,7 @@
 export const EVENT_TYPES = {
   DeclarationCreated: 'DeclarationCreated',
   DeclarationUpdated: 'DeclarationUpdated',
+  PriorityChanged: 'PriorityChanged',
   ReportCreated: 'ReportCreated',
   ReportUpdated: 'ReportUpdated',
   FixationSubmitted: 'FixationSubmitted',
@@ -48,6 +49,16 @@ export interface ReportCreatedPayload {
   raw_post: string;
 }
 
+export interface PriorityChangedPayload {
+  user_id: string;
+  week_id: string;
+  reason: string;
+  new_focus: string;
+  new_win: string;
+  new_failure: string;
+  raw_post: string;
+}
+
 export type FixationMovementBranch = 'yes' | 'no' | 'partial' | 'week_closed';
 
 export interface FixationSubmittedPayload {
@@ -87,6 +98,10 @@ export interface ReportUpdatedEvent extends BaseEvent {
   event_type: 'ReportUpdated';
   payload: ReportCreatedPayload;
 }
+export interface PriorityChangedEvent extends BaseEvent {
+  event_type: 'PriorityChanged';
+  payload: PriorityChangedPayload;
+}
 export interface FixationSubmittedEvent extends BaseEvent {
   event_type: 'FixationSubmitted';
   payload: FixationSubmittedPayload;
@@ -99,6 +114,7 @@ export interface UserRegisteredEvent extends BaseEvent {
 export type DomainEvent =
   | DeclarationCreatedEvent
   | DeclarationUpdatedEvent
+  | PriorityChangedEvent
   | ReportCreatedEvent
   | ReportUpdatedEvent
   | FixationSubmittedEvent

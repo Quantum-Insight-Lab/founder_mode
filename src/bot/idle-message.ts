@@ -3,4 +3,4 @@
  */
 
 export const IDLE_COMMAND_LIST_REPLY =
-  'Команды: /declaration /report /fixation /settings /delete';
+  'Команды: /declaration /change /report /fixation /settings /delete';

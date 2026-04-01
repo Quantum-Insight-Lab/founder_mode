@@ -7,13 +7,14 @@ import type { BotContext } from '../context.js';
 import { InvariantViolationError } from '../../domain/errors.js';
 import { invariantViolations } from '../../observability/metrics.js';
 import { logger } from '../../observability/logger.js';
-import { escapeHtml, formatLlmResponse } from '../../domain/html.js';
+import { escapeHtml } from '../../domain/html.js';
 import { getUserLocalDate } from '../../db/user-timezone.js';
 import { createEventStore } from '../../events/event-store.js';
 import { EVENT_TYPES } from '../../events/types.js';
 import { createProjectors } from '../../projectors/index.js';
 import { createDeclarationService } from '../../services/declaration-service.js';
 import { createReportService } from '../../services/report-service.js';
+import { createPriorityChangeService } from '../../services/priority-change-service.js';
 import { createFixationService } from '../../services/fixation-service.js';
 import { createSettingsService, formatDay, formatDays, formatTime } from '../../services/settings-service.js';
 import { loadAvatarDataUrl, storeNormalizedAvatar } from '../../services/avatar-storage.js';
@@ -35,6 +36,7 @@ import type { HandlerDeps } from './deps.js';
 import { registerOnboardingHandlers } from './onboarding.js';
 import { registerDeclarationHandlers } from './declaration.js';
 import { registerReportHandlers } from './report.js';
+import { registerChangeHandlers } from './change.js';
 import { registerFixationHandlers } from './fixation.js';
 import { registerSettingsHandlers } from './settings.js';
 import { registerDeleteHandlers } from './delete.js';
@@ -97,6 +99,7 @@ export function createAppDeps(): HandlerDeps {
   const serviceDeps = { pool, projectors, llm };
   const declarationService = createDeclarationService(eventStore, serviceDeps);
   const reportService = createReportService(eventStore, serviceDeps);
+  const priorityChangeService = createPriorityChangeService(eventStore, serviceDeps);
   const fixationService = createFixationService(eventStore, serviceDeps);
   const settingsService = createSettingsService(pool);
 
@@ -139,10 +142,10 @@ export function createAppDeps(): HandlerDeps {
     ctx: import('../transport/types.js').AppContext,
     rawPost: string,
     userId: string,
-    context: 'declaration' | 'fixation' | 'report'
+    context: 'declaration' | 'fixation' | 'report' | 'change'
   ): Promise<void> {
     const trimmed = rawPost?.trim() || '';
-    const formatted = context === 'fixation' ? escapeHtml(trimmed) : formatLlmResponse(trimmed);
+    const formatted = escapeHtml(trimmed);
     if (!formatted) {
       logger.error({ userId }, `${context}: empty LLM response`);
       ctx.alertError?.(new Error('Empty LLM response'), context, userId);
@@ -279,6 +282,7 @@ export function createAppDeps(): HandlerDeps {
     countRows,
     declarationService,
     reportService,
+    priorityChangeService,
     fixationService,
     settingsService,
     showSettingsMenu,
@@ -293,6 +297,7 @@ export function registerHandlers(bot: Bot<BotContext>, deps: HandlerDeps) {
   initTokenSpikeChecker(deps.pool, bot.api);
   registerOnboardingHandlers(bot, deps);
   registerDeclarationHandlers(bot, deps);
+  registerChangeHandlers(bot, deps);
   registerReportHandlers(bot, deps);
   registerFixationHandlers(bot, deps);
   registerSettingsHandlers(bot, deps);

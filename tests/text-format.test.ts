@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { ensureDoubleNewlinesIfMultiline, stripTrailingDotsPerLine } from '../src/domain/text-format.js';
+import {
+  ensureDoubleNewlinesIfMultiline,
+  lowercaseFirstLetterAfterColonPerLine,
+  stripTrailingDotsPerLine,
+} from '../src/domain/text-format.js';
 
 describe('stripTrailingDotsPerLine', () => {
   it('removes trailing dots per line', () => {
@@ -22,5 +26,20 @@ describe('ensureDoubleNewlinesIfMultiline', () => {
 
   it('does not inflate existing paragraph breaks', () => {
     expect(ensureDoubleNewlinesIfMultiline('a\n\nb')).toBe('a\n\nb');
+  });
+});
+
+describe('lowercaseFirstLetterAfterColonPerLine', () => {
+  it('lowercases first letter after colon in a line', () => {
+    expect(lowercaseFirstLetterAfterColonPerLine('Фокус: Тест')).toBe('Фокус: тест');
+    expect(lowercaseFirstLetterAfterColonPerLine('Result: Value')).toBe('Result: value');
+    expect(lowercaseFirstLetterAfterColonPerLine('Причина: Ёжик')).toBe('Причина: ёжик');
+  });
+
+  it('does not change lines without the pattern', () => {
+    expect(lowercaseFirstLetterAfterColonPerLine('без двоеточия')).toBe('без двоеточия');
+    expect(lowercaseFirstLetterAfterColonPerLine('Время 19:41')).toBe('Время 19:41');
+    expect(lowercaseFirstLetterAfterColonPerLine('Url: https://Example.com')).toBe('Url: https://Example.com');
+    expect(lowercaseFirstLetterAfterColonPerLine('Фокус: уже строчная')).toBe('Фокус: уже строчная');
   });
 });

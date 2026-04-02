@@ -88,10 +88,6 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       payload.why_partial = data.why_partial;
       payload.attention_sink = data.attention_sink;
       payload.tomorrow_step = data.tomorrow_step;
-    } else if (data.movement_branch === 'week_closed') {
-      payload.new_focus = data.new_focus;
-      payload.what_moved = data.what_moved;
-      payload.tomorrow_step = data.tomorrow_step;
     }
 
     let userMessage: string;
@@ -99,10 +95,8 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       userMessage = `Движение по главному фокусу: Да\nЧто продвинуло: ${data.what_moved ?? ''}\nДвижение вне фокуса: ${data.attention_sink ?? ''}\nШаг на завтра: ${data.tomorrow_step ?? ''}`;
     } else if (data.movement_branch === 'no') {
       userMessage = `Движение по главному фокусу: Нет\nЧто остановило: ${data.what_stopped ?? ''}\nЧто заняло внимание: ${data.attention_sink ?? ''}\nКак вернуть вектор завтра: ${data.tomorrow_step ?? ''}`;
-    } else if (data.movement_branch === 'partial') {
-      userMessage = `Движение по главному фокусу: Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}`;
     } else {
-      userMessage = `Движение по главному фокусу: Результат недели закрыт\nНовый фокус: ${data.new_focus ?? ''}\nЧто сделано по нему: ${data.what_moved ?? ''}\nСледующий шаг: ${data.tomorrow_step ?? ''}`;
+      userMessage = `Движение по главному фокусу: Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}`;
     }
 
     const idempotencyKey = idempotencyKeyOverride ?? `fixation:${userId}:${data.date}`;

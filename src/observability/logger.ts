@@ -8,7 +8,14 @@ const stream =
     : process.stdout;
 
 const baseLogger = (pino as unknown as (opts: object, stream?: NodeJS.WritableStream) => import('pino').Logger)(
-  { level: process.env.LOG_LEVEL ?? 'info' },
+  {
+    level: process.env.LOG_LEVEL ?? 'info',
+    // Защита от утечки Telegram token при логировании полного err из Grammy (ctx.api.token)
+    redact: {
+      paths: ['err.ctx.api'],
+      censor: '[Redacted]',
+    },
+  },
   stream
 );
 

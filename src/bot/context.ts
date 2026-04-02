@@ -4,7 +4,7 @@ import type { Context, SessionFlavor } from 'grammy';
 export interface FixationSessionData {
   date?: string;
   had_movement?: boolean;
-  movement_branch?: 'yes' | 'no' | 'partial' | 'week_closed';
+  movement_branch?: 'yes' | 'no' | 'partial';
   what_moved?: string;
   tomorrow_step?: string;
   what_stopped?: string;

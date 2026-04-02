@@ -68,15 +68,5 @@ describe('validators', () => {
       ).not.toThrow();
     });
 
-    it('passes when movement_branch=week_closed and all fields filled', () => {
-      expect(() =>
-        validateFixationBranch({
-          movement_branch: 'week_closed',
-          new_focus: 'f',
-          what_moved: 'd',
-          tomorrow_step: 's',
-        })
-      ).not.toThrow();
-    });
   });
 });

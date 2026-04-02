@@ -323,7 +323,7 @@ export async function handleFixationMessage(ctx: AppContext, text: string, deps:
     ctx.session!.step = undefined;
     const data = ctx.session!.fixationData!;
     const isEdit = ctx.session!.fixationEditMode ?? false;
-    const movementBranch = (data.movement_branch ?? (data.had_movement ? 'yes' : 'no')) as 'yes' | 'no' | 'partial' | 'week_closed';
+    const movementBranch = (data.movement_branch ?? (data.had_movement ? 'yes' : 'no')) as 'yes' | 'no' | 'partial';
     ctx.session!.fixationData = undefined;
     ctx.session!.fixationEditMode = undefined;
 

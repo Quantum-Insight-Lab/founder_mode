@@ -19,13 +19,12 @@
 Входные данные:
 
 {
-  "movement_branch": "yes|no|partial|week_closed",
+  "movement_branch": "yes|no|partial",
   "what_moved": "string?",
   "what_stopped": "string?",
   "why_partial": "string?",
   "attention_sink": "string?",
-  "tomorrow_step": "string?",
-  "new_focus": "string?"
+  "tomorrow_step": "string?"
 }
 
 Задача:

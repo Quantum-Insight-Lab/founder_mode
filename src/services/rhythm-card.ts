@@ -1,6 +1,7 @@
 import type { Pool } from 'pg';
 import type { MovementBranch } from '../domain/rhythm-score.js';
-import { computeRhythmScore, type RhythmDay } from '../domain/rhythm-score.js';
+import { computeRhythmBreakdown, type RhythmDay } from '../domain/rhythm-score.js';
+import type { RhythmSnapshotRow } from '../db/row-types.js';
 import { lastNWeekdaysOldestFirst } from '../domain/rhythm-weekdays.js';
 import { getWeekId, getPreviousWeekId } from './week-service.js';
 
@@ -29,8 +30,11 @@ export async function getRhythmLineForCard(pool: Pool, userId: string, userLocal
   const byDate = new Map<string, MovementBranch | null>();
   for (const r of rows.rows) {
     const br = r.movement_branch;
-    if (br === 'yes' || br === 'no' || br === 'partial' || br === 'week_closed') {
+    if (br === 'yes' || br === 'no' || br === 'partial') {
       byDate.set(r.date, br);
+    } else if (br === 'week_closed') {
+      // legacy строки в БД — считаем как «да» по весу
+      byDate.set(r.date, 'yes');
     } else {
       byDate.set(r.date, null);
     }
@@ -49,6 +53,52 @@ export async function getRhythmLineForCard(pool: Pool, userId: string, userLocal
   );
   const hasReportCurrentOrPreviousWeek = reportWeek.rows.length > 0;
 
-  const score = computeRhythmScore(days, hasReportCurrentOrPreviousWeek);
-  return `${RHYTHM_LABEL} ${score}`;
+  const breakdown = computeRhythmBreakdown(days, hasReportCurrentOrPreviousWeek);
+
+  await pool.query(
+    `INSERT INTO rhythm_snapshots (
+      user_id, as_of_date, score, flow, completion, stability,
+      has_report_current_or_previous_week, computed_at
+    ) VALUES ($1, $2::date, $3, $4, $5, $6, $7, NOW())
+    ON CONFLICT (user_id, as_of_date) DO UPDATE SET
+      score = EXCLUDED.score,
+      flow = EXCLUDED.flow,
+      completion = EXCLUDED.completion,
+      stability = EXCLUDED.stability,
+      has_report_current_or_previous_week = EXCLUDED.has_report_current_or_previous_week,
+      computed_at = NOW()`,
+    [
+      userId,
+      userLocalTodayYmd,
+      breakdown.score,
+      breakdown.flow,
+      breakdown.completion,
+      breakdown.stability,
+      hasReportCurrentOrPreviousWeek,
+    ]
+  );
+
+  return `${RHYTHM_LABEL} ${breakdown.score}`;
+}
+
+/**
+ * История снимков ритма за интервал дат (локальные YYYY-MM-DD), от старых к новым.
+ */
+export async function getRhythmSnapshotsForUser(
+  pool: Pool,
+  userId: string,
+  fromDateYmd: string,
+  toDateYmd: string
+): Promise<RhythmSnapshotRow[]> {
+  const res = await pool.query<RhythmSnapshotRow>(
+    `SELECT user_id, as_of_date::text AS as_of_date, score,
+            flow::float8 AS flow, completion::float8 AS completion,
+            stability::float8 AS stability,
+            has_report_current_or_previous_week, computed_at
+     FROM rhythm_snapshots
+     WHERE user_id = $1 AND as_of_date >= $2::date AND as_of_date <= $3::date
+     ORDER BY as_of_date ASC`,
+    [userId, fromDateYmd, toDateYmd]
+  );
+  return res.rows;
 }

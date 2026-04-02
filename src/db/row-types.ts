@@ -38,3 +38,15 @@ export interface DailyFixationRow {
   why_partial: string | null;
   new_focus: string | null;
 }
+
+/** Снимок ритма на локальную дату пользователя (таблица rhythm_snapshots). */
+export interface RhythmSnapshotRow {
+  user_id: string;
+  as_of_date: string;
+  score: number;
+  flow: number;
+  completion: number;
+  stability: number;
+  has_report_current_or_previous_week: boolean;
+  computed_at: Date | string;
+}

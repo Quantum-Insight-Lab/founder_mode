@@ -59,7 +59,7 @@ export interface PriorityChangedPayload {
   raw_post: string;
 }
 
-export type FixationMovementBranch = 'yes' | 'no' | 'partial' | 'week_closed';
+export type FixationMovementBranch = 'yes' | 'no' | 'partial';
 
 export interface FixationSubmittedPayload {
   user_id: string;

@@ -10,6 +10,7 @@ import { userIdMiddleware } from './bot/transport/user-id-middleware.js';
 import { createSessionStore, createGrammySessionStorage } from './bot/transport/session-store.js';
 import { toGrammyInlineKeyboard } from './bot/transport/telegram-adapter.js';
 import { notifyDeveloper } from './observability/alert.js';
+import { botCatchErrorForLog } from './observability/bot-error-log.js';
 import { notifySystemdReady, startSystemdWatchdogLoop } from './observability/systemd.js';
 import { getPool } from './db/index.js';
 import { initNotificationScheduler } from './scheduler/notifications.js';
@@ -38,7 +39,7 @@ bot.use(
 registerHandlers(bot, deps);
 
 bot.catch((err: { ctx?: { api: unknown; from?: { id?: number } }; error?: unknown }) => {
-  logger.error({ err }, 'Bot error');
+  logger.error(botCatchErrorForLog(err), 'Bot error');
   const api = err?.ctx?.api;
   const userId = err?.ctx?.from?.id?.toString();
   if (api) notifyDeveloper(api as import('grammy').Api, err.error ?? err, 'unhandled', userId);

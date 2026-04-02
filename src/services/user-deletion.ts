@@ -15,6 +15,7 @@ export async function deleteUserData(pool: Pool, userId: string): Promise<void> 
     await client.query('DELETE FROM weekly_declarations WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM weekly_reports WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM daily_fixations WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM rhythm_snapshots WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM user_settings WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM events WHERE actor_id = $1', [userId]);
     await client.query(

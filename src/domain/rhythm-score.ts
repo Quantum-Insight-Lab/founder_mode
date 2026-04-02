@@ -4,7 +4,7 @@
  * день без фиксации в окне = как «без движения» (вес как no).
  */
 
-export type MovementBranch = 'yes' | 'no' | 'partial' | 'week_closed';
+export type MovementBranch = 'yes' | 'no' | 'partial';
 
 export interface RhythmDay {
   /** YYYY-MM-DD */
@@ -17,7 +17,6 @@ const W = {
   yes: 1,
   partial: 0.7,
   no: 0.4,
-  week_closed: 1,
   missing: 0.4,
 } as const;
 
@@ -27,23 +26,12 @@ const FLOW_MAX = 1;
 /** Вес дня для Flow (среднее за 14 дней). */
 export function dayWeight(branch: MovementBranch | null): number {
   if (branch == null) return W.missing;
-  return branch === 'yes'
-    ? W.yes
-    : branch === 'partial'
-      ? W.partial
-      : branch === 'no'
-        ? W.no
-        : W.week_closed;
+  return branch === 'yes' ? W.yes : branch === 'partial' ? W.partial : W.no;
 }
 
 /** Дни «нет движения» для streak: только no или отсутствие фиксации. */
 export function isNoMovementDay(branch: MovementBranch | null): boolean {
   return branch === null || branch === 'no';
-}
-
-/** Возврат: после no/missing на следующий день yes/partial/week_closed. */
-export function isReturnDay(branch: MovementBranch | null): boolean {
-  return branch === 'yes' || branch === 'partial' || branch === 'week_closed';
 }
 
 /** Flow 0..1 из среднего веса за окно. */
@@ -76,35 +64,37 @@ export function stability01(daysOrderedOldestFirst: RhythmDay[]): number {
   return Math.max(0, Math.min(1, 1 - (streak - 2) / 3));
 }
 
-/** Recovery: пары (день i = no/missing, день i+1 = yes/partial/week_closed). */
-export function recovery01(daysOrderedOldestFirst: RhythmDay[]): number {
-  if (daysOrderedOldestFirst.length < 2) return 0;
-  let n = 0;
-  for (let i = 0; i < daysOrderedOldestFirst.length - 1; i++) {
-    const a = daysOrderedOldestFirst[i]!.branch;
-    const b = daysOrderedOldestFirst[i + 1]!.branch;
-    if (isNoMovementDay(a) && isReturnDay(b)) n += 1;
-  }
-  return Math.max(0, Math.min(1, n / 2));
+/** Без recovery: flow + completion + stability = 1.0 */
+const WEIGHT_FLOW = 0.45;
+const WEIGHT_COMPLETION = 0.25;
+const WEIGHT_STABILITY = 0.3;
+
+export interface RhythmBreakdown {
+  /** 0..1 */
+  flow: number;
+  /** 0..1 */
+  completion: number;
+  /** 0..1 */
+  stability: number;
+  /** 0..100 */
+  score: number;
 }
 
-const WEIGHT_FLOW = 0.4;
-const WEIGHT_COMPLETION = 0.25;
-const WEIGHT_STABILITY = 0.25;
-const WEIGHT_RECOVERY = 0.1;
+export function computeRhythmBreakdown(
+  daysOrderedOldestFirst: RhythmDay[],
+  hasReportCurrentOrPreviousWeek: boolean
+): RhythmBreakdown {
+  const f = flow01(daysOrderedOldestFirst);
+  const c = completion01(hasReportCurrentOrPreviousWeek);
+  const s = stability01(daysOrderedOldestFirst);
+  const raw = WEIGHT_FLOW * f + WEIGHT_COMPLETION * c + WEIGHT_STABILITY * s;
+  const score = Math.max(0, Math.min(100, Math.round(raw * 100)));
+  return { flow: f, completion: c, stability: s, score };
+}
 
 export function computeRhythmScore(
   daysOrderedOldestFirst: RhythmDay[],
   hasReportCurrentOrPreviousWeek: boolean
 ): number {
-  const f = flow01(daysOrderedOldestFirst);
-  const c = completion01(hasReportCurrentOrPreviousWeek);
-  const s = stability01(daysOrderedOldestFirst);
-  const r = recovery01(daysOrderedOldestFirst);
-  const raw =
-    WEIGHT_FLOW * f +
-    WEIGHT_COMPLETION * c +
-    WEIGHT_STABILITY * s +
-    WEIGHT_RECOVERY * r;
-  return Math.max(0, Math.min(100, Math.round(raw * 100)));
+  return computeRhythmBreakdown(daysOrderedOldestFirst, hasReportCurrentOrPreviousWeek).score;
 }

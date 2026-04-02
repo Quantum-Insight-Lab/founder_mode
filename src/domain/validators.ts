@@ -18,7 +18,7 @@ export function validateFixationDate(dateStr: string, todayStr: string): void {
  * INV-008: Fixation has valid branch — required fields by movement_branch
  */
 export function validateFixationBranch(data: {
-  movement_branch: 'yes' | 'no' | 'partial' | 'week_closed';
+  movement_branch: 'yes' | 'no' | 'partial';
   had_movement?: boolean;
   what_moved?: string;
   tomorrow_step?: string;
@@ -48,14 +48,6 @@ export function validateFixationBranch(data: {
       filled(data.attention_sink) &&
       filled(data.tomorrow_step),
       'В ветке «Частично» заполни: что удалось сделать, почему частично, что ещё заняло внимание, шаг на завтра',
-      '008'
-    );
-  } else if (branch === 'week_closed') {
-    invariant(
-      filled(data.new_focus) &&
-      filled(data.what_moved) &&
-      filled(data.tomorrow_step),
-      'В ветке «Результат недели закрыт» заполни: новый фокус, что сделано, следующий шаг',
       '008'
     );
   } else {

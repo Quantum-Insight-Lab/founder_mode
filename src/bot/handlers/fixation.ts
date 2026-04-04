@@ -4,6 +4,7 @@ import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
+  LLM_PREPARING_FIXATION,
   REFLECTION_DATE_QUESTION,
   REFLECTION_SKIP_HINT,
   REFLECTION_MOVEMENT_QUESTION,
@@ -178,7 +179,7 @@ export async function handleFixationCommandBase(ctx: AppContext, deps: HandlerDe
   const s = r;
   const showSkipHint = !s?.notifications_enabled && s?.skip_hint_shown_at == null;
   if (showSkipHint) {
-    await ctx.reply(REFLECTION_SKIP_HINT);
+    await ctx.reply(`<i>${REFLECTION_SKIP_HINT}</i>`, { parse_mode: 'HTML' });
   }
   const questionText = REFLECTION_DATE_QUESTION;
   const rows: import('../transport/types.js').InlineButton[][] = [
@@ -339,6 +340,7 @@ export async function handleFixationMessage(ctx: AppContext, text: string, deps:
     };
 
     try {
+      await ctx.reply(LLM_PREPARING_FIXATION);
       if (isEdit) {
         const rawPost = await fixationService.updateFixationManual(userId, payload);
         funnelCompleted.inc({ type: 'fixation' });

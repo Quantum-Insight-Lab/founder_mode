@@ -134,6 +134,12 @@ export const WEEKLY_PRIORITY_CHANGE_QUESTIONS = [
 
 export type WeeklyPriorityChangeAnswerKey = (typeof WEEKLY_PRIORITY_CHANGE_QUESTIONS)[number]['key'];
 
+/** Перед запросом к модели и рендером карточки */
+export const LLM_PREPARING_DECLARATION = 'Собираю формулировку приоритета…';
+export const LLM_PREPARING_FIXATION = 'Собираю карточку дня…';
+export const LLM_PREPARING_REPORT = 'Собираю недельный срез…';
+export const LLM_PREPARING_CHANGE = 'Собираю карточку смены приоритета…';
+
 /** Редактирование declaration заблокировано при наличии фиксаций в локальной неделе */
 export const DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS =
   '⚠️ На этой неделе уже есть фиксации дня. Приоритет можно изменить через /change.';

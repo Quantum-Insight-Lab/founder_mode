@@ -5,6 +5,7 @@ import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
   DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS,
+  LLM_PREPARING_DECLARATION,
   ONBOARDING_AFTER_PLAN_1,
   ONBOARDING_AFTER_PLAN_2,
 } from '../conversations.js';
@@ -151,6 +152,7 @@ export async function handleDeclarationMessage(ctx: AppContext, text: string, de
     ctx.session!.isFirstDeclaration = undefined;
 
     try {
+      await ctx.reply(LLM_PREPARING_DECLARATION);
       if (isEdit) {
         const { rawPost } = await declarationService.updateDeclarationManual(userId, record);
         funnelCompleted.inc({ type: 'declaration' });

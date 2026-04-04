@@ -4,6 +4,7 @@ import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
+  LLM_PREPARING_CHANGE,
   WEEKLY_PRIORITY_CHANGE_QUESTIONS,
   type WeeklyPriorityChangeAnswerKey,
 } from '../conversations.js';
@@ -166,6 +167,7 @@ export async function handleChangeMessage(ctx: AppContext, text: string, deps: H
     ctx.session!.changeAnswers = undefined;
     ctx.session!.changeEditMode = undefined;
     try {
+      await ctx.reply(LLM_PREPARING_CHANGE);
       const { rawPost } = isEdit
         ? await priorityChangeService.updatePriorityChangeManual(userId, record)
         : await priorityChangeService.createPriorityChange(userId, record);

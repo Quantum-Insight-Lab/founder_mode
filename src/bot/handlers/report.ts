@@ -4,6 +4,7 @@ import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
+  LLM_PREPARING_REPORT,
   ONBOARDING_AFTER_REPORT_1,
   ONBOARDING_AFTER_REPORT_QUESTION,
 } from '../conversations.js';
@@ -94,6 +95,7 @@ export async function handleReportCommand(ctx: AppContext, deps: HandlerDeps): P
   const wasFirstReport =
     (await countRows(pool, 'SELECT COUNT(*)::int AS c FROM weekly_reports WHERE user_id = $1', [userId])) === 0;
   try {
+    await ctx.reply(LLM_PREPARING_REPORT);
     const rawPost = await reportService.createReport(userId);
     funnelCompleted.inc({ type: 'report' });
     logger.info({ userId }, 'Report created');
@@ -151,6 +153,7 @@ export async function handleReportEdit(ctx: AppContext, deps: HandlerDeps): Prom
   cardEditClicks.inc({ kind: 'report' });
   funnelStarted.inc({ type: 'report' });
   try {
+    await ctx.reply(LLM_PREPARING_REPORT);
     const rawPost = await reportService.updateReportManual(userId);
     funnelCompleted.inc({ type: 'report' });
     logger.info({ userId }, 'Report manually updated');

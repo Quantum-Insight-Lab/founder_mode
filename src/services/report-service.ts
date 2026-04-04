@@ -68,10 +68,9 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
       new_focus: string;
       new_win: string;
       new_failure: string;
-      raw_post: string;
       created_at: string;
     }>(
-      `SELECT reason, new_focus, new_win, new_failure, raw_post, created_at
+      `SELECT reason, new_focus, new_win, new_failure, created_at
        FROM weekly_priority_changes
        WHERE user_id = $1 AND week_id = $2
        LIMIT 1`,

@@ -38,6 +38,7 @@ export interface DeclarationCreatedPayload {
   user_id: string;
   week_id: string;
   main_focus: string;
+  why_now: string;
   win_result: string;
   week_failure: string;
   raw_post: string;
@@ -73,7 +74,6 @@ export interface FixationSubmittedPayload {
   attention_sink?: string;
   raw_post: string;
   why_partial?: string;
-  new_focus?: string;
 }
 
 export interface UserRegisteredPayload {

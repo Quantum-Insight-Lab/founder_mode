@@ -13,6 +13,7 @@ export async function deleteUserData(pool: Pool, userId: string): Promise<void> 
     const tgId = identity.rows[0]?.tg_id ?? null;
     const maxId = identity.rows[0]?.max_id ?? null;
     await client.query('DELETE FROM weekly_declarations WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM weekly_priority_changes WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM weekly_reports WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM daily_fixations WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM rhythm_snapshots WHERE user_id = $1', [userId]);

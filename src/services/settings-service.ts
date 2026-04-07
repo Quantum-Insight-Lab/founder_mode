@@ -88,17 +88,17 @@ export function createSettingsService(pool: Pool) {
            declaration_notify_time = $3,
            updated_at = NOW(),
            notifications_enabled = CASE
-             WHEN notifications_enabled = false
-               AND declaration_notify_day IS NULL
-               AND declaration_notify_time IS NULL
-               AND fixation_notify_days IS NULL
-               AND fixation_notify_time IS NULL
-               AND report_notify_day IS NULL
-               AND report_notify_time IS NULL
+             WHEN COALESCE(user_settings.notifications_enabled, false) = false
+               AND user_settings.declaration_notify_day IS NULL
+               AND user_settings.declaration_notify_time IS NULL
+               AND user_settings.fixation_notify_days IS NULL
+               AND user_settings.fixation_notify_time IS NULL
+               AND user_settings.report_notify_day IS NULL
+               AND user_settings.report_notify_time IS NULL
                AND $2 IS NOT NULL
                AND $3 IS NOT NULL
              THEN true
-             ELSE notifications_enabled
+             ELSE user_settings.notifications_enabled
            END`,
         [userId, day, time]
       );
@@ -114,17 +114,17 @@ export function createSettingsService(pool: Pool) {
           fixation_notify_time = $3,
            updated_at = NOW(),
            notifications_enabled = CASE
-             WHEN notifications_enabled = false
-               AND declaration_notify_day IS NULL
-               AND declaration_notify_time IS NULL
-              AND fixation_notify_days IS NULL
-              AND fixation_notify_time IS NULL
-               AND report_notify_day IS NULL
-               AND report_notify_time IS NULL
+             WHEN COALESCE(user_settings.notifications_enabled, false) = false
+               AND user_settings.declaration_notify_day IS NULL
+               AND user_settings.declaration_notify_time IS NULL
+               AND user_settings.fixation_notify_days IS NULL
+               AND user_settings.fixation_notify_time IS NULL
+               AND user_settings.report_notify_day IS NULL
+               AND user_settings.report_notify_time IS NULL
                AND $2 IS NOT NULL
                AND $3 IS NOT NULL
              THEN true
-             ELSE notifications_enabled
+             ELSE user_settings.notifications_enabled
            END`,
         [userId, days, time]
       );
@@ -140,17 +140,17 @@ export function createSettingsService(pool: Pool) {
            report_notify_time = $3,
            updated_at = NOW(),
            notifications_enabled = CASE
-             WHEN notifications_enabled = false
-               AND declaration_notify_day IS NULL
-               AND declaration_notify_time IS NULL
-               AND fixation_notify_days IS NULL
-               AND fixation_notify_time IS NULL
-               AND report_notify_day IS NULL
-               AND report_notify_time IS NULL
+             WHEN COALESCE(user_settings.notifications_enabled, false) = false
+               AND user_settings.declaration_notify_day IS NULL
+               AND user_settings.declaration_notify_time IS NULL
+               AND user_settings.fixation_notify_days IS NULL
+               AND user_settings.fixation_notify_time IS NULL
+               AND user_settings.report_notify_day IS NULL
+               AND user_settings.report_notify_time IS NULL
                AND $2 IS NOT NULL
                AND $3 IS NOT NULL
              THEN true
-             ELSE notifications_enabled
+             ELSE user_settings.notifications_enabled
            END`,
         [userId, day, time]
       );

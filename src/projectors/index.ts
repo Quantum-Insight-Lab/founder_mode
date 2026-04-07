@@ -63,15 +63,16 @@ export function createProjectors(pool: Pool) {
     const p = event.payload;
     await pool.query(
       `INSERT INTO weekly_declarations (
-        user_id, week_id, main_focus, win_result, week_failure, raw_post, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        user_id, week_id, main_focus, why_now, win_result, week_failure, raw_post, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
       ON CONFLICT (user_id, week_id) DO UPDATE SET
         main_focus = EXCLUDED.main_focus,
+        why_now = EXCLUDED.why_now,
         win_result = EXCLUDED.win_result,
         week_failure = EXCLUDED.week_failure,
         raw_post = EXCLUDED.raw_post,
         updated_at = NOW()`,
-      [p.user_id, p.week_id, p.main_focus, p.win_result, p.week_failure, p.raw_post]
+      [p.user_id, p.week_id, p.main_focus, p.why_now, p.win_result, p.week_failure, p.raw_post]
     );
   }
 
@@ -113,8 +114,8 @@ export function createProjectors(pool: Pool) {
       `INSERT INTO daily_fixations (
         user_id, date, day, had_movement, movement_branch, what_moved,
         tomorrow_step, what_stopped, attention_sink,
-        thought_of_day, raw_post, why_partial, new_focus, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+        raw_post, why_partial, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
       ON CONFLICT (user_id, date) DO UPDATE SET
         day = EXCLUDED.day,
         had_movement = EXCLUDED.had_movement,
@@ -123,10 +124,8 @@ export function createProjectors(pool: Pool) {
         tomorrow_step = EXCLUDED.tomorrow_step,
         what_stopped = EXCLUDED.what_stopped,
         attention_sink = EXCLUDED.attention_sink,
-        thought_of_day = EXCLUDED.thought_of_day,
         raw_post = EXCLUDED.raw_post,
         why_partial = EXCLUDED.why_partial,
-        new_focus = EXCLUDED.new_focus,
         updated_at = NOW()`,
       [
         p.user_id,
@@ -138,10 +137,8 @@ export function createProjectors(pool: Pool) {
         p.tomorrow_step ?? null,
         p.what_stopped ?? null,
         p.attention_sink ?? null,
-        null,
         p.raw_post,
         p.why_partial ?? null,
-        p.new_focus ?? null,
       ]
     );
   }

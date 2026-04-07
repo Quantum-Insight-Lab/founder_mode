@@ -13,7 +13,8 @@
     "db:redeploy-clean": "tsx scripts/redeploy-clean.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "calibrate:cards": "tsx scripts/calibrate-card-limits.ts"
+    "calibrate:cards": "tsx scripts/calibrate-card-limits.ts",
+    "notify-resolved": "tsx scripts/notify-resolved-incidents.ts"
   },
   "engines": {
     "node": ">=20"
@@ -23,7 +24,7 @@
     "dotenv": "^17.3.1",
     "grammy": "^1.21.1",
     "node-cron": "^4.2.1",
-    "openai": "^4.24.1",
+    "openai": "^4.104.0",
     "pg": "^8.11.3",
     "pino": "^8.17.2",
     "pino-pretty": "^10.3.1",

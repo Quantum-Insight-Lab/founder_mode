@@ -4,6 +4,7 @@ import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
+  FLOW_CHOICE_USE_BUTTONS_HINT,
   LLM_PREPARING_FIXATION,
   REFLECTION_DATE_QUESTION,
   REFLECTION_SKIP_HINT,
@@ -309,7 +310,7 @@ const branchToQuestions = {
 } as const;
 
 export async function handleFixationMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
-  const { pool, fixationService, formatErrorForUser } = deps;
+  const { pool, fixationService, replyWithServiceError } = deps;
   const userId = ctx.userId;
   const m = ctx.session!.step!.match(fixationStepRe)!;
   const branch = m[1] as keyof typeof branchToQuestions;
@@ -376,7 +377,7 @@ export async function handleFixationMessage(ctx: AppContext, text: string, deps:
     } catch (err) {
       logger.error({ err, userId }, isEdit ? 'Fixation manual update failed' : 'Fixation submission failed');
       ctx.alertError?.(err, 'fixation', userId);
-      await ctx.reply(formatErrorForUser(err));
+      await replyWithServiceError(ctx, err, userId, 'fixation');
     }
   } else {
     ctx.session!.step = `fixation_${branch}_${idx + 1}`;
@@ -445,6 +446,13 @@ export function registerFixationHandlers(bot: import('grammy').Bot<BotContext>, 
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
       await handleFixationMessage(appCtx, ctx.message.text ?? '', deps);
+    }
+  );
+  bot.on('message:text').filter(
+    (ctx) => ctx.session?.step === 'fixation_choice' && !ctx.message.text?.trim().startsWith('/'),
+    async (ctx) => {
+      const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+      await appCtx.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
     }
   );
   bot.callbackQuery('notify_fixation', async (ctx) => {

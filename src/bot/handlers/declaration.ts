@@ -5,6 +5,7 @@ import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
   DECLARATION_EDIT_BLOCKED_HAS_FIXATIONS,
+  FLOW_CHOICE_USE_BUTTONS_HINT,
   LLM_PREPARING_DECLARATION,
   ONBOARDING_AFTER_PLAN_1,
   ONBOARDING_AFTER_PLAN_2,
@@ -135,9 +136,13 @@ export async function handleDeclarationEdit(ctx: AppContext, deps: HandlerDeps):
 }
 
 export async function handleDeclarationMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
-  const { declarationService, handleLlmReply, formatErrorForUser } = deps;
+  const { declarationService, handleLlmReply, replyWithServiceError } = deps;
   const userId = ctx.userId;
   const step = ctx.session!.step!;
+  if (step === 'declaration_choice') {
+    if (!text.trim().startsWith('/')) await ctx.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
+    return;
+  }
   const idx = parseInt(step.replace('declaration_', ''), 10);
   const answers = ctx.session!.declarationAnswers ?? {};
   answers[WEEKLY_DECLARATION_QUESTIONS[idx].key as WeeklyDeclarationAnswerKey] = text;
@@ -172,7 +177,7 @@ export async function handleDeclarationMessage(ctx: AppContext, text: string, de
     } catch (err) {
       logger.error({ err, userId }, isEdit ? 'Declaration manual update failed' : 'Declaration creation failed');
       ctx.alertError?.(err, 'declaration', userId);
-      await ctx.reply(formatErrorForUser(err));
+      await replyWithServiceError(ctx, err, userId, 'declaration');
     }
   } else {
     ctx.session!.step = `declaration_${idx + 1}`;
@@ -227,7 +232,7 @@ export function registerDeclarationHandlers(bot: Bot<BotContext>, deps: HandlerD
   });
   bot.on('message:text').filter(
     (ctx) =>
-      (ctx.session?.step?.startsWith('declaration_') ?? false) &&
+      (ctx.session?.step?.match(/^declaration_(\d+|choice)$/) ?? false) &&
       !ctx.message.text?.trim().startsWith('/'),
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });

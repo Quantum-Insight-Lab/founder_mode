@@ -18,6 +18,7 @@ export interface WeeklyDeclarationRow {
   user_id: string;
   week_id: string;
   main_focus: string;
+  why_now: string;
   win_result: string;
   week_failure: string;
   raw_post: string;
@@ -33,10 +34,8 @@ export interface DailyFixationRow {
   tomorrow_step: string | null;
   what_stopped: string | null;
   attention_sink: string | null;
-  thought_of_day: string | null;
   raw_post: string;
   why_partial: string | null;
-  new_focus: string | null;
 }
 
 /** Снимок ритма на локальную дату пользователя (таблица rhythm_snapshots). */

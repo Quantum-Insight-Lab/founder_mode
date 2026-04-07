@@ -1,5 +1,4 @@
--- Founder Mode: PDA Event Core + Read Models
--- Базовая начальная схема.
+-- Founder Mode: PDA Event Core + Read Models (единая начальная схема).
 
 -- Events (append-only, PDA 4.4)
 CREATE TABLE IF NOT EXISTS events (
@@ -34,7 +33,7 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT users_at_least_one_channel CHECK (tg_id IS NOT NULL OR max_id IS NOT NULL)
 );
 
--- User settings (timezone, notifications)
+-- User settings (timezone, notifications, avatar)
 CREATE TABLE IF NOT EXISTS user_settings (
   user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
   timezone VARCHAR(64),
@@ -51,8 +50,16 @@ CREATE TABLE IF NOT EXISTS user_settings (
   skip_hint_shown_at TIMESTAMPTZ,
   fixation_onboarding_hint_shown_at TIMESTAMPTZ NULL,
   onboarding_report_invite_sent_at TIMESTAMPTZ NULL,
+  avatar_mode VARCHAR(16) NOT NULL DEFAULT 'messenger',
+  avatar_storage_key TEXT,
+  avatar_mime VARCHAR(64),
+  avatar_width INT,
+  avatar_height INT,
+  avatar_updated_at TIMESTAMPTZ,
+  avatar_version INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT user_settings_avatar_mode_check CHECK (avatar_mode IN ('uploaded', 'messenger', 'default'))
 );
 
 -- Weeks (reference for day_range)
@@ -68,6 +75,7 @@ CREATE TABLE IF NOT EXISTS weekly_declarations (
   user_id UUID NOT NULL REFERENCES users(user_id),
   week_id VARCHAR(32) NOT NULL,
   main_focus TEXT NOT NULL,
+  why_now TEXT NOT NULL,
   win_result TEXT NOT NULL,
   week_failure TEXT NOT NULL,
   raw_post TEXT NOT NULL,
@@ -97,13 +105,38 @@ CREATE TABLE IF NOT EXISTS daily_fixations (
   tomorrow_step TEXT,
   what_stopped TEXT,
   attention_sink TEXT,
-  thought_of_day TEXT,
   raw_post TEXT NOT NULL,
   why_partial TEXT,
-  new_focus TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (user_id, date)
+);
+
+-- Weekly priority change (one per user/week)
+CREATE TABLE IF NOT EXISTS weekly_priority_changes (
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  week_id VARCHAR(32) NOT NULL,
+  reason TEXT NOT NULL,
+  new_focus TEXT NOT NULL,
+  new_win TEXT NOT NULL,
+  new_failure TEXT NOT NULL,
+  raw_post TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, week_id)
+);
+
+-- Снимки ритма (0–100 + компоненты 0..1) на локальную дату пользователя
+CREATE TABLE IF NOT EXISTS rhythm_snapshots (
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  as_of_date DATE NOT NULL,
+  score SMALLINT NOT NULL CHECK (score >= 0 AND score <= 100),
+  flow NUMERIC(5, 4) NOT NULL,
+  completion NUMERIC(5, 4) NOT NULL,
+  stability NUMERIC(5, 4) NOT NULL,
+  has_report_current_or_previous_week BOOLEAN NOT NULL,
+  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, as_of_date)
 );
 
 -- LLM calls (audit, INV-006)

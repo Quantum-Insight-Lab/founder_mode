@@ -4,6 +4,7 @@ import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
+  FLOW_CHOICE_USE_BUTTONS_HINT,
   LLM_PREPARING_CHANGE,
   WEEKLY_PRIORITY_CHANGE_QUESTIONS,
   type WeeklyPriorityChangeAnswerKey,
@@ -153,9 +154,13 @@ export async function handleChangeEdit(ctx: AppContext, deps: HandlerDeps): Prom
 }
 
 export async function handleChangeMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
-  const { priorityChangeService, formatErrorForUser } = deps;
+  const { priorityChangeService, replyWithServiceError } = deps;
   const userId = ctx.userId;
   const step = ctx.session!.step!;
+  if (step === 'change_choice') {
+    if (!text.trim().startsWith('/')) await ctx.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
+    return;
+  }
   const idx = parseInt(step.replace('change_', ''), 10);
   const answers = ctx.session!.changeAnswers ?? {};
   answers[WEEKLY_PRIORITY_CHANGE_QUESTIONS[idx].key as WeeklyPriorityChangeAnswerKey] = text;
@@ -178,7 +183,7 @@ export async function handleChangeMessage(ctx: AppContext, text: string, deps: H
     } catch (err) {
       logger.error({ err, userId }, 'Priority change failed');
       ctx.alertError?.(err, 'change', userId);
-      await ctx.reply(formatErrorForUser(err));
+      await replyWithServiceError(ctx, err, userId, 'change');
     }
   } else {
     ctx.session!.step = `change_${idx + 1}`;
@@ -201,7 +206,7 @@ export function registerChangeHandlers(bot: Bot<BotContext>, deps: HandlerDeps):
   });
   bot.on('message:text').filter(
     (ctx) =>
-      (ctx.session?.step?.startsWith('change_') ?? false) &&
+      (ctx.session?.step?.match(/^change_(\d+|choice)$/) ?? false) &&
       !ctx.message.text?.trim().startsWith('/'),
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });

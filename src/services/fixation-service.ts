@@ -31,7 +31,6 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       what_stopped?: string;
       attention_sink?: string;
       why_partial?: string;
-      new_focus?: string;
     },
     idempotencyKeyOverride?: string,
     skipDateValidation = false
@@ -141,7 +140,6 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
         what_stopped?: string;
         attention_sink?: string;
         why_partial?: string;
-        new_focus?: string;
       }
     ): Promise<string> {
       return submitFixationBase(userId, data);
@@ -158,7 +156,6 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
         what_stopped?: string;
         attention_sink?: string;
         why_partial?: string;
-        new_focus?: string;
       }
     ): Promise<string> {
       logger.debug({ userId, date: data.date }, 'updateFixationManual');

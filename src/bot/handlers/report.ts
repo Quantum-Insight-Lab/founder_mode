@@ -4,6 +4,7 @@ import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
+  FLOW_CHOICE_USE_BUTTONS_HINT,
   LLM_PREPARING_REPORT,
   ONBOARDING_AFTER_REPORT_1,
   ONBOARDING_AFTER_REPORT_QUESTION,
@@ -47,7 +48,7 @@ async function sendReportAsCard(
 }
 
 export async function handleReportCommand(ctx: AppContext, deps: HandlerDeps): Promise<void> {
-  const { pool, reportService, formatErrorForUser, countRows } = deps;
+  const { pool, reportService, replyWithServiceError, countRows } = deps;
   const userId = ctx.userId;
   logger.info({ channel: ctx.channel, externalId: ctx.externalId }, 'Command /report');
   ensureSession(ctx);
@@ -114,7 +115,7 @@ export async function handleReportCommand(ctx: AppContext, deps: HandlerDeps): P
   } catch (err) {
     logger.error({ err, userId }, 'Report creation failed');
     ctx.alertError?.(err, 'report', userId);
-    await ctx.reply(formatErrorForUser(err));
+    await replyWithServiceError(ctx, err, userId, 'report');
   }
 }
 
@@ -146,7 +147,7 @@ export async function handleNotifyReport(ctx: AppContext, deps: HandlerDeps): Pr
 }
 
 export async function handleReportEdit(ctx: AppContext, deps: HandlerDeps): Promise<void> {
-  const { reportService, formatErrorForUser } = deps;
+  const { reportService, replyWithServiceError } = deps;
   const userId = ctx.userId;
   ensureSession(ctx);
   await ctx.answerCallbackQuery();
@@ -162,7 +163,7 @@ export async function handleReportEdit(ctx: AppContext, deps: HandlerDeps): Prom
   } catch (err) {
     logger.error({ err, userId }, 'Report manual update failed');
     ctx.alertError?.(err, 'report', userId);
-    await ctx.reply(formatErrorForUser(err));
+    await replyWithServiceError(ctx, err, userId, 'report');
   }
 }
 
@@ -183,4 +184,11 @@ export function registerReportHandlers(bot: Bot<BotContext>, deps: HandlerDeps):
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleNotifyReport(appCtx, deps);
   });
+  bot.on('message:text').filter(
+    (ctx) => ctx.session?.step === 'report_choice' && !ctx.message.text?.trim().startsWith('/'),
+    async (ctx) => {
+      const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+      await appCtx.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
+    }
+  );
 }

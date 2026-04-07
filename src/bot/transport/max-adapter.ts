@@ -493,7 +493,7 @@ export function runMaxPolling(
       } catch (err) {
         logger.error({ err, userId: internalUserId }, 'MAX dispatch error');
         try {
-          await ctx.reply(deps.formatErrorForUser(err));
+          await deps.replyWithServiceError(ctx, err, internalUserId, 'dispatch');
         } catch (_) {}
       }
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { dispatch } from '../src/bot/dispatch.js';
+import { FLOW_CHOICE_USE_BUTTONS_HINT } from '../src/bot/conversations.js';
 import { IDLE_COMMAND_LIST_REPLY } from '../src/bot/idle-message.js';
 
 function createTestCtx() {
@@ -29,6 +30,20 @@ describe('dispatch: unknown commands', () => {
   it('replies with idle message for unknown slash message', async () => {
     const { ctx, replies } = createTestCtx();
     await dispatch(ctx, { type: 'message', text: '/abracadabra' }, {} as any);
+    expect(replies).toEqual([IDLE_COMMAND_LIST_REPLY]);
+  });
+
+  it('choice step + plain text: button hint, not idle', async () => {
+    const { ctx, replies } = createTestCtx();
+    (ctx as { session: { step: string } }).session = { step: 'declaration_choice' };
+    await dispatch(ctx, { type: 'message', text: 'просто текст' }, {} as any);
+    expect(replies).toEqual([FLOW_CHOICE_USE_BUTTONS_HINT]);
+  });
+
+  it('choice step + slash: idle (unknown command path), not button hint', async () => {
+    const { ctx, replies } = createTestCtx();
+    (ctx as { session: { step: string } }).session = { step: 'report_choice' };
+    await dispatch(ctx, { type: 'message', text: '/nope' }, {} as any);
     expect(replies).toEqual([IDLE_COMMAND_LIST_REPLY]);
   });
 });

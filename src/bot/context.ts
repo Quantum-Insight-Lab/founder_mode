@@ -10,7 +10,6 @@ export interface FixationSessionData {
   what_stopped?: string;
   attention_sink?: string;
   why_partial?: string;
-  new_focus?: string;
   [key: string]: string | boolean | undefined;
 }
 

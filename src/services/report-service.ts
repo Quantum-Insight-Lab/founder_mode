@@ -31,10 +31,11 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
 
     const declarationRow = await pool.query<{
       main_focus: string;
+      why_now: string;
       win_result: string;
       week_failure: string;
     }>(
-      `SELECT main_focus, win_result, week_failure
+      `SELECT main_focus, why_now, win_result, week_failure
        FROM weekly_declarations
        WHERE user_id = $1 AND week_id = $2`,
       [userId, weekId]
@@ -53,10 +54,9 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
       what_stopped: string | null;
       attention_sink: string | null;
       why_partial: string | null;
-      new_focus: string | null;
     }>(
       `SELECT day, had_movement, movement_branch, what_moved, tomorrow_step, what_stopped,
-              attention_sink, why_partial, new_focus
+              attention_sink, why_partial
        FROM daily_fixations
        WHERE user_id = $1 AND date >= $2 AND date <= $3
        ORDER BY date`,

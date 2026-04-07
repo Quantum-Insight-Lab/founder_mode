@@ -45,3 +45,49 @@ export function notifyDeveloperMax(err: unknown, context: string, userId?: strin
     logger.error({ err: e, maxAlertUserId: MAX_ALERT_USER_ID }, 'MAX alert send failed')
   );
 }
+
+/** Итог работы скрипта (например notify-resolved) в ALERT_CHAT_ID / MAX_ALERT_USER_ID. */
+export async function notifyAdminScriptCompleted(params: {
+  scriptLabel: string;
+  usersNotified: number;
+  messagesDelivered: number;
+  incidentsResolved?: number;
+}): Promise<void> {
+  const { scriptLabel, usersNotified, messagesDelivered, incidentsResolved } = params;
+  const parts = [
+    '🟢 [Founder Mode] Скрипт отработал',
+    '',
+    `Скрипт: ${escapeHtml(scriptLabel)}`,
+    `Пользователей уведомлено: ${usersNotified}`,
+    `Сообщений доставлено: ${messagesDelivered}`,
+  ];
+  if (incidentsResolved !== undefined) {
+    parts.push(`Инцидентов закрыто: ${incidentsResolved}`);
+  }
+  const text = parts.join('\n');
+
+  const botToken = process.env.BOT_TOKEN?.trim();
+  if (ALERT_CHAT_ID && botToken) {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: ALERT_CHAT_ID, text, parse_mode: 'HTML' }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        logger.error({ status: res.status, body }, 'Admin script summary (Telegram) failed');
+      }
+    } catch (e) {
+      logger.error({ err: e }, 'Admin script summary (Telegram) failed');
+    }
+  }
+
+  if (MAX_ALERT_USER_ID && MAX_BOT_TOKEN) {
+    try {
+      await sendMaxMessage(MAX_BOT_TOKEN, MAX_ALERT_USER_ID, text, undefined, 'html');
+    } catch (e) {
+      logger.error({ err: e, maxAlertUserId: MAX_ALERT_USER_ID }, 'Admin script summary (MAX) failed');
+    }
+  }
+}

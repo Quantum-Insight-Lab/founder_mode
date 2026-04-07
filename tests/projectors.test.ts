@@ -20,7 +20,9 @@ describe.skipIf(!dbUrl)('projectors', () => {
   const extraUserId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 
   beforeEach(async () => {
-    await pool.query('TRUNCATE events, weekly_declarations, weekly_reports, weekly_priority_changes, daily_fixations CASCADE');
+    await pool.query(
+      'TRUNCATE events, weekly_declarations, weekly_reports, weekly_priority_changes, daily_fixations, rhythm_snapshots CASCADE'
+    );
     await pool.query('DELETE FROM users WHERE user_id = $1 OR user_id = $2', [userId, extraUserId]);
     await pool.query('INSERT INTO users (user_id, tg_id) VALUES ($1, $2)', [userId, 'proj-test-tg']);
   });
@@ -42,6 +44,7 @@ describe.skipIf(!dbUrl)('projectors', () => {
         user_id: userId,
         week_id: weekId,
         main_focus: 'mf',
+        why_now: 'wn',
         win_result: 'wr',
         week_failure: 'wf',
         raw_post: 'raw1',
@@ -54,11 +57,12 @@ describe.skipIf(!dbUrl)('projectors', () => {
     await projectors.handleEvent(event);
 
     const r = await pool.query(
-      'SELECT main_focus, win_result, week_failure, raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
+      'SELECT main_focus, why_now, win_result, week_failure, raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
       [userId, weekId]
     );
     expect(r.rows[0]).toMatchObject({
       main_focus: 'mf',
+      why_now: 'wn',
       win_result: 'wr',
       week_failure: 'wf',
       raw_post: 'raw1',
@@ -68,7 +72,7 @@ describe.skipIf(!dbUrl)('projectors', () => {
       ...event,
       event_id: randomUUID(),
       event_type: EVENT_TYPES.DeclarationUpdated,
-      payload: { ...event.payload, raw_post: 'raw2', main_focus: 'mf2' },
+      payload: { ...event.payload, raw_post: 'raw2', main_focus: 'mf2', why_now: 'wn2' },
     });
     await projectors.handleEvent(upd);
     const r2 = await pool.query('SELECT main_focus, raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2', [
@@ -163,14 +167,13 @@ describe.skipIf(!dbUrl)('projectors', () => {
       })
     );
     const r = await pool.query(
-      'SELECT day, had_movement, movement_branch, thought_of_day, raw_post FROM daily_fixations WHERE user_id = $1 AND date = $2',
+      'SELECT day, had_movement, movement_branch, raw_post FROM daily_fixations WHERE user_id = $1 AND date = $2',
       [userId, date]
     );
     expect(r.rows[0]).toMatchObject({
       day: 'Вторник',
       had_movement: true,
       movement_branch: 'yes',
-      thought_of_day: null,
       raw_post: 'rp',
     });
   });

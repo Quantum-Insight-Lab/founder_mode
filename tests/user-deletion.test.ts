@@ -37,8 +37,8 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
     );
     const weekId = '20260308';
     await pool.query(
-      `INSERT INTO weekly_declarations (user_id, week_id, main_focus, win_result, week_failure, raw_post)
-       VALUES ($1, $2, 'f', 'w', 'fail', 'p') ON CONFLICT (user_id, week_id) DO NOTHING`,
+      `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, win_result, week_failure, raw_post)
+       VALUES ($1, $2, 'f', 'n', 'w', 'fail', 'p') ON CONFLICT (user_id, week_id) DO NOTHING`,
       [userId, weekId]
     );
 
@@ -59,8 +59,8 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
       [userId]
     );
     await pool.query(
-      `INSERT INTO weekly_declarations (user_id, week_id, main_focus, win_result, week_failure, raw_post)
-       VALUES ($1, $2, 'f', 'w', 'fail', 'p')`,
+      `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, win_result, week_failure, raw_post)
+       VALUES ($1, $2, 'f', 'n', 'w', 'fail', 'p')`,
       [userId, weekId]
     );
     await pool.query(

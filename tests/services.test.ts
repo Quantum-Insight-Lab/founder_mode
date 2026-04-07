@@ -33,7 +33,7 @@ describe.skipIf(!dbUrl)('services', () => {
   beforeEach(async () => {
     mockComplete.mockClear();
     await pool.query(
-      'TRUNCATE events, weekly_declarations, weekly_reports, daily_fixations, idempotency_cache, llm_calls CASCADE'
+      'TRUNCATE events, weekly_declarations, weekly_reports, weekly_priority_changes, daily_fixations, idempotency_cache, llm_calls CASCADE'
     );
     await pool.query('DELETE FROM users WHERE tg_id = $1', [tgId]);
     await pool.query('INSERT INTO users (user_id, tg_id) VALUES ($1, $2) ON CONFLICT (tg_id) DO NOTHING', [userId, tgId]);
@@ -51,8 +51,8 @@ describe.skipIf(!dbUrl)('services', () => {
     beforeEach(async () => {
       const weekId = getWeekId(new Date().toISOString().slice(0, 10));
       await pool.query(
-        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, win_result, week_failure, raw_post)
-         VALUES ($1, $2, 'focus', 'result', 'fail', 'raw')
+        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, win_result, week_failure, raw_post)
+         VALUES ($1, $2, 'focus', 'now', 'result', 'fail', 'raw')
          ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'focus'`,
         [userId, weekId]
       );
@@ -127,8 +127,8 @@ describe.skipIf(!dbUrl)('services', () => {
     async function seedDeclarationForCurrentWeek() {
       const weekId = getWeekId(new Date().toISOString().slice(0, 10));
       await pool.query(
-        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, win_result, week_failure, raw_post)
-         VALUES ($1, $2, 'focus', 'result', 'fail', 'raw')
+        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, win_result, week_failure, raw_post)
+         VALUES ($1, $2, 'focus', 'now', 'result', 'fail', 'raw')
          ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'focus'`,
         [userId, weekId]
       );
@@ -283,11 +283,11 @@ describe.skipIf(!dbUrl)('services', () => {
   });
 
   describe('declarationService', () => {
-    const answers = { main_focus: 'фокус', win_result: 'результат', week_failure: 'провал' };
+    const answers = { main_focus: 'фокус', why_now: 'сейчас', win_result: 'результат', week_failure: 'провал' };
 
     it('createDeclaration writes read model and DeclarationCreated event', async () => {
       mockComplete.mockResolvedValueOnce({
-        content: 'Фокус: A\n\nРезультат: B\n\nПровал: C',
+        content: 'Фокус: A\n\nПочему сейчас: N\n\nРезультат: B\n\nПровал: C',
         usage: { prompt_tokens: 0, completion_tokens: 0 },
         model: 'test',
         latencyMs: 0,
@@ -325,6 +325,7 @@ describe.skipIf(!dbUrl)('services', () => {
 
       await declarationService.updateDeclarationManual(userId, {
         main_focus: 'mf2',
+        why_now: 'wn2',
         win_result: 'wr2',
         week_failure: 'wf2',
       });
@@ -356,6 +357,7 @@ describe.skipIf(!dbUrl)('services', () => {
       await expect(
         declarationService.updateDeclarationManual(userId, {
           main_focus: 'mf2',
+          why_now: 'wn2',
           win_result: 'wr2',
           week_failure: 'wf2',
         })
@@ -386,7 +388,7 @@ describe.skipIf(!dbUrl)('services', () => {
   });
 
   describe('priorityChangeService', () => {
-    const declAnswers = { main_focus: 'фокус', win_result: 'результат', week_failure: 'провал' };
+    const declAnswers = { main_focus: 'фокус', why_now: 'сейчас', win_result: 'результат', week_failure: 'провал' };
     const changeAnswers = {
       reason: 'Гипотеза не подтвердилась',
       new_focus: 'Новый фокус',

@@ -25,7 +25,6 @@ export function validateFixationBranch(data: {
   what_stopped?: string;
   attention_sink?: string;
   why_partial?: string;
-  new_focus?: string;
 }): void {
   const filled = (s?: string) => (s ?? '').trim().length > 0;
   const branch = data.movement_branch;

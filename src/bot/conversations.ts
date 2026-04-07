@@ -117,9 +117,10 @@ export const ONBOARDING_CTA_YES_FINAL_MSG =
 
 /** Вопросы для /declaration */
 export const WEEKLY_DECLARATION_QUESTIONS = [
-  { key: 'main_focus', text: 'Один главный приоритет на неделю?' },
-  { key: 'win_result', text: 'Какой артефакт или результат должен появиться к концу недели?' },
-  { key: 'week_failure', text: 'Что будет считаться провалом недели?' },
+  { key: 'main_focus', text: 'Какой приоритет на неделю?' },
+  { key: 'why_now', text: 'Почему это важно именно сейчас?' },
+  { key: 'win_result', text: 'Как поймешь, что неделя удалась?' },
+  { key: 'week_failure', text: 'Как поймешь, что план провалился?' },
 ] as const;
 
 export type WeeklyDeclarationAnswerKey = (typeof WEEKLY_DECLARATION_QUESTIONS)[number]['key'];
@@ -133,6 +134,10 @@ export const WEEKLY_PRIORITY_CHANGE_QUESTIONS = [
 ] as const;
 
 export type WeeklyPriorityChangeAnswerKey = (typeof WEEKLY_PRIORITY_CHANGE_QUESTIONS)[number]['key'];
+
+/** Текст пришёл, а ожидается нажатие «Показать» / «Изменить» (не для сообщений, начинающихся с /) */
+export const FLOW_CHOICE_USE_BUTTONS_HINT =
+  '❌ Сначала нажми «Показать» или «Изменить» под предыдущим сообщением.';
 
 /** Перед запросом к модели и рендером карточки */
 export const LLM_PREPARING_DECLARATION = 'Собираю формулировку приоритета…';

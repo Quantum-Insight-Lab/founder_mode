@@ -17,12 +17,14 @@ import { InvariantViolationError } from '../domain/errors.js';
 
 interface DeclarationAnswers {
   main_focus: string;
+  why_now: string;
   win_result: string;
   week_failure: string;
 }
 
 interface DeclarationStructured {
   main_focus: string;
+  why_now: string;
   win_result: string;
   week_failure: string;
 }
@@ -38,6 +40,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
   ): Promise<{ rawPost: string }> {
     const userMessage = [
       `main_focus: ${answers.main_focus}`,
+      `why_now: ${answers.why_now}`,
       `win_result: ${answers.win_result}`,
       `week_failure: ${answers.week_failure}`,
     ].join('\n');
@@ -81,6 +84,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       const { rawPost } = await generateDeclarationContent(userId, weekId, answers, idempotencyKey);
       const structured: DeclarationStructured = {
         main_focus: answers.main_focus.trim(),
+        why_now: answers.why_now.trim(),
         win_result: answers.win_result.trim(),
         week_failure: answers.week_failure.trim(),
       };
@@ -93,6 +97,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
           user_id: userId,
           week_id: weekId,
           main_focus: structured.main_focus,
+          why_now: structured.why_now,
           win_result: structured.win_result,
           week_failure: structured.week_failure,
           raw_post: rawPost,
@@ -133,6 +138,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       const { rawPost } = await generateDeclarationContent(userId, weekId, answers, idempotencyKey);
       const structured: DeclarationStructured = {
         main_focus: answers.main_focus.trim(),
+        why_now: answers.why_now.trim(),
         win_result: answers.win_result.trim(),
         week_failure: answers.week_failure.trim(),
       };
@@ -144,6 +150,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
           user_id: userId,
           week_id: weekId,
           main_focus: structured.main_focus,
+          why_now: structured.why_now,
           win_result: structured.win_result,
           week_failure: structured.week_failure,
           raw_post: rawPost,

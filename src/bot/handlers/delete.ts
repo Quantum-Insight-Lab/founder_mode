@@ -28,7 +28,7 @@ export async function handleDeleteCommand(ctx: AppContext, deps: HandlerDeps): P
 }
 
 export async function handleDeleteConfirmYes(ctx: AppContext, deps: HandlerDeps): Promise<void> {
-  const { pool, getUserByTgId, getUserByMaxId, formatErrorForUser } = deps;
+  const { pool, getUserByTgId, getUserByMaxId, replyWithServiceError } = deps;
   const user = ctx.channel === 'telegram'
     ? await getUserByTgId(ctx.externalId)
     : await getUserByMaxId(ctx.externalId);
@@ -48,7 +48,7 @@ export async function handleDeleteConfirmYes(ctx: AppContext, deps: HandlerDeps)
   } catch (err) {
     logger.error({ err, userId }, 'User deletion failed');
     ctx.alertError?.(err, 'delete', userId);
-    await ctx.reply(formatErrorForUser(err));
+    await replyWithServiceError(ctx, err, userId, 'delete');
   }
 }
 

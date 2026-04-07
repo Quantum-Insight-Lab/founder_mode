@@ -7,6 +7,7 @@ import type { AppContext } from './transport/types.js';
 import type { IncomingEvent } from './transport/types.js';
 import type { HandlerDeps } from './handlers/deps.js';
 import { IDLE_COMMAND_LIST_REPLY } from './idle-message.js';
+import { FLOW_CHOICE_USE_BUTTONS_HINT } from './conversations.js';
 import { timeFromSettingsCallbackData } from './settings-callback.js';
 import {
   handleStart,
@@ -220,9 +221,19 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
     if (!text) return;
 
     if (step === 'onboard_timezone') return handleOnboardTimezone(ctx, text, deps);
-    if (step?.startsWith('declaration_')) return handleDeclarationMessage(ctx, text, deps);
+    if (
+      (step === 'declaration_choice' ||
+        step === 'change_choice' ||
+        step === 'report_choice' ||
+        step === 'fixation_choice') &&
+      !text.startsWith('/')
+    ) {
+      await ctx.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
+      return;
+    }
+    if (step?.match(/^declaration_\d+$/)) return handleDeclarationMessage(ctx, text, deps);
     if (step?.match(/^fixation_(movement|nomovement|partial)_\d+$/)) return handleFixationMessage(ctx, text, deps);
-    if (step?.startsWith('change_')) return handleChangeMessage(ctx, text, deps);
+    if (step?.match(/^change_\d+$/)) return handleChangeMessage(ctx, text, deps);
     if (
       step === 'settings_declaration_time_input' ||
       step === 'settings_fixation_time_input' ||

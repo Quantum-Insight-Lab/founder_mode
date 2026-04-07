@@ -41,6 +41,7 @@ import { registerFixationHandlers } from './fixation.js';
 import { registerSettingsHandlers } from './settings.js';
 import { registerDeleteHandlers } from './delete.js';
 import { formatUserFacingError, USER_SERVICE_ERROR_FALLBACK } from '../user-facing-error.js';
+import { recordServiceErrorIncident } from '../../services/service-error-incidents.js';
 
 let defaultAvatarPngDataUrl: string | null = null;
 async function ensureDefaultAvatarDataUrl(): Promise<string> {
@@ -93,6 +94,16 @@ export function createAppDeps(): HandlerDeps {
   const fixationService = createFixationService(eventStore, serviceDeps);
   const settingsService = createSettingsService(pool);
 
+  async function replyWithServiceError(
+    ctx: import('../transport/types.js').AppContext,
+    err: unknown,
+    userId: string,
+    context: string
+  ): Promise<void> {
+    await recordServiceErrorIncident(pool, { userId, channel: ctx.channel, context, err });
+    await ctx.reply(formatErrorForUser(err), { parse_mode: 'HTML' });
+  }
+
   async function ensureUser(channel: 'telegram' | 'max', externalId: string): Promise<string> {
     const col = channel === 'telegram' ? 'tg_id' : 'max_id';
     const row = await pool.query<{ user_id: string }>(
@@ -139,6 +150,12 @@ export function createAppDeps(): HandlerDeps {
     if (!formatted) {
       logger.error({ userId }, `${context}: empty LLM response`);
       ctx.alertError?.(new Error('Empty LLM response'), context, userId);
+      await recordServiceErrorIncident(pool, {
+        userId,
+        channel: ctx.channel,
+        context: `${context}:empty_llm`,
+        err: new Error('Empty LLM response'),
+      });
     }
     await ctx.reply(formatted || USER_SERVICE_ERROR_FALLBACK, { parse_mode: 'HTML' });
   }
@@ -268,6 +285,7 @@ export function createAppDeps(): HandlerDeps {
     ensureUser,
     getFixationDate,
     formatErrorForUser,
+    replyWithServiceError,
     handleLlmReply,
     countRows,
     declarationService,

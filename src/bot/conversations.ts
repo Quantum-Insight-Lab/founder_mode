@@ -42,7 +42,7 @@ export const ONBOARDING_CTA_QUESTION = 'Начать эксперимент?';
 export const ONBOARDING_CTA_LATER_FIRST_MSG = 'Хорошо. Когда захочешь — /start';
 
 export const ONBOARDING_AFTER_CTA_YES =
-  'Отлично.\n\n❗️ Эксперимент Founder Mode запущен.';
+  'Ок, стартуем.\n\nЯ буду мягко напоминать про вектор/фиксации/отчёт, чтобы эксперимент не “сдулся”.';
 
 export const ONBOARDING_TIMEZONE_QUESTION =
   'Для корректной работы нужен твой часовой пояс.\n\nКакое у тебя сейчас время? (например, 14:30)';
@@ -52,6 +52,12 @@ export const ONBOARDING_TIMEZONE_INVALID =
 
 /** Fallback при неверном вводе времени в онбординге (сохраняется в user_settings). */
 export const ONBOARDING_TIMEZONE_DEFAULT = 'UTC+0';
+
+/** После сохранения таймзоны в онбординге (эксперимент) напоминания включаются по умолчанию. */
+export const ONBOARDING_REMINDERS_ENABLED = 'Напоминания включены.';
+
+export const ONBOARDING_REMINDERS_DISABLED_SHORT =
+  'Напоминания выключены. Включить снова: /settings';
 
 export const ONBOARDING_AFTER_TZ_PROMPT_PLAN =
   'Сейчас зафиксируем вектор текущей недели. Напиши (нажми) /declaration';
@@ -129,8 +135,8 @@ export type WeeklyDeclarationAnswerKey = (typeof WEEKLY_DECLARATION_QUESTIONS)[n
 export const WEEKLY_PRIORITY_CHANGE_QUESTIONS = [
   { key: 'reason', text: 'Почему меняешь приоритет?' },
   { key: 'new_focus', text: 'Какой новый приоритет до конца недели?' },
-  { key: 'new_win', text: 'Какой артефакт или результат должен появиться?' },
-  { key: 'new_failure', text: 'Что будет считаться провалом?' },
+  { key: 'new_win', text: 'Как поймешь, что неделя удалась?' },
+  { key: 'new_failure', text: 'Как поймешь, что план провалился?' },
 ] as const;
 
 export type WeeklyPriorityChangeAnswerKey = (typeof WEEKLY_PRIORITY_CHANGE_QUESTIONS)[number]['key'];

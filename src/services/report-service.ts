@@ -126,13 +126,14 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
       const { weekId: resolvedWeekId, renderedCard } = await generateReportFromData(userId, idempotencyKey);
 
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
-        event_type: EVENT_TYPES.ReportCreated,
+        event_type: EVENT_TYPES.ReportSet,
         actor: { id: userId, role: 'user' },
         subject: { entity: 'WeeklyReport', id: `${userId}:${resolvedWeekId}` },
         payload: {
           user_id: userId,
           week_id: resolvedWeekId,
           raw_post: renderedCard,
+          source: 'initial',
         },
         causation_id: null,
         correlation_id: null,
@@ -152,13 +153,14 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
       const idempotencyKey = `report:${userId}:${weekId}:manual:${randomUUID()}`;
       const { renderedCard } = await generateReportFromData(userId, idempotencyKey);
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
-        event_type: EVENT_TYPES.ReportUpdated,
+        event_type: EVENT_TYPES.ReportSet,
         actor: { id: userId, role: 'user' },
         subject: { entity: 'WeeklyReport', id: `${userId}:${weekId}` },
         payload: {
           user_id: userId,
           week_id: weekId,
           raw_post: renderedCard,
+          source: 'manual',
         },
         causation_id: null,
         correlation_id: null,

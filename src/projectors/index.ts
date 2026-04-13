@@ -4,13 +4,11 @@
 import type { Pool } from 'pg';
 import { EVENT_TYPES } from '../events/types.js';
 import type {
-  DeclarationCreatedEvent,
-  DeclarationUpdatedEvent,
+  DeclarationSetEvent,
   DomainEvent,
   FixationSubmittedEvent,
   PriorityChangedEvent,
-  ReportCreatedEvent,
-  ReportUpdatedEvent,
+  ReportSetEvent,
   UserRegisteredEvent,
 } from '../events/types.js';
 
@@ -18,15 +16,13 @@ export function createProjectors(pool: Pool) {
   return {
     async handleEvent(event: DomainEvent): Promise<void> {
       switch (event.event_type) {
-        case EVENT_TYPES.DeclarationCreated:
-        case EVENT_TYPES.DeclarationUpdated:
+        case EVENT_TYPES.DeclarationSet:
           await projectDeclaration(event);
           break;
         case EVENT_TYPES.PriorityChanged:
           await projectPriorityChange(event);
           break;
-        case EVENT_TYPES.ReportCreated:
-        case EVENT_TYPES.ReportUpdated:
+        case EVENT_TYPES.ReportSet:
           await projectReport(event);
           break;
         case EVENT_TYPES.FixationSubmitted:
@@ -59,7 +55,7 @@ export function createProjectors(pool: Pool) {
     }
   }
 
-  async function projectDeclaration(event: DeclarationCreatedEvent | DeclarationUpdatedEvent): Promise<void> {
+  async function projectDeclaration(event: DeclarationSetEvent): Promise<void> {
     const p = event.payload;
     await pool.query(
       `INSERT INTO weekly_declarations (
@@ -76,9 +72,7 @@ export function createProjectors(pool: Pool) {
     );
   }
 
-  async function projectReport(
-    event: ReportCreatedEvent | ReportUpdatedEvent
-  ): Promise<void> {
+  async function projectReport(event: ReportSetEvent): Promise<void> {
     const p = event.payload;
     await pool.query(
       `INSERT INTO weekly_reports (

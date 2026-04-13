@@ -6,15 +6,12 @@ import cron from 'node-cron';
 import type { Pool } from 'pg';
 import { logger } from '../observability/logger.js';
 import { parseTimezoneOffset } from '../domain/timezone.js';
-import { getWeekStartEnd } from '../services/week-service.js';
 import {
   computeUserLocalNotificationClock,
-  isOnboardingSundayReportInviteSlot,
   matchesFixationNotificationWindow,
   matchesNotificationTimeInWindow,
 } from './notification-logic.js';
 import type { InlineButton } from '../bot/transport/types.js';
-import { ONBOARDING_SUNDAY_REPORT_INVITE } from '../bot/conversations.js';
 
 const NOTIFY_WINDOW_MIN = 7;
 
@@ -130,66 +127,6 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
             );
             logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify report sent');
           });
-        }
-      }
-
-      const onboardingRows = await pool.query<{
-        user_id: string;
-        tg_id: string | null;
-        max_id: string | null;
-        timezone: string | null;
-        onboarding_report_invite_sent_at: Date | null;
-      }>(
-        `SELECT u.user_id, u.tg_id, u.max_id, s.timezone, s.onboarding_report_invite_sent_at
-         FROM users u
-         JOIN user_settings s ON s.user_id = u.user_id
-         WHERE u.onboarding_completed_at IS NULL
-           AND s.timezone IS NOT NULL
-           AND s.onboarding_report_invite_sent_at IS NULL
-           AND (SELECT COUNT(*)::int FROM weekly_reports w WHERE w.user_id = u.user_id) = 0`
-      );
-      const reportButtonsOnboard: InlineButton[][] = [
-        [{ text: 'Продолжить', callback_data: 'notify_report' }],
-      ];
-      for (const r of onboardingRows.rows) {
-        const offsetMin = r.timezone ? parseTimezoneOffset(r.timezone) : null;
-        if (offsetMin === null) continue;
-        const { userDay, userMins, userDateStr } = computeUserLocalNotificationClock(now, offsetMin);
-        if (!isOnboardingSundayReportInviteSlot(userDay, userMins, NOTIFY_WINDOW_MIN)) continue;
-        const { start: weekStart, end: weekEnd } = getWeekStartEnd(userDateStr);
-        const refCount = await pool.query<{ c: number }>(
-          'SELECT COUNT(*)::int AS c FROM daily_fixations WHERE user_id = $1 AND date >= $2 AND date <= $3',
-          [r.user_id, weekStart, weekEnd]
-        );
-        if ((refCount.rows[0]?.c ?? 0) === 0) continue;
-        const sendOnboard = async (text: string): Promise<boolean> => {
-          let ok = false;
-          if (r.tg_id) {
-            try {
-              await sender.sendToTelegram(r.tg_id, text, reportButtonsOnboard);
-              ok = true;
-            } catch (e) {
-              logger.warn({ err: e, userId: r.user_id }, 'Onboarding report invite Telegram send failed');
-            }
-          }
-          if (r.max_id && sender.sendToMax) {
-            try {
-              await sender.sendToMax(r.max_id, text, reportButtonsOnboard);
-              ok = true;
-            } catch (e) {
-              logger.warn({ err: e, userId: r.user_id }, 'Onboarding report invite MAX send failed');
-            }
-          }
-          return ok;
-        };
-        const ok = await sendOnboard(ONBOARDING_SUNDAY_REPORT_INVITE);
-        if (ok) {
-          await pool.query(
-            `INSERT INTO user_settings (user_id, onboarding_report_invite_sent_at) VALUES ($1, NOW())
-             ON CONFLICT (user_id) DO UPDATE SET onboarding_report_invite_sent_at = NOW(), updated_at = NOW()`,
-            [r.user_id]
-          );
-          logger.debug({ userId: r.user_id }, 'Onboarding report invite sent');
         }
       }
     } catch (err) {

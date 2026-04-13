@@ -16,6 +16,7 @@ import {
   handleOnboardCtaLater,
   handleOnboardReportCtaYes,
   handleOnboardReportCtaLater,
+  handleOnboardNotifOff,
 } from './handlers/onboarding.js';
 import {
   handleDeclarationCommand,
@@ -114,6 +115,8 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
         return handleOnboardReportCtaYes(ctx, deps);
       case 'onboard_report_cta_later':
         return handleOnboardReportCtaLater(ctx, deps);
+      case 'onboard_notif_off':
+        return handleOnboardNotifOff(ctx, deps);
       case 'declaration_show':
         return handleDeclarationShow(ctx, deps);
       case 'declaration_edit':

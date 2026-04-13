@@ -31,12 +31,12 @@ describe.skipIf(!dbUrl)('projectors', () => {
     return e;
   }
 
-  it('DeclarationCreated upserts weekly_declarations', async () => {
+  it('DeclarationSet upserts weekly_declarations', async () => {
     const projectors = createProjectors(pool);
     const weekId = '20260309';
     const event = ev({
       event_id: randomUUID(),
-      event_type: EVENT_TYPES.DeclarationCreated,
+      event_type: EVENT_TYPES.DeclarationSet,
       occurred_at: new Date().toISOString(),
       actor: { id: userId, role: 'user' as const },
       subject: { entity: 'WeeklyDeclaration', id: `${userId}:${weekId}` },
@@ -48,6 +48,7 @@ describe.skipIf(!dbUrl)('projectors', () => {
         win_result: 'wr',
         week_failure: 'wf',
         raw_post: 'raw1',
+        source: 'initial' as const,
       },
       causation_id: null,
       correlation_id: null,
@@ -71,8 +72,8 @@ describe.skipIf(!dbUrl)('projectors', () => {
     const upd = ev({
       ...event,
       event_id: randomUUID(),
-      event_type: EVENT_TYPES.DeclarationUpdated,
-      payload: { ...event.payload, raw_post: 'raw2', main_focus: 'mf2', why_now: 'wn2' },
+      event_type: EVENT_TYPES.DeclarationSet,
+      payload: { ...event.payload, raw_post: 'raw2', main_focus: 'mf2', why_now: 'wn2', source: 'manual' as const },
     });
     await projectors.handleEvent(upd);
     const r2 = await pool.query('SELECT main_focus, raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2', [
@@ -82,17 +83,17 @@ describe.skipIf(!dbUrl)('projectors', () => {
     expect(r2.rows[0]).toMatchObject({ main_focus: 'mf2', raw_post: 'raw2' });
   });
 
-  it('ReportCreated upserts weekly_reports (raw_post only)', async () => {
+  it('ReportSet upserts weekly_reports (raw_post only)', async () => {
     const projectors = createProjectors(pool);
     const weekId = '20260309';
     await projectors.handleEvent(
       ev({
         event_id: randomUUID(),
-        event_type: EVENT_TYPES.ReportCreated,
+        event_type: EVENT_TYPES.ReportSet,
         occurred_at: new Date().toISOString(),
         actor: { id: userId, role: 'user' },
         subject: { entity: 'WeeklyReport', id: `${userId}:${weekId}` },
-        payload: { user_id: userId, week_id: weekId, raw_post: 'report body' },
+        payload: { user_id: userId, week_id: weekId, raw_post: 'report body', source: 'initial' as const },
         causation_id: null,
         correlation_id: null,
         idempotency_key: null,
@@ -121,6 +122,7 @@ describe.skipIf(!dbUrl)('projectors', () => {
           new_win: 'w1',
           new_failure: 'x1',
           raw_post: 'raw1',
+          source: 'initial' as const,
         },
         causation_id: null,
         correlation_id: null,
@@ -159,6 +161,7 @@ describe.skipIf(!dbUrl)('projectors', () => {
           movement_branch: 'yes',
           what_moved: 'w',
           raw_post: 'rp',
+          source: 'initial' as const,
         },
         causation_id: null,
         correlation_id: null,

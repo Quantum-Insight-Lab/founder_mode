@@ -90,7 +90,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
       };
 
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
-        event_type: EVENT_TYPES.DeclarationCreated,
+        event_type: EVENT_TYPES.DeclarationSet,
         actor: { id: userId, role: 'user' },
         subject: { entity: 'WeeklyDeclaration', id: `${userId}:${weekId}` },
         payload: {
@@ -101,6 +101,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
           win_result: structured.win_result,
           week_failure: structured.week_failure,
           raw_post: rawPost,
+          source: 'initial',
         },
         causation_id: null,
         correlation_id: null,
@@ -143,7 +144,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
         week_failure: answers.week_failure.trim(),
       };
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
-        event_type: EVENT_TYPES.DeclarationUpdated,
+        event_type: EVENT_TYPES.DeclarationSet,
         actor: { id: userId, role: 'user' },
         subject: { entity: 'WeeklyDeclaration', id: `${userId}:${weekId}` },
         payload: {
@@ -154,6 +155,7 @@ export function createDeclarationService(eventStore: EventStore, deps: ServiceDe
           win_result: structured.win_result,
           week_failure: structured.week_failure,
           raw_post: rawPost,
+          source: 'manual',
         },
         causation_id: null,
         correlation_id: null,

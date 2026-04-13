@@ -116,7 +116,7 @@ describe.skipIf(!dbUrl)('services', () => {
 
       const events = await pool.query('SELECT * FROM events WHERE event_type = $1', ['FixationSubmitted']);
       expect(events.rows.length).toBe(1);
-      expect(events.rows[0].payload).toMatchObject({ user_id: userId, date: today, movement_branch: 'yes' });
+      expect(events.rows[0].payload).toMatchObject({ user_id: userId, date: today, movement_branch: 'yes', source: 'initial' });
 
       const reflections = await pool.query('SELECT * FROM daily_fixations WHERE user_id = $1 AND date = $2', [userId, today]);
       expect(reflections.rows.length).toBe(1);
@@ -207,7 +207,7 @@ describe.skipIf(!dbUrl)('services', () => {
       await reportService.createReport(userId);
 
       const events = await pool.query(
-        "SELECT * FROM events WHERE event_type = 'ReportCreated' AND (payload->>'user_id') = $1",
+        "SELECT * FROM events WHERE event_type = 'ReportSet' AND (payload->>'user_id') = $1",
         [userId]
       );
       expect(events.rows.length).toBe(1);
@@ -285,7 +285,7 @@ describe.skipIf(!dbUrl)('services', () => {
   describe('declarationService', () => {
     const answers = { main_focus: 'фокус', why_now: 'сейчас', win_result: 'результат', week_failure: 'провал' };
 
-    it('createDeclaration writes read model and DeclarationCreated event', async () => {
+    it('createDeclaration writes read model and DeclarationSet event', async () => {
       mockComplete.mockResolvedValueOnce({
         content: 'Фокус: A\n\nПочему сейчас: N\n\nРезультат: B\n\nПровал: C',
         usage: { prompt_tokens: 0, completion_tokens: 0 },
@@ -307,13 +307,14 @@ describe.skipIf(!dbUrl)('services', () => {
       expect(row.rows[0]?.main_focus).toBe('фокус');
 
       const evs = await pool.query(
-        `SELECT event_type FROM events WHERE event_type = 'DeclarationCreated' AND (payload->>'user_id') = $1`,
+        `SELECT event_type, payload FROM events WHERE event_type = 'DeclarationSet' AND (payload->>'user_id') = $1`,
         [userId]
       );
       expect(evs.rows.length).toBe(1);
+      expect(evs.rows[0].payload).toMatchObject({ source: 'initial' });
     });
 
-    it('updateDeclarationManual appends DeclarationUpdated', async () => {
+    it('updateDeclarationManual appends DeclarationSet with source=manual', async () => {
       mockComplete.mockResolvedValue({
         content: 'Фокус: X\n\nРезультат: Y\n\nПровал: Z',
         usage: { prompt_tokens: 0, completion_tokens: 0 },
@@ -332,7 +333,7 @@ describe.skipIf(!dbUrl)('services', () => {
 
       expect(mockComplete).toHaveBeenCalled();
       const upd = await pool.query(
-        `SELECT COUNT(*)::int AS c FROM events WHERE event_type = 'DeclarationUpdated' AND (payload->>'user_id') = $1`,
+        `SELECT COUNT(*)::int AS c FROM events WHERE event_type = 'DeclarationSet' AND (payload->>'source') = 'manual' AND (payload->>'user_id') = $1`,
         [userId]
       );
       expect(upd.rows[0]?.c).toBe(1);

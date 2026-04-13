@@ -33,7 +33,8 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       why_partial?: string;
     },
     idempotencyKeyOverride?: string,
-    skipDateValidation = false
+    skipDateValidation = false,
+    source: 'initial' | 'manual' = 'initial'
   ): Promise<string> {
     logger.debug({ userId, date: data.date }, 'submitFixation');
     const had_movement = data.movement_branch === 'yes';
@@ -73,6 +74,7 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
       had_movement,
       movement_branch: data.movement_branch,
       raw_post: '', // will be set after LLM
+      source,
     };
     if (data.movement_branch === 'yes') {
       payload.what_moved = data.what_moved;
@@ -167,7 +169,7 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
         throw new InvariantViolationError('Фиксация за этот день не найдена', 'NOT_FOUND');
       }
       const idempotencyKey = `fixation:${userId}:${data.date}:manual:${randomUUID()}`;
-      return submitFixationBase(userId, data, idempotencyKey, true);
+      return submitFixationBase(userId, data, idempotencyKey, true, 'manual');
     },
   };
 }

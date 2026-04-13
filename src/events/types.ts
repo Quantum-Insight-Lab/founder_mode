@@ -1,12 +1,11 @@
 /**
- * Event types (PDA 4.4 event-sourced core).
+ * Event types: one type per act.
+ * `source` in payload distinguishes initial creation from manual edit.
  */
 export const EVENT_TYPES = {
-  DeclarationCreated: 'DeclarationCreated',
-  DeclarationUpdated: 'DeclarationUpdated',
+  DeclarationSet: 'DeclarationSet',
   PriorityChanged: 'PriorityChanged',
-  ReportCreated: 'ReportCreated',
-  ReportUpdated: 'ReportUpdated',
+  ReportSet: 'ReportSet',
   FixationSubmitted: 'FixationSubmitted',
   UserRegistered: 'UserRegistered',
 } as const;
@@ -34,7 +33,9 @@ interface BaseEvent {
   schema_version: 1;
 }
 
-export interface DeclarationCreatedPayload {
+export type EventSource = 'initial' | 'manual';
+
+export interface DeclarationSetPayload {
   user_id: string;
   week_id: string;
   main_focus: string;
@@ -42,12 +43,14 @@ export interface DeclarationCreatedPayload {
   win_result: string;
   week_failure: string;
   raw_post: string;
+  source: EventSource;
 }
 
-export interface ReportCreatedPayload {
+export interface ReportSetPayload {
   user_id: string;
   week_id: string;
   raw_post: string;
+  source: EventSource;
 }
 
 export interface PriorityChangedPayload {
@@ -58,6 +61,7 @@ export interface PriorityChangedPayload {
   new_win: string;
   new_failure: string;
   raw_post: string;
+  source: EventSource;
 }
 
 export type FixationMovementBranch = 'yes' | 'no' | 'partial';
@@ -74,6 +78,7 @@ export interface FixationSubmittedPayload {
   attention_sink?: string;
   raw_post: string;
   why_partial?: string;
+  source: EventSource;
 }
 
 export interface UserRegisteredPayload {
@@ -82,21 +87,13 @@ export interface UserRegisteredPayload {
   max_id?: string; // MAX messenger platform ID (at least one of tg_id, max_id)
 }
 
-export interface DeclarationCreatedEvent extends BaseEvent {
-  event_type: 'DeclarationCreated';
-  payload: DeclarationCreatedPayload;
+export interface DeclarationSetEvent extends BaseEvent {
+  event_type: 'DeclarationSet';
+  payload: DeclarationSetPayload;
 }
-export interface DeclarationUpdatedEvent extends BaseEvent {
-  event_type: 'DeclarationUpdated';
-  payload: DeclarationCreatedPayload;
-}
-export interface ReportCreatedEvent extends BaseEvent {
-  event_type: 'ReportCreated';
-  payload: ReportCreatedPayload;
-}
-export interface ReportUpdatedEvent extends BaseEvent {
-  event_type: 'ReportUpdated';
-  payload: ReportCreatedPayload;
+export interface ReportSetEvent extends BaseEvent {
+  event_type: 'ReportSet';
+  payload: ReportSetPayload;
 }
 export interface PriorityChangedEvent extends BaseEvent {
   event_type: 'PriorityChanged';
@@ -112,10 +109,8 @@ export interface UserRegisteredEvent extends BaseEvent {
 }
 
 export type DomainEvent =
-  | DeclarationCreatedEvent
-  | DeclarationUpdatedEvent
+  | DeclarationSetEvent
   | PriorityChangedEvent
-  | ReportCreatedEvent
-  | ReportUpdatedEvent
+  | ReportSetEvent
   | FixationSubmittedEvent
   | UserRegisteredEvent;

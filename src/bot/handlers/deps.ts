@@ -11,7 +11,7 @@ export interface HandlerDeps {
   ensureUser: (channel: Channel, externalId: string) => Promise<string>;
   getFixationDate: (userId: string, choice: 'yesterday' | 'today') => Promise<string>;
   formatErrorForUser: (err: unknown) => string;
-  /** Сервисная ошибка пользователю + запись инцидента для скрипта уведомления «исправлено». */
+  /** Сервисная ошибка пользователю + запись инцидента для скрипта напоминания «исправлено». */
   replyWithServiceError: (ctx: AppContext, err: unknown, userId: string, context: string) => Promise<void>;
   handleLlmReply: (
     ctx: AppContext,

@@ -26,7 +26,10 @@ import { userTimeToTimezone } from '../../domain/timezone.js';
 import type { HandlerDeps } from './deps.js';
 
 const ONBOARD_NOTIF_OFF: import('../transport/types.js').InlineButton[][] = [
-  [{ text: 'Отключить напоминания', callback_data: 'onboard_notif_off' }],
+  [
+    { text: 'Отключить напоминания', callback_data: 'onboard_notif_off' },
+    { text: 'Изменить время напоминаний', callback_data: 'settings_notifications' },
+  ],
 ];
 
 export async function handleStart(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -74,21 +77,10 @@ export async function handleOnboardTimezone(ctx: AppContext, text: string, deps:
   }
 
   if (!tz) {
-    logger.info({ userId, text }, 'Onboarding timezone invalid, using default UTC+0');
+    logger.info({ userId, text }, 'Onboarding timezone invalid, using default UTC+3');
     await settingsService.updateTimezone(userId, ONBOARDING_TIMEZONE_DEFAULT);
-    await settingsService.updateNotificationsEnabled(userId, true);
-    // Default schedules for the experiment:
-    // - declaration: Monday 10:00
-    // - fixation: Mon–Fri 21:00
-    // - report: Sunday 12:00
-    await settingsService.updateDeclarationNotify(userId, 1, '10:00');
-    await settingsService.updateFixationNotify(userId, '1,2,3,4,5', '21:00');
-    await settingsService.updateReportNotify(userId, 0, '12:00');
     await ctx.reply(ONBOARDING_TIMEZONE_INVALID, { parse_mode: 'HTML' });
-    await ctx.reply(
-      `Часовой пояс установлен: <b>${ONBOARDING_TIMEZONE_DEFAULT}</b>\n\n${ONBOARDING_REMINDERS_ENABLED}`,
-      { parse_mode: 'HTML', reply_markup: ONBOARD_NOTIF_OFF }
-    );
+    await ctx.reply(`Часовой пояс установлен: <b>${ONBOARDING_TIMEZONE_DEFAULT}</b>`, { parse_mode: 'HTML' });
     await ctx.reply(ONBOARDING_AFTER_TZ_PROMPT_PLAN);
     return;
   }

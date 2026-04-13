@@ -1,4 +1,4 @@
--- Инциденты сервисных ошибок (для уведомления пользователя после исправления).
+-- Инциденты сервисных ошибок (для напоминания пользователя после исправления).
 
 CREATE TABLE IF NOT EXISTS service_error_incidents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

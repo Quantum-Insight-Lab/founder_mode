@@ -48,10 +48,10 @@ export const ONBOARDING_TIMEZONE_QUESTION =
   'Для корректной работы нужен твой часовой пояс.\n\nКакое у тебя сейчас время? (например, 14:30)';
 
 export const ONBOARDING_TIMEZONE_INVALID =
-  '⚠️ Формат некорректен. Устанавливаем часовой пояс <b>UTC+0</b> и продолжаем. Изменить можно в /settings.';
+  '⚠️ Формат некорректен. Устанавливаем часовой пояс <b>UTC+3</b> и продолжаем. Напоминания выключены. Изменить можно в /settings.';
 
 /** Fallback при неверном вводе времени в онбординге (сохраняется в user_settings). */
-export const ONBOARDING_TIMEZONE_DEFAULT = 'UTC+0';
+export const ONBOARDING_TIMEZONE_DEFAULT = 'UTC+3';
 
 /** После сохранения таймзоны в онбординге (эксперимент) напоминания включаются по умолчанию. */
 export const ONBOARDING_REMINDERS_ENABLED = 'Напоминания включены.';
@@ -162,7 +162,7 @@ export const REFLECTION_DATE_QUESTION = 'За какой день фиксаци
 
 /** Подсказка при первом пропуске рефлексии (косой текст) */
 export const REFLECTION_SKIP_HINT =
-  '💡 Пропустил день? Уведомления помогут не забывать.';
+  '💡 Пропустил день? Напоминания помогут не забывать.';
 
 export const REFLECTION_MOVEMENT_QUESTION = 'Было ли движение по главному фокусу?';
 
@@ -189,13 +189,13 @@ export const REFLECTION_QUESTIONS_PARTIAL = [
 export const NOTIFICATION_TIMES = ['08:00', '14:00', '20:00'] as const;
 
 /** Settings */
-export const SETTINGS_NOTIFICATIONS = 'Уведомления';
+export const SETTINGS_NOTIFICATIONS = 'Напоминания';
 export const SETTINGS_DECLARATION = 'Приоритет';
 export const SETTINGS_FIXATION = 'Фиксация';
 export const SETTINGS_REPORT = 'Отчёт';
 export const SETTINGS_TIMEZONE = 'Часовой пояс';
 export const SETTINGS_AVATAR = 'Аватар';
 /** Главное меню /settings — вход в подменю напоминаний */
-export const SETTINGS_CONFIGURE_NOTIFICATIONS = 'Настроить уведомления';
+export const SETTINGS_CONFIGURE_NOTIFICATIONS = 'Настроить напоминания';
 export const SETTINGS_TIME_INPUT_QUESTION = 'Введите время (ЧЧ:ММ), например 14:30:';
 export const SETTINGS_TIME_INVALID = '❌ Неверный формат. Введите время ЧЧ:ММ (например 14:30).';

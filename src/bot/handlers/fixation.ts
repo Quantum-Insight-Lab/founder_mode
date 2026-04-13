@@ -190,7 +190,7 @@ export async function handleFixationCommandBase(ctx: AppContext, deps: HandlerDe
     ],
   ];
   if (showSkipHint) {
-    rows.push([{ text: 'Включить уведомления', callback_data: 'fixation_skip_enable_notif' }]);
+    rows.push([{ text: 'Включить напоминания', callback_data: 'fixation_skip_enable_notif' }]);
   }
 
   ctx.session.step = 'fixation_date';

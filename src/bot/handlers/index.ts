@@ -224,7 +224,7 @@ export function createAppDeps(): HandlerDeps {
     const reply_markup: import('../transport/types.js').InlineButton[][] = [
       [
         {
-          text: notif === 'Вкл' ? 'Выкл уведомления' : 'Вкл уведомления',
+          text: notif === 'Вкл' ? 'Выкл напоминания' : 'Вкл напоминания',
           callback_data: 'settings_notif_toggle',
         },
       ],

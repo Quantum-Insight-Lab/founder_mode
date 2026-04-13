@@ -126,17 +126,17 @@ export const WEEKLY_DECLARATION_QUESTIONS = [
   { key: 'main_focus', text: 'Какой приоритет на неделю?' },
   { key: 'why_now', text: 'Почему это важно именно сейчас?' },
   { key: 'win_result', text: 'Как поймешь, что неделя удалась?' },
-  { key: 'week_failure', text: 'Как поймешь, что план провалился?' },
+  { key: 'week_failure', text: 'Как поймешь, что неделя провалилась?' },
 ] as const;
 
 export type WeeklyDeclarationAnswerKey = (typeof WEEKLY_DECLARATION_QUESTIONS)[number]['key'];
 
 /** Вопросы для /change (смена приоритета недели) */
 export const WEEKLY_PRIORITY_CHANGE_QUESTIONS = [
-  { key: 'reason', text: 'Почему меняешь приоритет?' },
+  { key: 'reason', text: 'Почему меняешь приоритет?' }, 
   { key: 'new_focus', text: 'Какой новый приоритет до конца недели?' },
   { key: 'new_win', text: 'Как поймешь, что неделя удалась?' },
-  { key: 'new_failure', text: 'Как поймешь, что план провалился?' },
+  { key: 'new_failure', text: 'Как поймешь, что неделя провалилась?' },
 ] as const;
 
 export type WeeklyPriorityChangeAnswerKey = (typeof WEEKLY_PRIORITY_CHANGE_QUESTIONS)[number]['key'];
@@ -168,7 +168,6 @@ export const REFLECTION_MOVEMENT_QUESTION = 'Было ли движение по
 
 export const REFLECTION_QUESTIONS_MOVEMENT = [
   { key: 'what_moved', text: 'Расскажи о прогрессе по главному:' },
-  { key: 'attention_sink', text: 'Что ещё заняло внимание?' },
   { key: 'tomorrow_step', text: 'Какой шаг по главному фокусу на завтра?' },
 ] as const;
 
@@ -181,7 +180,6 @@ export const REFLECTION_QUESTIONS_NO_MOVEMENT = [
 export const REFLECTION_QUESTIONS_PARTIAL = [
   { key: 'what_moved', text: 'Что удалось сделать по главному?' },
   { key: 'why_partial', text: 'Почему движение осталось частичным?' },
-  { key: 'attention_sink', text: 'Что ещё заняло внимание?' },
   { key: 'tomorrow_step', text: 'Какой шаг по главному фокусу на завтра?' },
 ] as const;
 

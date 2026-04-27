@@ -83,6 +83,37 @@ describe.skipIf(!dbUrl)('projectors', () => {
     expect(r2.rows[0]).toMatchObject({ main_focus: 'mf2', raw_post: 'raw2' });
   });
 
+  it('legacy declaration event types still upsert weekly_declarations', async () => {
+    const projectors = createProjectors(pool);
+    const weekId = '20260316';
+    await projectors.handleEvent({
+      event_id: randomUUID(),
+      event_type: 'DeclarationCreated',
+      occurred_at: new Date().toISOString(),
+      actor: { id: userId, role: 'user' as const },
+      subject: { entity: 'WeeklyDeclaration', id: `${userId}:${weekId}` },
+      payload: {
+        user_id: userId,
+        week_id: weekId,
+        main_focus: 'legacy mf',
+        why_now: 'legacy wn',
+        win_result: 'legacy wr',
+        week_failure: 'legacy wf',
+        raw_post: 'legacy raw',
+      },
+      causation_id: null,
+      correlation_id: null,
+      idempotency_key: null,
+      schema_version: 1 as const,
+    });
+
+    const r = await pool.query('SELECT main_focus, raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2', [
+      userId,
+      weekId,
+    ]);
+    expect(r.rows[0]).toMatchObject({ main_focus: 'legacy mf', raw_post: 'legacy raw' });
+  });
+
   it('ReportSet upserts weekly_reports (raw_post only)', async () => {
     const projectors = createProjectors(pool);
     const weekId = '20260309';
@@ -102,6 +133,26 @@ describe.skipIf(!dbUrl)('projectors', () => {
     );
     const r = await pool.query('SELECT raw_post FROM weekly_reports WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
     expect(r.rows[0]?.raw_post).toBe('report body');
+  });
+
+  it('legacy report event types still upsert weekly_reports', async () => {
+    const projectors = createProjectors(pool);
+    const weekId = '20260316';
+    await projectors.handleEvent({
+      event_id: randomUUID(),
+      event_type: 'ReportCreated',
+      occurred_at: new Date().toISOString(),
+      actor: { id: userId, role: 'user' as const },
+      subject: { entity: 'WeeklyReport', id: `${userId}:${weekId}` },
+      payload: { user_id: userId, week_id: weekId, raw_post: 'legacy report' },
+      causation_id: null,
+      correlation_id: null,
+      idempotency_key: null,
+      schema_version: 1 as const,
+    });
+
+    const r = await pool.query('SELECT raw_post FROM weekly_reports WHERE user_id = $1 AND week_id = $2', [userId, weekId]);
+    expect(r.rows[0]?.raw_post).toBe('legacy report');
   });
 
   it('PriorityChanged upserts weekly_priority_changes', async () => {

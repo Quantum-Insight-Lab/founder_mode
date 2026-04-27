@@ -78,7 +78,9 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
     };
     if (data.movement_branch === 'yes') {
       payload.what_moved = data.what_moved;
-      payload.attention_sink = data.attention_sink;
+      if (data.attention_sink != null && data.attention_sink.trim() !== '') {
+        payload.attention_sink = data.attention_sink;
+      }
       payload.tomorrow_step = data.tomorrow_step;
     } else if (data.movement_branch === 'no') {
       payload.what_stopped = data.what_stopped;
@@ -87,17 +89,19 @@ export function createFixationService(eventStore: EventStore, deps: ServiceDeps)
     } else if (data.movement_branch === 'partial') {
       payload.what_moved = data.what_moved;
       payload.why_partial = data.why_partial;
-      payload.attention_sink = data.attention_sink;
+      if (data.attention_sink != null && data.attention_sink.trim() !== '') {
+        payload.attention_sink = data.attention_sink;
+      }
       payload.tomorrow_step = data.tomorrow_step;
     }
 
     let userMessage: string;
     if (data.movement_branch === 'yes') {
-      userMessage = `Движение по главному фокусу: Да\nЧто продвинуло: ${data.what_moved ?? ''}\nДвижение вне фокуса: ${data.attention_sink ?? ''}\nШаг на завтра: ${data.tomorrow_step ?? ''}`;
+      userMessage = `Движение по главному фокусу: Да\nЧто продвинуло: ${data.what_moved ?? ''}\nШаг на завтра: ${data.tomorrow_step ?? ''}`;
     } else if (data.movement_branch === 'no') {
       userMessage = `Движение по главному фокусу: Нет\nЧто остановило: ${data.what_stopped ?? ''}\nЧто заняло внимание: ${data.attention_sink ?? ''}\nКак вернуть вектор завтра: ${data.tomorrow_step ?? ''}`;
     } else {
-      userMessage = `Движение по главному фокусу: Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nЧто ещё заняло внимание: ${data.attention_sink ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}`;
+      userMessage = `Движение по главному фокусу: Частично\nЧто удалось сделать: ${data.what_moved ?? ''}\nПочему движение частичное: ${data.why_partial ?? ''}\nСледующий шаг по фокусу: ${data.tomorrow_step ?? ''}`;
     }
 
     const idempotencyKey = idempotencyKeyOverride ?? `fixation:${userId}:${data.date}`;

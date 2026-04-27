@@ -12,17 +12,33 @@ import type {
   UserRegisteredEvent,
 } from '../events/types.js';
 
+type LegacyDeclarationEvent = Omit<DeclarationSetEvent, 'event_type' | 'payload'> & {
+  event_type: 'DeclarationCreated' | 'DeclarationUpdated';
+  payload: Omit<DeclarationSetEvent['payload'], 'source'> & Partial<Pick<DeclarationSetEvent['payload'], 'source'>>;
+};
+
+type LegacyReportEvent = Omit<ReportSetEvent, 'event_type' | 'payload'> & {
+  event_type: 'ReportCreated' | 'ReportUpdated';
+  payload: Omit<ReportSetEvent['payload'], 'source'> & Partial<Pick<ReportSetEvent['payload'], 'source'>>;
+};
+
+type ProjectorEvent = DomainEvent | LegacyDeclarationEvent | LegacyReportEvent;
+
 export function createProjectors(pool: Pool) {
   return {
-    async handleEvent(event: DomainEvent): Promise<void> {
+    async handleEvent(event: ProjectorEvent): Promise<void> {
       switch (event.event_type) {
         case EVENT_TYPES.DeclarationSet:
+        case 'DeclarationCreated':
+        case 'DeclarationUpdated':
           await projectDeclaration(event);
           break;
         case EVENT_TYPES.PriorityChanged:
           await projectPriorityChange(event);
           break;
         case EVENT_TYPES.ReportSet:
+        case 'ReportCreated':
+        case 'ReportUpdated':
           await projectReport(event);
           break;
         case EVENT_TYPES.FixationSubmitted:
@@ -55,7 +71,7 @@ export function createProjectors(pool: Pool) {
     }
   }
 
-  async function projectDeclaration(event: DeclarationSetEvent): Promise<void> {
+  async function projectDeclaration(event: DeclarationSetEvent | LegacyDeclarationEvent): Promise<void> {
     const p = event.payload;
     await pool.query(
       `INSERT INTO weekly_declarations (
@@ -72,7 +88,7 @@ export function createProjectors(pool: Pool) {
     );
   }
 
-  async function projectReport(event: ReportSetEvent): Promise<void> {
+  async function projectReport(event: ReportSetEvent | LegacyReportEvent): Promise<void> {
     const p = event.payload;
     await pool.query(
       `INSERT INTO weekly_reports (

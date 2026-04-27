@@ -21,10 +21,10 @@ describe('validators', () => {
   describe('INV-008: validateFixationBranch', () => {
     it('throws when movement_branch=yes but required fields empty', () => {
       expect(() =>
-        validateFixationBranch({ movement_branch: 'yes', what_moved: '', attention_sink: '', tomorrow_step: '' })
+        validateFixationBranch({ movement_branch: 'yes', what_moved: '', tomorrow_step: '' })
       ).toThrow(/заполни/);
       expect(() =>
-        validateFixationBranch({ movement_branch: 'yes', what_moved: 'a', attention_sink: '', tomorrow_step: 'c' })
+        validateFixationBranch({ movement_branch: 'yes', what_moved: 'a', tomorrow_step: '' })
       ).toThrow(/заполни/);
     });
 
@@ -39,9 +39,9 @@ describe('validators', () => {
       ).toThrow(/заполни/);
     });
 
-    it('passes when movement_branch=yes and all fields filled', () => {
+    it('passes when movement_branch=yes and required fields filled', () => {
       expect(() =>
-        validateFixationBranch({ movement_branch: 'yes', what_moved: 'a', attention_sink: 'b', tomorrow_step: 'c' })
+        validateFixationBranch({ movement_branch: 'yes', what_moved: 'a', tomorrow_step: 'c' })
       ).not.toThrow();
     });
 
@@ -56,13 +56,12 @@ describe('validators', () => {
       ).not.toThrow();
     });
 
-    it('passes when movement_branch=partial and all fields filled', () => {
+    it('passes when movement_branch=partial and required fields filled', () => {
       expect(() =>
         validateFixationBranch({
           movement_branch: 'partial',
           what_moved: 'a',
           why_partial: 'b',
-          attention_sink: 'c',
           tomorrow_step: 'd',
         })
       ).not.toThrow();

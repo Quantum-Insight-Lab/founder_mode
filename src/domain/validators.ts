@@ -30,8 +30,8 @@ export function validateFixationBranch(data: {
   const branch = data.movement_branch;
   if (branch === 'yes') {
     invariant(
-      filled(data.what_moved) && filled(data.attention_sink) && filled(data.tomorrow_step),
-      'При движении заполни: что продвинуло, движение вне фокуса, шаг на завтра',
+      filled(data.what_moved) && filled(data.tomorrow_step),
+      'При движении заполни: что продвинуло, шаг на завтра',
       '008'
     );
   } else if (branch === 'no') {
@@ -44,9 +44,8 @@ export function validateFixationBranch(data: {
     invariant(
       filled(data.what_moved) &&
       filled(data.why_partial) &&
-      filled(data.attention_sink) &&
       filled(data.tomorrow_step),
-      'В ветке «Частично» заполни: что удалось сделать, почему частично, что ещё заняло внимание, шаг на завтра',
+      'В ветке «Частично» заполни: что удалось сделать, почему частично, шаг на завтра',
       '008'
     );
   } else {

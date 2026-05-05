@@ -12,6 +12,7 @@ import {
   matchesNotificationTimeInWindow,
 } from './notification-logic.js';
 import type { InlineButton } from '../bot/transport/types.js';
+import { hasDailyFixationForLocalDate } from './fixation-notify-helpers.js';
 
 const NOTIFY_WINDOW_MIN = 7;
 
@@ -111,13 +112,21 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           });
         }
         if (checkFixation() && r.last_fixation_notify_date !== userDateStr) {
-          await sendToUserChannels('⏰ Время фиксации', reflectButtons, async () => {
+          if (await hasDailyFixationForLocalDate(pool, r.user_id, userDateStr)) {
             await pool.query(
               'UPDATE user_settings SET last_fixation_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',
               [userDateStr, r.user_id]
             );
-            logger.debug({ userId: r.user_id, date: userDateStr }, 'Notify fixation sent');
-          });
+            logger.debug({ userId: r.user_id, date: userDateStr }, 'Notify fixation skipped (already submitted today)');
+          } else {
+            await sendToUserChannels('⏰ Время фиксации', reflectButtons, async () => {
+              await pool.query(
+                'UPDATE user_settings SET last_fixation_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',
+                [userDateStr, r.user_id]
+              );
+              logger.debug({ userId: r.user_id, date: userDateStr }, 'Notify fixation sent');
+            });
+          }
         }
         if (check(r.report_notify_day, r.report_notify_time) && r.last_report_notify_week_id !== userWeekId) {
           await sendToUserChannels('⏰ Время report недели', reportButtons, async () => {

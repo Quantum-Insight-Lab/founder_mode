@@ -1,6 +1,8 @@
 import type { Bot } from 'grammy';
 import type { BotContext } from '../context.js';
 import { ensureSession } from '../context.js';
+import { registerGuardedCommand, registerGuardedCallback } from '../register-guard.js';
+import { withProductMode } from '../with-product-mode.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import {
@@ -218,29 +220,17 @@ export async function handleNotifyDeclaration(ctx: AppContext, deps: HandlerDeps
 }
 
 export function registerDeclarationHandlers(bot: Bot<BotContext>, deps: HandlerDeps): void {
-  bot.command('declaration', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleDeclarationCommand(appCtx, deps);
-  });
-  bot.callbackQuery('declaration_show', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleDeclarationShow(appCtx, deps);
-  });
-  bot.callbackQuery('declaration_edit', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleDeclarationEdit(appCtx, deps);
-  });
+  registerGuardedCommand(bot, deps, 'founder', 'declaration', handleDeclarationCommand);
+  registerGuardedCallback(bot, deps, 'founder', 'declaration_show', handleDeclarationShow);
+  registerGuardedCallback(bot, deps, 'founder', 'declaration_edit', handleDeclarationEdit);
+  registerGuardedCallback(bot, deps, 'founder', 'notify_declaration', handleNotifyDeclaration);
   bot.on('message:text').filter(
     (ctx) =>
       (ctx.session?.step?.match(/^declaration_(\d+|choice)$/) ?? false) &&
       !ctx.message.text?.trim().startsWith('/'),
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-      await handleDeclarationMessage(appCtx, ctx.message.text ?? '', deps);
+      await withProductMode('founder', (c, d) => handleDeclarationMessage(c, ctx.message.text ?? '', d))(appCtx, deps);
     }
   );
-  bot.callbackQuery('notify_declaration', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleNotifyDeclaration(appCtx, deps);
-  });
 }

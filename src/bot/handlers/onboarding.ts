@@ -32,9 +32,13 @@ const ONBOARD_NOTIF_OFF: import('../transport/types.js').InlineButton[][] = [
   ],
 ];
 
-export async function handleStart(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+export async function handleStart(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  opts?: { skipBotOpen?: boolean }
+): Promise<void> {
   const { pool } = deps;
-  botOpens.inc();
+  if (!opts?.skipBotOpen) botOpens.inc();
   const userId = ctx.userId;
   const r = await pool.query<{ onboarding_completed_at: Date | null; onboarding_started_at: Date | null }>(
     'SELECT onboarding_completed_at, onboarding_started_at FROM users WHERE user_id = $1',
@@ -152,38 +156,6 @@ export async function handleOnboardReportCtaLater(ctx: AppContext, deps: Handler
   await ctx.reply(ONBOARDING_CTA_LATER_MSG);
 }
 
-export function registerOnboardingHandlers(bot: Bot<BotContext>, deps: HandlerDeps): void {
-  bot.command('start', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleStart(appCtx, deps);
-  });
-  bot.on('message:text').filter(
-    (ctx) =>
-      ctx.session?.step === 'onboard_timezone' &&
-      !ctx.message.text?.trim().startsWith('/'),
-    async (ctx) => {
-      const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-      await handleOnboardTimezone(appCtx, ctx.message.text?.trim() ?? '', deps);
-    }
-  );
-  bot.callbackQuery('onboard_cta_yes', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleOnboardCtaYes(appCtx, deps);
-  });
-  bot.callbackQuery('onboard_cta_later', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleOnboardCtaLater(appCtx, deps);
-  });
-  bot.callbackQuery('onboard_notif_off', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleOnboardNotifOff(appCtx, deps);
-  });
-  bot.callbackQuery('onboard_report_cta_yes', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleOnboardReportCtaYes(appCtx, deps);
-  });
-  bot.callbackQuery('onboard_report_cta_later', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleOnboardReportCtaLater(appCtx, deps);
-  });
+export function registerOnboardingHandlers(_bot: Bot<BotContext>, _deps: HandlerDeps): void {
+  // /start and shared onboard callbacks registered in product-mode.ts
 }

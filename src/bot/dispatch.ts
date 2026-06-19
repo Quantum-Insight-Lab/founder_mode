@@ -6,11 +6,19 @@ import { logger } from '../observability/logger.js';
 import type { AppContext } from './transport/types.js';
 import type { IncomingEvent } from './transport/types.js';
 import type { HandlerDeps } from './handlers/deps.js';
-import { IDLE_COMMAND_LIST_REPLY } from './idle-message.js';
+import { idleCommandListForMode } from './idle-for-mode.js';
+import { withProductMode } from './with-product-mode.js';
+import {
+  handleUnifiedStart,
+  handleProductModePick,
+  handleProductModeSet,
+  handleSettingsProductModeMenu,
+  handleSettingsProductModeBack,
+} from './handlers/product-mode.js';
+import { PRODUCT_MODE_PICK_FIRST } from './product-mode-copy.js';
 import { FLOW_CHOICE_USE_BUTTONS_HINT } from './conversations.js';
 import { timeFromSettingsCallbackData } from './settings-callback.js';
 import {
-  handleStart,
   handleOnboardTimezone,
   handleOnboardCtaYes,
   handleOnboardCtaLater,
@@ -75,8 +83,10 @@ import {
 } from './handlers/settings.js';
 import { handleDeleteCommand, handleDeleteConfirmYes, handleDeleteConfirmNo } from './handlers/delete.js';
 
-async function handleIdleMessage(ctx: AppContext): Promise<void> {
-  return ctx.reply(IDLE_COMMAND_LIST_REPLY);
+async function handleIdleMessage(ctx: AppContext, deps: HandlerDeps): Promise<void> {
+  const mode = await deps.getUserProductMode(ctx.userId);
+  if (!mode) return ctx.reply(PRODUCT_MODE_PICK_FIRST);
+  return ctx.reply(idleCommandListForMode(mode));
 }
 
 export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: HandlerDeps): Promise<void> {
@@ -84,22 +94,22 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
     logger.debug({ channel: ctx.channel, userId: ctx.userId, command: event.name }, 'Dispatch command');
     switch (event.name) {
       case 'start':
-        return handleStart(ctx, deps);
+        return handleUnifiedStart(ctx, deps);
       case 'declaration':
-        return handleDeclarationCommand(ctx, deps);
+        return withProductMode('founder', handleDeclarationCommand)(ctx, deps);
       case 'change':
-        return handleChangeCommand(ctx, deps);
+        return withProductMode('founder', handleChangeCommand)(ctx, deps);
       case 'report':
-        return handleReportCommand(ctx, deps);
+        return withProductMode('founder', handleReportCommand)(ctx, deps);
       case 'fixation':
-        return handleFixationCommand(ctx, deps);
+        return withProductMode('founder', handleFixationCommand)(ctx, deps);
       case 'settings':
         return handleSettingsCommand(ctx, deps);
       case 'delete':
         return handleDeleteCommand(ctx, deps);
       default:
         logger.debug({ channel: ctx.channel, userId: ctx.userId, command: event.name }, 'Unknown command, idle reply');
-        return handleIdleMessage(ctx);
+        return handleIdleMessage(ctx, deps);
     }
   }
 
@@ -107,6 +117,18 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
     const data = event.data;
     logger.debug({ channel: ctx.channel, userId: ctx.userId, callback: data }, 'Dispatch callback');
     switch (data) {
+      case 'product_mode_founder':
+        return handleProductModePick(ctx, 'founder', deps);
+      case 'product_mode_closure':
+        return handleProductModePick(ctx, 'closure', deps);
+      case 'product_mode_set_founder':
+        return handleProductModeSet(ctx, 'founder', deps);
+      case 'product_mode_set_closure':
+        return handleProductModeSet(ctx, 'closure', deps);
+      case 'settings_product_mode':
+        return handleSettingsProductModeMenu(ctx, deps);
+      case 'settings_product_mode_back':
+        return handleSettingsProductModeBack(ctx, deps);
       case 'onboard_cta_yes':
         return handleOnboardCtaYes(ctx, deps);
       case 'onboard_cta_later':
@@ -245,9 +267,9 @@ export async function dispatch(ctx: AppContext, event: IncomingEvent, deps: Hand
       return handleSettingsTimeInput(ctx, text, deps);
     }
     if (step === 'settings_tz_input') return handleSettingsTzInput(ctx, text, deps);
-    if (!text.startsWith('/')) return handleIdleMessage(ctx);
+    if (!text.startsWith('/')) return handleIdleMessage(ctx, deps);
     logger.debug({ channel: ctx.channel, userId: ctx.userId, step }, 'Slash message not for any step, idle reply');
-    return handleIdleMessage(ctx);
+    return handleIdleMessage(ctx, deps);
   }
 
   if (event.type === 'photo') {

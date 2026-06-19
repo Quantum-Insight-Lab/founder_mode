@@ -1,11 +1,13 @@
 import type { Pool } from 'pg';
 import { logger } from '../observability/logger.js';
 import { formatDay, formatDays, formatTime } from '../domain/date-format.js';
+import type { ProductMode } from './product-mode.js';
 
 export interface UserSettingsRow {
   user_id: string;
   timezone: string | null;
   notifications_enabled: boolean;
+  product_mode: ProductMode | null;
   declaration_notify_day: number | null;
   declaration_notify_time: string | null;
   fixation_notify_days: string | null;
@@ -36,6 +38,7 @@ export function createSettingsService(pool: Pool) {
       const row = await pool.query<UserSettingsRow>(
         `SELECT user_id, timezone,
                 COALESCE(notifications_enabled, false) AS notifications_enabled,
+                product_mode,
                 declaration_notify_day, declaration_notify_time,
                 fixation_notify_days, fixation_notify_time,
                 report_notify_day, report_notify_time,
@@ -223,6 +226,20 @@ export function createSettingsService(pool: Pool) {
         [userId]
       );
       logger.debug({ userId }, 'Settings: avatar mode default');
+    },
+
+    async getProductMode(userId: string): Promise<ProductMode | null> {
+      const row = await this.get(userId);
+      return row?.product_mode ?? null;
+    },
+
+    async setProductMode(userId: string, mode: ProductMode): Promise<void> {
+      await pool.query(
+        `INSERT INTO user_settings (user_id, product_mode, updated_at) VALUES ($1, $2, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET product_mode = $2, updated_at = NOW()`,
+        [userId, mode]
+      );
+      logger.debug({ userId, mode }, 'Settings: product mode updated');
     },
 
     async getAvatarPreference(userId: string): Promise<{

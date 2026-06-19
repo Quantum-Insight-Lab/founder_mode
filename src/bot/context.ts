@@ -13,6 +13,19 @@ export interface FixationSessionData {
   [key: string]: string | boolean | undefined;
 }
 
+/** Данные сессии шага closure mode */
+export interface StepSessionData {
+  date?: string;
+  had_movement?: boolean;
+  movement_branch?: 'yes' | 'no' | 'partial';
+  what_moved?: string;
+  tomorrow_step?: string;
+  what_stopped?: string;
+  avoidance?: string;
+  why_partial?: string;
+  [key: string]: string | boolean | undefined;
+}
+
 export interface SessionData {
   /** Имя для карточек (MAX): кеш, если в апдейте без полного sender (callback и т.д.). */
   maxDisplayName?: string;
@@ -25,6 +38,14 @@ export interface SessionData {
   isFirstDeclaration?: boolean; // true = первый declaration пользователя — онбординг после карточки
   fixationEditMode?: boolean; // true = ручное редактирование, без LLM
   fixationData?: FixationSessionData;
+  matterEditMode?: boolean;
+  matterAnswers?: Record<string, string>;
+  switchAnswers?: Record<string, string>;
+  switchEditMode?: boolean;
+  digestEditMode?: boolean;
+  isFirstMatter?: boolean;
+  stepEditMode?: boolean;
+  stepData?: StepSessionData;
   settingsData?: {
     editing?: 'declaration' | 'fixation' | 'report' | 'avatar';
     declaration_day?: number;

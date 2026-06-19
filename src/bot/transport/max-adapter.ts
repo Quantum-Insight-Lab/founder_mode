@@ -6,7 +6,7 @@ import { logger } from '../../observability/logger.js';
 import type { AppContext, IncomingEvent, ReplyOptions } from './types.js';
 import type { SessionData } from '../context.js';
 import { sendMaxImage, sendMaxMessage } from './max-send.js';
-import { dispatch } from '../dispatch.js';
+import { dispatchForUser } from '../dispatch-router.js';
 import type { HandlerDeps } from '../handlers/deps.js';
 import { notifyDeveloperMax } from '../../observability/alert.js';
 
@@ -489,7 +489,7 @@ export function runMaxPolling(
 
       logger.info({ maxUserId, userId: internalUserId, eventType: event.type, ...(event.type === 'command' ? { command: event.name } : event.type === 'callback' ? { callback: event.data } : { step: ctx.session?.step }) }, 'MAX update handled');
       try {
-        await dispatch(ctx, event, deps);
+        await dispatchForUser(ctx, event, deps);
       } catch (err) {
         logger.error({ err, userId: internalUserId }, 'MAX dispatch error');
         try {

@@ -5,6 +5,7 @@ import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import { logger } from '../../observability/logger.js';
 import { deleteUserData } from '../../services/user-deletion.js';
+import { isClosureProductMode } from '../../services/product-mode.js';
 import type { HandlerDeps } from './deps.js';
 
 export async function handleDeleteCommand(ctx: AppContext, deps: HandlerDeps): Promise<void> {
@@ -19,7 +20,11 @@ export async function handleDeleteCommand(ctx: AppContext, deps: HandlerDeps): P
   }
   ensureSession(ctx);
   ctx.session.step = 'delete_confirm';
-  await ctx.reply('⚠️ Удалить все данные? Планы, фиксации, отчёты. Необратимо.', {
+  const mode = await deps.getUserProductMode(user.user_id);
+  const deletePrompt = isClosureProductMode(mode)
+    ? '⚠️ Удалить все данные? Дела, шаги, дайджесты. Необратимо.'
+    : '⚠️ Удалить все данные? Планы, фиксации, отчёты. Необратимо.';
+  await ctx.reply(deletePrompt, {
     reply_markup: [[
       { text: 'Да, удалить', callback_data: 'delete_confirm_yes' },
       { text: 'Нет', callback_data: 'delete_confirm_no' },

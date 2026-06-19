@@ -7,6 +7,10 @@ import type {
   DeclarationSetEvent,
   DomainEvent,
   FixationSubmittedEvent,
+  MatterDigestSetEvent,
+  MatterSetEvent,
+  MatterStepSubmittedEvent,
+  MatterSwitchedEvent,
   PriorityChangedEvent,
   ReportSetEvent,
   UserRegisteredEvent,
@@ -46,6 +50,18 @@ export function createProjectors(pool: Pool) {
           break;
         case EVENT_TYPES.UserRegistered:
           await projectUser(event);
+          break;
+        case EVENT_TYPES.MatterSet:
+          await projectMatter(event);
+          break;
+        case EVENT_TYPES.MatterSwitched:
+          await projectMatterSwitch(event);
+          break;
+        case EVENT_TYPES.MatterStepSubmitted:
+          await projectMatterStep(event);
+          break;
+        case EVENT_TYPES.MatterDigestSet:
+          await projectDigest(event);
           break;
         default:
           break;
@@ -150,6 +166,99 @@ export function createProjectors(pool: Pool) {
         p.raw_post,
         p.why_partial ?? null,
       ]
+    );
+  }
+
+  async function projectMatter(event: MatterSetEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO weekly_matters (
+        user_id, week_id, title, area_key, area_custom, why_postponed, cost_of_inaction, week_target, raw_post, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      ON CONFLICT (user_id, week_id) DO UPDATE SET
+        title = EXCLUDED.title,
+        area_key = EXCLUDED.area_key,
+        area_custom = EXCLUDED.area_custom,
+        why_postponed = EXCLUDED.why_postponed,
+        cost_of_inaction = EXCLUDED.cost_of_inaction,
+        week_target = EXCLUDED.week_target,
+        raw_post = EXCLUDED.raw_post,
+        updated_at = NOW()`,
+      [
+        p.user_id,
+        p.week_id,
+        p.title,
+        p.area_key,
+        p.area_custom ?? null,
+        p.why_postponed,
+        p.cost_of_inaction,
+        p.week_target,
+        p.raw_post,
+      ]
+    );
+  }
+
+  async function projectMatterSwitch(event: MatterSwitchedEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO matter_switches (
+        user_id, week_id, reason, new_title, new_target, raw_post, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      ON CONFLICT (user_id, week_id) DO UPDATE SET
+        reason = EXCLUDED.reason,
+        new_title = EXCLUDED.new_title,
+        new_target = EXCLUDED.new_target,
+        raw_post = EXCLUDED.raw_post,
+        updated_at = NOW()`,
+      [p.user_id, p.week_id, p.reason, p.new_title, p.new_target, p.raw_post]
+    );
+  }
+
+  async function projectMatterStep(event: MatterStepSubmittedEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO matter_steps (
+        user_id, date, day, had_movement, movement_branch, what_moved,
+        tomorrow_step, what_stopped, avoidance,
+        raw_post, why_partial, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      ON CONFLICT (user_id, date) DO UPDATE SET
+        day = EXCLUDED.day,
+        had_movement = EXCLUDED.had_movement,
+        movement_branch = EXCLUDED.movement_branch,
+        what_moved = EXCLUDED.what_moved,
+        tomorrow_step = EXCLUDED.tomorrow_step,
+        what_stopped = EXCLUDED.what_stopped,
+        avoidance = EXCLUDED.avoidance,
+        raw_post = EXCLUDED.raw_post,
+        why_partial = EXCLUDED.why_partial,
+        updated_at = NOW()`,
+      [
+        p.user_id,
+        p.date,
+        p.day,
+        p.had_movement,
+        p.movement_branch ?? null,
+        p.what_moved ?? null,
+        p.tomorrow_step ?? null,
+        p.what_stopped ?? null,
+        p.avoidance ?? null,
+        p.raw_post,
+        p.why_partial ?? null,
+      ]
+    );
+  }
+
+  async function projectDigest(event: MatterDigestSetEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO weekly_digests (
+        user_id, week_id, raw_post, updated_at
+      ) VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (user_id, week_id) DO UPDATE SET
+        raw_post = EXCLUDED.raw_post,
+        updated_at = NOW()`,
+      [p.user_id, p.week_id, p.raw_post]
     );
   }
 }

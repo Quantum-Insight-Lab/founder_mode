@@ -52,3 +52,39 @@ export function validateFixationBranch(data: {
     invariant(false, 'Недопустимая ветка фиксации', '008');
   }
 }
+
+/**
+ * INV-009: Step branch — required fields by movement_branch (closure mode)
+ */
+export function validateStepBranch(data: {
+  movement_branch: 'yes' | 'no' | 'partial';
+  what_moved?: string;
+  tomorrow_step?: string;
+  what_stopped?: string;
+  avoidance?: string;
+  why_partial?: string;
+}): void {
+  const filled = (s?: string) => (s ?? '').trim().length > 0;
+  const branch = data.movement_branch;
+  if (branch === 'yes') {
+    invariant(
+      filled(data.what_moved) && filled(data.tomorrow_step),
+      'При шаге «да» заполни: что сделано, микрошаг на завтра',
+      '009'
+    );
+  } else if (branch === 'no') {
+    invariant(
+      filled(data.what_stopped) && filled(data.avoidance) && filled(data.tomorrow_step),
+      'Без шага заполни: что помешало, чем отвлекался, микрошаг на завтра',
+      '009'
+    );
+  } else if (branch === 'partial') {
+    invariant(
+      filled(data.what_moved) && filled(data.why_partial) && filled(data.tomorrow_step),
+      'В ветке «Частично» заполни: что сделано, почему частично, микрошаг на завтра',
+      '009'
+    );
+  } else {
+    invariant(false, 'Недопустимая ветка шага', '009');
+  }
+}

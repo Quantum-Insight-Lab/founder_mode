@@ -2,6 +2,8 @@ import type { Bot } from 'grammy';
 import type { BotContext } from '../context.js';
 import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
+import { registerGuardedCommand, registerGuardedCallback } from '../register-guard.js';
+import { withProductMode } from '../with-product-mode.js';
 import type { AppContext } from '../transport/types.js';
 import {
   FLOW_CHOICE_USE_BUTTONS_HINT,
@@ -192,25 +194,16 @@ export async function handleChangeMessage(ctx: AppContext, text: string, deps: H
 }
 
 export function registerChangeHandlers(bot: Bot<BotContext>, deps: HandlerDeps): void {
-  bot.command('change', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleChangeCommand(appCtx, deps);
-  });
-  bot.callbackQuery('change_show', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleChangeShow(appCtx, deps);
-  });
-  bot.callbackQuery('change_edit', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleChangeEdit(appCtx, deps);
-  });
+  registerGuardedCommand(bot, deps, 'founder', 'change', handleChangeCommand);
+  registerGuardedCallback(bot, deps, 'founder', 'change_show', handleChangeShow);
+  registerGuardedCallback(bot, deps, 'founder', 'change_edit', handleChangeEdit);
   bot.on('message:text').filter(
     (ctx) =>
       (ctx.session?.step?.match(/^change_(\d+|choice)$/) ?? false) &&
       !ctx.message.text?.trim().startsWith('/'),
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-      await handleChangeMessage(appCtx, ctx.message.text ?? '', deps);
+      await withProductMode('founder', (c, d) => handleChangeMessage(c, ctx.message.text ?? '', d))(appCtx, deps);
     }
   );
 }

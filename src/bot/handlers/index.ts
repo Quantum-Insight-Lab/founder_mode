@@ -16,6 +16,10 @@ import { createDeclarationService } from '../../services/declaration-service.js'
 import { createReportService } from '../../services/report-service.js';
 import { createPriorityChangeService } from '../../services/priority-change-service.js';
 import { createFixationService } from '../../services/fixation-service.js';
+import { createMatterService } from '../../services/matter-service.js';
+import { createMatterSwitchService } from '../../services/matter-switch-service.js';
+import { createStepService } from '../../services/step-service.js';
+import { createDigestService } from '../../services/digest-service.js';
 import { createSettingsService, formatDay, formatDays, formatTime } from '../../services/settings-service.js';
 import { loadAvatarDataUrl, storeNormalizedAvatar } from '../../services/avatar-storage.js';
 import { resolveAvatarBackgroundImageValue } from '../../services/avatar-resolver.js';
@@ -32,6 +36,23 @@ import {
   SETTINGS_AVATAR,
   SETTINGS_CONFIGURE_NOTIFICATIONS,
 } from '../conversations.js';
+import {
+  CLOSURE_SETTINGS_MATTER,
+  CLOSURE_SETTINGS_STEP,
+  CLOSURE_SETTINGS_DIGEST,
+  SETTINGS_NOTIFICATIONS as CLOSURE_SETTINGS_NOTIFICATIONS,
+  SETTINGS_TIMEZONE as CLOSURE_SETTINGS_TIMEZONE,
+  SETTINGS_AVATAR as CLOSURE_SETTINGS_AVATAR,
+  SETTINGS_CONFIGURE_NOTIFICATIONS as CLOSURE_SETTINGS_CONFIGURE_NOTIFICATIONS,
+} from '../closure-conversations.js';
+import { isClosureProductMode, productModeLabel } from '../../services/product-mode.js';
+import { SETTINGS_PRODUCT_MODE } from '../product-mode-copy.js';
+import { registerProductModeHandlers } from './product-mode.js';
+import { registerClosureOnboardingHandlers } from './closure/onboarding.js';
+import { registerMatterHandlers } from './closure/matter.js';
+import { registerSwitchHandlers } from './closure/switch.js';
+import { registerStepHandlers } from './closure/step.js';
+import { registerDigestHandlers } from './closure/digest.js';
 import type { HandlerDeps } from './deps.js';
 import { registerOnboardingHandlers } from './onboarding.js';
 import { registerDeclarationHandlers } from './declaration.js';
@@ -92,6 +113,10 @@ export function createAppDeps(): HandlerDeps {
   const reportService = createReportService(eventStore, serviceDeps);
   const priorityChangeService = createPriorityChangeService(eventStore, serviceDeps);
   const fixationService = createFixationService(eventStore, serviceDeps);
+  const matterService = createMatterService(eventStore, serviceDeps);
+  const matterSwitchService = createMatterSwitchService(eventStore, serviceDeps);
+  const stepService = createStepService(eventStore, serviceDeps);
+  const digestService = createDigestService(eventStore, serviceDeps);
   const settingsService = createSettingsService(pool);
 
   async function replyWithServiceError(
@@ -143,7 +168,7 @@ export function createAppDeps(): HandlerDeps {
     ctx: import('../transport/types.js').AppContext,
     rawPost: string,
     userId: string,
-    context: 'declaration' | 'fixation' | 'report' | 'change'
+    context: 'declaration' | 'fixation' | 'report' | 'change' | 'matter' | 'step' | 'digest' | 'switch'
   ): Promise<void> {
     const trimmed = rawPost?.trim() || '';
     const formatted = escapeHtml(trimmed);
@@ -183,16 +208,28 @@ export function createAppDeps(): HandlerDeps {
           ? 'Из мессенджера'
           : 'Стандартный';
 
+    const mode = await settingsService.getProductMode(userId);
+    const closure = isClosureProductMode(mode);
+    const lblNotif = closure ? CLOSURE_SETTINGS_NOTIFICATIONS : SETTINGS_NOTIFICATIONS;
+    const lblDecl = closure ? CLOSURE_SETTINGS_MATTER : SETTINGS_DECLARATION;
+    const lblFix = closure ? CLOSURE_SETTINGS_STEP : SETTINGS_FIXATION;
+    const lblReport = closure ? CLOSURE_SETTINGS_DIGEST : SETTINGS_REPORT;
+    const lblTz = closure ? CLOSURE_SETTINGS_TIMEZONE : SETTINGS_TIMEZONE;
+    const lblAvatar = closure ? CLOSURE_SETTINGS_AVATAR : SETTINGS_AVATAR;
+    const lblConfigure = closure ? CLOSURE_SETTINGS_CONFIGURE_NOTIFICATIONS : SETTINGS_CONFIGURE_NOTIFICATIONS;
+
     const text =
-      `<b>${SETTINGS_NOTIFICATIONS}</b>: ${notif}\n` +
-      `<b>${SETTINGS_DECLARATION}</b>: ${declarationStr}\n` +
-      `<b>${SETTINGS_FIXATION}</b>: ${reflectStr}\n` +
-      `<b>${SETTINGS_REPORT}</b>: ${reportStr}\n` +
-      `<b>${SETTINGS_TIMEZONE}</b>: ${tzStr}\n` +
-      `<b>${SETTINGS_AVATAR}</b>: ${avatarStr}`;
+      `<b>${SETTINGS_PRODUCT_MODE}</b>: ${productModeLabel(mode)}\n` +
+      `<b>${lblNotif}</b>: ${notif}\n` +
+      `<b>${lblDecl}</b>: ${declarationStr}\n` +
+      `<b>${lblFix}</b>: ${reflectStr}\n` +
+      `<b>${lblReport}</b>: ${reportStr}\n` +
+      `<b>${lblTz}</b>: ${tzStr}\n` +
+      `<b>${lblAvatar}</b>: ${avatarStr}`;
 
     const reply_markup: import('../transport/types.js').InlineButton[][] = [
-      [{ text: SETTINGS_CONFIGURE_NOTIFICATIONS, callback_data: 'settings_notifications' }],
+      [{ text: 'Сменить режим', callback_data: 'settings_product_mode' }],
+      [{ text: lblConfigure, callback_data: 'settings_notifications' }],
       [{ text: 'Настроить аватар', callback_data: 'settings_avatar' }],
       [{ text: 'Часовой пояс', callback_data: 'settings_tz' }],
     ];
@@ -215,11 +252,18 @@ export function createAppDeps(): HandlerDeps {
       ? `${formatDay(settings.report_notify_day)} ${formatTime(settings.report_notify_time)}`
       : '—';
 
+    const mode = await settingsService.getProductMode(userId);
+    const closure = isClosureProductMode(mode);
+    const lblNotif = closure ? CLOSURE_SETTINGS_NOTIFICATIONS : SETTINGS_NOTIFICATIONS;
+    const lblDecl = closure ? CLOSURE_SETTINGS_MATTER : SETTINGS_DECLARATION;
+    const lblFix = closure ? CLOSURE_SETTINGS_STEP : SETTINGS_FIXATION;
+    const lblReport = closure ? CLOSURE_SETTINGS_DIGEST : SETTINGS_REPORT;
+
     const text =
-      `<b>${SETTINGS_NOTIFICATIONS}</b>: ${notif}\n` +
-      `<b>${SETTINGS_DECLARATION}</b>: ${declarationStr}\n` +
-      `<b>${SETTINGS_FIXATION}</b>: ${reflectStr}\n` +
-      `<b>${SETTINGS_REPORT}</b>: ${reportStr}`;
+      `<b>${lblNotif}</b>: ${notif}\n` +
+      `<b>${lblDecl}</b>: ${declarationStr}\n` +
+      `<b>${lblFix}</b>: ${reflectStr}\n` +
+      `<b>${lblReport}</b>: ${reportStr}`;
 
     const reply_markup: import('../transport/types.js').InlineButton[][] = [
       [
@@ -229,9 +273,9 @@ export function createAppDeps(): HandlerDeps {
         },
       ],
       [
-        { text: 'Приоритет', callback_data: 'settings_declaration' },
-        { text: 'Фиксация', callback_data: 'settings_fixation' },
-        { text: 'Отчёт', callback_data: 'settings_report' },
+        { text: closure ? 'Дело недели' : 'Приоритет', callback_data: 'settings_declaration' },
+        { text: closure ? 'Шаг дня' : 'Фиксация', callback_data: 'settings_fixation' },
+        { text: closure ? 'Дайджест' : 'Отчёт', callback_data: 'settings_report' },
       ],
       [{ text: 'Назад', callback_data: 'settings_notifications_back' }],
     ];
@@ -292,22 +336,34 @@ export function createAppDeps(): HandlerDeps {
     reportService,
     priorityChangeService,
     fixationService,
+    matterService,
+    matterSwitchService,
+    stepService,
+    digestService,
     settingsService,
     showSettingsMenu,
     showNotificationsSettingsMenu,
     saveUploadedAvatar,
     resolveAvatarBackgroundImage,
     getRhythmLineForCard,
+    getUserProductMode: (userId) => settingsService.getProductMode(userId),
+    setUserProductMode: (userId, mode) => settingsService.setProductMode(userId, mode),
   };
 }
 
 export function registerHandlers(bot: Bot<BotContext>, deps: HandlerDeps) {
   initTokenSpikeChecker(deps.pool, bot.api);
+  registerProductModeHandlers(bot, deps);
   registerOnboardingHandlers(bot, deps);
+  registerClosureOnboardingHandlers(bot, deps);
   registerDeclarationHandlers(bot, deps);
   registerChangeHandlers(bot, deps);
   registerReportHandlers(bot, deps);
   registerFixationHandlers(bot, deps);
+  registerMatterHandlers(bot, deps);
+  registerSwitchHandlers(bot, deps);
+  registerStepHandlers(bot, deps);
+  registerDigestHandlers(bot, deps);
   registerSettingsHandlers(bot, deps);
   registerDeleteHandlers(bot, deps);
 }

@@ -6,6 +6,8 @@ import cron from 'node-cron';
 import type { Pool } from 'pg';
 import { logger } from '../observability/logger.js';
 import { parseTimezoneOffset } from '../domain/timezone.js';
+import { notificationCopyForMode } from './notification-copy.js';
+import { isClosureProductMode } from '../services/product-mode.js';
 import {
   computeUserLocalNotificationClock,
   matchesFixationNotificationWindow,
@@ -13,6 +15,7 @@ import {
 } from './notification-logic.js';
 import type { InlineButton } from '../bot/transport/types.js';
 import { hasDailyFixationForLocalDate } from './fixation-notify-helpers.js';
+import { hasMatterStepForLocalDate } from './step-notify-helpers.js';
 
 const NOTIFY_WINDOW_MIN = 7;
 
@@ -38,8 +41,9 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
         last_declaration_notify_week_id: string | null;
         last_fixation_notify_date: string | null;
         last_report_notify_week_id: string | null;
+        product_mode: 'founder' | 'closure' | null;
       }>(
-        `SELECT s.user_id, u.tg_id, u.max_id, s.timezone,
+        `SELECT s.user_id, u.tg_id, u.max_id, s.timezone, s.product_mode,
                 s.declaration_notify_day, s.declaration_notify_time,
                 s.fixation_notify_days, s.fixation_notify_time,
                 s.report_notify_day, s.report_notify_time,
@@ -70,9 +74,14 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
             NOTIFY_WINDOW_MIN
           );
 
-        const declarationButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_declaration' }]];
-        const reflectButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_fixation' }]];
-        const reportButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: 'notify_report' }]];
+        const copy = notificationCopyForMode(r.product_mode);
+        const declarationButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: copy.declarationCallback }]];
+        const reflectButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: copy.stepCallback }]];
+        const reportButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: copy.digestCallback }]];
+
+        const declarationNotifyText = copy.declarationText;
+        const stepNotifyText = copy.stepText;
+        const digestNotifyText = copy.digestText;
 
         const sendToUserChannels = async (
           text: string,
@@ -103,7 +112,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           check(r.declaration_notify_day, r.declaration_notify_time) &&
           r.last_declaration_notify_week_id !== userWeekId
         ) {
-          await sendToUserChannels('⏰ Время declaration недели', declarationButtons, async () => {
+          await sendToUserChannels(declarationNotifyText, declarationButtons, async () => {
             await pool.query(
               'UPDATE user_settings SET last_declaration_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
               [userWeekId, r.user_id]
@@ -112,14 +121,17 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           });
         }
         if (checkFixation() && r.last_fixation_notify_date !== userDateStr) {
-          if (await hasDailyFixationForLocalDate(pool, r.user_id, userDateStr)) {
+          const hasStepToday = isClosureProductMode(r.product_mode)
+            ? await hasMatterStepForLocalDate(pool, r.user_id, userDateStr)
+            : await hasDailyFixationForLocalDate(pool, r.user_id, userDateStr);
+          if (hasStepToday) {
             await pool.query(
               'UPDATE user_settings SET last_fixation_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',
               [userDateStr, r.user_id]
             );
-            logger.debug({ userId: r.user_id, date: userDateStr }, 'Notify fixation skipped (already submitted today)');
+            logger.debug({ userId: r.user_id, date: userDateStr }, 'Notify step/fixation skipped (already submitted today)');
           } else {
-            await sendToUserChannels('⏰ Время фиксации', reflectButtons, async () => {
+            await sendToUserChannels(stepNotifyText, reflectButtons, async () => {
               await pool.query(
                 'UPDATE user_settings SET last_fixation_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',
                 [userDateStr, r.user_id]
@@ -129,7 +141,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           }
         }
         if (check(r.report_notify_day, r.report_notify_time) && r.last_report_notify_week_id !== userWeekId) {
-          await sendToUserChannels('⏰ Время report недели', reportButtons, async () => {
+          await sendToUserChannels(digestNotifyText, reportButtons, async () => {
             await pool.query(
               'UPDATE user_settings SET last_report_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
               [userWeekId, r.user_id]

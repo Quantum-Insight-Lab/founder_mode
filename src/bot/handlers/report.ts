@@ -2,6 +2,8 @@ import type { Bot } from 'grammy';
 import type { BotContext } from '../context.js';
 import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
+import { registerGuardedCommand, registerGuardedCallback } from '../register-guard.js';
+import { withProductMode } from '../with-product-mode.js';
 import type { AppContext } from '../transport/types.js';
 import {
   FLOW_CHOICE_USE_BUTTONS_HINT,
@@ -168,27 +170,17 @@ export async function handleReportEdit(ctx: AppContext, deps: HandlerDeps): Prom
 }
 
 export function registerReportHandlers(bot: Bot<BotContext>, deps: HandlerDeps): void {
-  bot.command('report', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleReportCommand(appCtx, deps);
-  });
-  bot.callbackQuery('report_show', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleReportShow(appCtx, deps);
-  });
-  bot.callbackQuery('report_edit', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleReportEdit(appCtx, deps);
-  });
-  bot.callbackQuery('notify_report', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleNotifyReport(appCtx, deps);
-  });
+  registerGuardedCommand(bot, deps, 'founder', 'report', handleReportCommand);
+  registerGuardedCallback(bot, deps, 'founder', 'report_show', handleReportShow);
+  registerGuardedCallback(bot, deps, 'founder', 'report_edit', handleReportEdit);
+  registerGuardedCallback(bot, deps, 'founder', 'notify_report', handleNotifyReport);
   bot.on('message:text').filter(
     (ctx) => ctx.session?.step === 'report_choice' && !ctx.message.text?.trim().startsWith('/'),
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-      await appCtx.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
+      await withProductMode('founder', async (c) => {
+        await c.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
+      })(appCtx, deps);
     }
   );
 }

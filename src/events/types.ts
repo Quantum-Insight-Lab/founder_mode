@@ -8,6 +8,10 @@ export const EVENT_TYPES = {
   ReportSet: 'ReportSet',
   FixationSubmitted: 'FixationSubmitted',
   UserRegistered: 'UserRegistered',
+  MatterSet: 'MatterSet',
+  MatterSwitched: 'MatterSwitched',
+  MatterStepSubmitted: 'MatterStepSubmitted',
+  MatterDigestSet: 'MatterDigestSet',
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];
@@ -87,6 +91,53 @@ export interface UserRegisteredPayload {
   max_id?: string; // MAX messenger platform ID (at least one of tg_id, max_id)
 }
 
+export interface MatterSetPayload {
+  user_id: string;
+  week_id: string;
+  title: string;
+  area_key: string;
+  area_custom?: string | null;
+  why_postponed: string;
+  cost_of_inaction: string;
+  week_target: string;
+  raw_post: string;
+  source: EventSource;
+}
+
+export interface MatterSwitchedPayload {
+  user_id: string;
+  week_id: string;
+  reason: string;
+  new_title: string;
+  new_target: string;
+  raw_post: string;
+  source: EventSource;
+}
+
+export type MatterStepMovementBranch = 'yes' | 'no' | 'partial';
+
+export interface MatterStepSubmittedPayload {
+  user_id: string;
+  date: string;
+  day: string;
+  had_movement: boolean;
+  movement_branch: MatterStepMovementBranch;
+  what_moved?: string;
+  tomorrow_step?: string;
+  what_stopped?: string;
+  avoidance?: string;
+  raw_post: string;
+  why_partial?: string;
+  source: EventSource;
+}
+
+export interface MatterDigestSetPayload {
+  user_id: string;
+  week_id: string;
+  raw_post: string;
+  source: EventSource;
+}
+
 export interface DeclarationSetEvent extends BaseEvent {
   event_type: 'DeclarationSet';
   payload: DeclarationSetPayload;
@@ -107,10 +158,30 @@ export interface UserRegisteredEvent extends BaseEvent {
   event_type: 'UserRegistered';
   payload: UserRegisteredPayload;
 }
+export interface MatterSetEvent extends BaseEvent {
+  event_type: 'MatterSet';
+  payload: MatterSetPayload;
+}
+export interface MatterSwitchedEvent extends BaseEvent {
+  event_type: 'MatterSwitched';
+  payload: MatterSwitchedPayload;
+}
+export interface MatterStepSubmittedEvent extends BaseEvent {
+  event_type: 'MatterStepSubmitted';
+  payload: MatterStepSubmittedPayload;
+}
+export interface MatterDigestSetEvent extends BaseEvent {
+  event_type: 'MatterDigestSet';
+  payload: MatterDigestSetPayload;
+}
 
 export type DomainEvent =
   | DeclarationSetEvent
   | PriorityChangedEvent
   | ReportSetEvent
   | FixationSubmittedEvent
-  | UserRegisteredEvent;
+  | UserRegisteredEvent
+  | MatterSetEvent
+  | MatterSwitchedEvent
+  | MatterStepSubmittedEvent
+  | MatterDigestSetEvent;

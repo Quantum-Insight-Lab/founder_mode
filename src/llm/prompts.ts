@@ -14,4 +14,8 @@ export const prompts = {
   priorityChange: () => loadPrompt('PRIORITY_CHANGE_SYSTEM_PROMPT'),
   dailyFixation: () => loadPrompt('DAILY_FIXATION_SYSTEM_PROMPT'),
   weeklyReport: () => loadPrompt('WEEKLY_REPORT_SYSTEM_PROMPT'),
+  matter: () => loadPrompt('MATTER_SYSTEM_PROMPT'),
+  matterSwitch: () => loadPrompt('MATTER_SWITCH_SYSTEM_PROMPT'),
+  step: () => loadPrompt('STEP_SYSTEM_PROMPT'),
+  digest: () => loadPrompt('DIGEST_SYSTEM_PROMPT'),
 };

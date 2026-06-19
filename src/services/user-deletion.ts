@@ -16,13 +16,27 @@ export async function deleteUserData(pool: Pool, userId: string): Promise<void> 
     await client.query('DELETE FROM weekly_priority_changes WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM weekly_reports WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM daily_fixations WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM weekly_matters WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM matter_switches WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM weekly_digests WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM matter_steps WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM rhythm_snapshots WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM user_settings WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM events WHERE actor_id = $1', [userId]);
     await client.query(
-      `DELETE FROM idempotency_cache 
-       WHERE idempotency_key LIKE $1 OR idempotency_key LIKE $2 OR idempotency_key LIKE $3`,
-      [`declaration:${userId}:%`, `report:${userId}:%`, `fixation:${userId}:%`]
+      `DELETE FROM idempotency_cache
+       WHERE idempotency_key LIKE $1 OR idempotency_key LIKE $2 OR idempotency_key LIKE $3
+          OR idempotency_key LIKE $4 OR idempotency_key LIKE $5 OR idempotency_key LIKE $6
+          OR idempotency_key LIKE $7`,
+      [
+        `declaration:${userId}:%`,
+        `report:${userId}:%`,
+        `fixation:${userId}:%`,
+        `matter:${userId}:%`,
+        `step:${userId}:%`,
+        `digest:${userId}:%`,
+        `matter_switch:${userId}:%`,
+      ]
     );
     if (tgId) {
       await client.query(

@@ -2,6 +2,8 @@ import type { Bot } from 'grammy';
 import type { BotContext } from '../context.js';
 import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
+import { registerGuardedCommand, registerGuardedCallback } from '../register-guard.js';
+import { withProductMode } from '../with-product-mode.js';
 import type { AppContext } from '../transport/types.js';
 import {
   FLOW_CHOICE_USE_BUTTONS_HINT,
@@ -394,49 +396,28 @@ export async function handleNotifyFixation(ctx: AppContext, deps: HandlerDeps): 
 }
 
 export function registerFixationHandlers(bot: import('grammy').Bot<BotContext>, deps: HandlerDeps): void {
-  bot.command('fixation', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationCommand(appCtx, deps);
-  });
-  bot.callbackQuery('fixation_skip_enable_notif', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationSkipEnableNotif(appCtx, deps);
-  });
+  registerGuardedCommand(bot, deps, 'founder', 'fixation', handleFixationCommand);
+  const founderCallbacks: Array<[string, (ctx: AppContext, deps: HandlerDeps) => Promise<void>]> = [
+    ['fixation_skip_enable_notif', handleFixationSkipEnableNotif],
+    ['fixation_show', handleFixationShow],
+    ['fixation_edit', handleFixationEdit],
+    ['fixation_edit_confirm_yes', handleFixationEditConfirmYes],
+    ['fixation_edit_confirm_no', handleFixationEditConfirmNo],
+    ['fixation_no', handleFixationNo],
+    ['fixation_partial', handleFixationPartial],
+    ['fixation_yes', handleFixationYes],
+    ['notify_fixation', handleNotifyFixation],
+  ];
+  for (const [data, handler] of founderCallbacks) {
+    registerGuardedCallback(bot, deps, 'founder', data, handler);
+  }
   bot.callbackQuery('fixation_date_yesterday', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationDateChoice(appCtx, 'yesterday', deps);
+    await withProductMode('founder', (c, d) => handleFixationDateChoice(c, 'yesterday', d))(appCtx, deps);
   });
   bot.callbackQuery('fixation_date_today', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationDateChoice(appCtx, 'today', deps);
-  });
-  bot.callbackQuery('fixation_show', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationShow(appCtx, deps);
-  });
-  bot.callbackQuery('fixation_edit', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationEdit(appCtx, deps);
-  });
-  bot.callbackQuery('fixation_edit_confirm_yes', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationEditConfirmYes(appCtx, deps);
-  });
-  bot.callbackQuery('fixation_edit_confirm_no', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationEditConfirmNo(appCtx, deps);
-  });
-  bot.callbackQuery('fixation_no', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationNo(appCtx, deps);
-  });
-  bot.callbackQuery('fixation_partial', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationPartial(appCtx, deps);
-  });
-  bot.callbackQuery('fixation_yes', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleFixationYes(appCtx, deps);
+    await withProductMode('founder', (c, d) => handleFixationDateChoice(c, 'today', d))(appCtx, deps);
   });
   bot.on('message:text').filter(
     (ctx) => {
@@ -445,18 +426,16 @@ export function registerFixationHandlers(bot: import('grammy').Bot<BotContext>, 
     },
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-      await handleFixationMessage(appCtx, ctx.message.text ?? '', deps);
+      await withProductMode('founder', (c, d) => handleFixationMessage(c, ctx.message.text ?? '', d))(appCtx, deps);
     }
   );
   bot.on('message:text').filter(
     (ctx) => ctx.session?.step === 'fixation_choice' && !ctx.message.text?.trim().startsWith('/'),
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-      await appCtx.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
+      await withProductMode('founder', async (c) => {
+        await c.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
+      })(appCtx, deps);
     }
   );
-  bot.callbackQuery('notify_fixation', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleNotifyFixation(appCtx, deps);
-  });
 }

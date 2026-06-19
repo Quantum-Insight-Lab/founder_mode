@@ -21,7 +21,7 @@ describe.skipIf(!dbUrl)('projectors', () => {
 
   beforeEach(async () => {
     await pool.query(
-      'TRUNCATE events, weekly_declarations, weekly_reports, weekly_priority_changes, daily_fixations, rhythm_snapshots CASCADE'
+      'TRUNCATE events, weekly_declarations, weekly_reports, weekly_priority_changes, daily_fixations, weekly_matters, matter_switches, matter_steps, weekly_digests, rhythm_snapshots CASCADE'
     );
     await pool.query('DELETE FROM users WHERE user_id = $1 OR user_id = $2', [userId, extraUserId]);
     await pool.query('INSERT INTO users (user_id, tg_id) VALUES ($1, $2)', [userId, 'proj-test-tg']);
@@ -268,5 +268,134 @@ describe.skipIf(!dbUrl)('projectors', () => {
       schema_version: 1 as const,
     };
     await expect(projectors.handleEvent(unknown as unknown as DomainEvent)).resolves.toBeUndefined();
+  });
+
+  it('MatterSet upserts weekly_matters', async () => {
+    const projectors = createProjectors(pool);
+    const weekId = '20260309';
+    await projectors.handleEvent(
+      ev({
+        event_id: randomUUID(),
+        event_type: EVENT_TYPES.MatterSet,
+        occurred_at: new Date().toISOString(),
+        actor: { id: userId, role: 'user' },
+        subject: { entity: 'WeeklyMatter', id: `${userId}:${weekId}` },
+        payload: {
+          user_id: userId,
+          week_id: weekId,
+          title: 'Стomatolog',
+          area_key: 'health',
+          area_custom: null,
+          why_postponed: 'страшно',
+          cost_of_inaction: 'боль',
+          week_target: 'записаться',
+          raw_post: 'raw matter',
+          source: 'initial' as const,
+        },
+        causation_id: null,
+        correlation_id: null,
+        idempotency_key: null,
+        schema_version: 1,
+      })
+    );
+    const r = await pool.query(
+      'SELECT title, area_key, area_custom, raw_post FROM weekly_matters WHERE user_id = $1 AND week_id = $2',
+      [userId, weekId]
+    );
+    expect(r.rows[0]).toMatchObject({ title: 'Стomatolog', area_key: 'health', area_custom: null, raw_post: 'raw matter' });
+  });
+
+  it('MatterSet stores area_custom for other', async () => {
+    const projectors = createProjectors(pool);
+    const weekId = '20260310';
+    await projectors.handleEvent(
+      ev({
+        event_id: randomUUID(),
+        event_type: EVENT_TYPES.MatterSet,
+        occurred_at: new Date().toISOString(),
+        actor: { id: userId, role: 'user' },
+        subject: { entity: 'WeeklyMatter', id: `${userId}:${weekId}` },
+        payload: {
+          user_id: userId,
+          week_id: weekId,
+          title: 'Переезд',
+          area_key: 'other',
+          area_custom: 'переезд родителей',
+          why_postponed: 'x',
+          cost_of_inaction: 'y',
+          week_target: 'z',
+          raw_post: 'raw other',
+          source: 'initial' as const,
+        },
+        causation_id: null,
+        correlation_id: null,
+        idempotency_key: null,
+        schema_version: 1,
+      })
+    );
+    const r = await pool.query(
+      'SELECT area_key, area_custom FROM weekly_matters WHERE user_id = $1 AND week_id = $2',
+      [userId, weekId]
+    );
+    expect(r.rows[0]).toMatchObject({ area_key: 'other', area_custom: 'переезд родителей' });
+  });
+
+  it('MatterStepSubmitted upserts matter_steps', async () => {
+    const projectors = createProjectors(pool);
+    const date = '2026-03-11';
+    await projectors.handleEvent(
+      ev({
+        event_id: randomUUID(),
+        event_type: EVENT_TYPES.MatterStepSubmitted,
+        occurred_at: new Date().toISOString(),
+        actor: { id: userId, role: 'user' },
+        subject: { entity: 'MatterStep', id: `${userId}:${date}` },
+        payload: {
+          user_id: userId,
+          date,
+          day: 'Среда',
+          had_movement: false,
+          movement_branch: 'no',
+          what_stopped: 'страх',
+          avoidance: 'работа',
+          tomorrow_step: 'позвонить',
+          raw_post: 'step raw',
+          source: 'initial' as const,
+        },
+        causation_id: null,
+        correlation_id: null,
+        idempotency_key: null,
+        schema_version: 1,
+      })
+    );
+    const r = await pool.query(
+      'SELECT avoidance, raw_post FROM matter_steps WHERE user_id = $1 AND date = $2',
+      [userId, date]
+    );
+    expect(r.rows[0]).toMatchObject({ avoidance: 'работа', raw_post: 'step raw' });
+  });
+
+  it('MatterDigestSet upserts weekly_digests', async () => {
+    const projectors = createProjectors(pool);
+    const weekId = '20260309';
+    await projectors.handleEvent(
+      ev({
+        event_id: randomUUID(),
+        event_type: EVENT_TYPES.MatterDigestSet,
+        occurred_at: new Date().toISOString(),
+        actor: { id: userId, role: 'user' },
+        subject: { entity: 'WeeklyDigest', id: `${userId}:${weekId}` },
+        payload: { user_id: userId, week_id: weekId, raw_post: 'digest body', source: 'initial' as const },
+        causation_id: null,
+        correlation_id: null,
+        idempotency_key: null,
+        schema_version: 1,
+      })
+    );
+    const r = await pool.query('SELECT raw_post FROM weekly_digests WHERE user_id = $1 AND week_id = $2', [
+      userId,
+      weekId,
+    ]);
+    expect(r.rows[0]?.raw_post).toBe('digest body');
   });
 });

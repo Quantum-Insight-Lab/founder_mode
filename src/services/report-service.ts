@@ -32,10 +32,9 @@ export function createReportService(eventStore: EventStore, deps: ServiceDeps) {
     const declarationRow = await pool.query<{
       main_focus: string;
       why_now: string;
-      win_result: string;
       week_failure: string;
     }>(
-      `SELECT main_focus, why_now, win_result, week_failure
+      `SELECT main_focus, why_now, week_failure
        FROM weekly_declarations
        WHERE user_id = $1 AND week_id = $2`,
       [userId, weekId]

@@ -19,7 +19,6 @@ export interface WeeklyDeclarationRow {
   week_id: string;
   main_focus: string;
   why_now: string;
-  win_result: string;
   week_failure: string;
   raw_post: string;
 }

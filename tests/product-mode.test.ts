@@ -7,11 +7,14 @@ import {
   setUserProductMode,
   productModeLabel,
   isClosureProductMode,
+  isEngineMode,
+  ENGINE_MODES,
 } from '../src/services/product-mode.js';
 import { notificationCopyForMode } from '../src/scheduler/notification-copy.js';
 import { idleCommandListForMode } from '../src/bot/idle-for-mode.js';
 import { IDLE_COMMAND_LIST_REPLY } from '../src/bot/idle-message.js';
 import { CLOSURE_IDLE_COMMAND_LIST_REPLY } from '../src/bot/closure-idle-message.js';
+import { getModeConfig } from '../src/modes/registry.js';
 import { withProductMode } from '../src/bot/with-product-mode.js';
 import { wrongProductModeHint, PRODUCT_MODE_PICK_FIRST } from '../src/bot/product-mode-copy.js';
 import {
@@ -28,7 +31,17 @@ describe('product-mode helpers', () => {
   it('labels modes', () => {
     expect(productModeLabel('founder')).toBe('Founder Mode');
     expect(productModeLabel('closure')).toBe('Closure');
+    expect(productModeLabel('learning')).toBe('Learning');
+    expect(productModeLabel('habit')).toBe('Habit');
+    expect(productModeLabel('jobhunt')).toBe('Job hunt');
     expect(productModeLabel(null)).toBe('—');
+  });
+
+  it('isEngineMode', () => {
+    for (const mode of ENGINE_MODES) expect(isEngineMode(mode)).toBe(true);
+    expect(isEngineMode('founder')).toBe(false);
+    expect(isEngineMode('closure')).toBe(false);
+    expect(isEngineMode(null)).toBe(false);
   });
 
   it('notification copy per mode', () => {
@@ -39,11 +52,16 @@ describe('product-mode helpers', () => {
     const closure = notificationCopyForMode('closure');
     expect(closure.stepCallback).toBe('notify_step');
     expect(closure.digestText).toContain('дайджест');
+
+    const learning = notificationCopyForMode('learning');
+    expect(learning.declarationCallback).toBe('notify_focus');
+    expect(learning.stepText).toContain('практики');
   });
 
   it('idle list per mode', () => {
     expect(idleCommandListForMode('founder')).toBe(IDLE_COMMAND_LIST_REPLY);
     expect(idleCommandListForMode('closure')).toBe(CLOSURE_IDLE_COMMAND_LIST_REPLY);
+    expect(idleCommandListForMode('learning')).toBe(getModeConfig('learning').idleReply);
     expect(idleCommandListForMode(null)).toBe(IDLE_COMMAND_LIST_REPLY);
   });
 

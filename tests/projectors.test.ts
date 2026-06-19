@@ -45,7 +45,6 @@ describe.skipIf(!dbUrl)('projectors', () => {
         week_id: weekId,
         main_focus: 'mf',
         why_now: 'wn',
-        win_result: 'wr',
         week_failure: 'wf',
         raw_post: 'raw1',
         source: 'initial' as const,
@@ -58,13 +57,12 @@ describe.skipIf(!dbUrl)('projectors', () => {
     await projectors.handleEvent(event);
 
     const r = await pool.query(
-      'SELECT main_focus, why_now, win_result, week_failure, raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
+      'SELECT main_focus, why_now, week_failure, raw_post FROM weekly_declarations WHERE user_id = $1 AND week_id = $2',
       [userId, weekId]
     );
     expect(r.rows[0]).toMatchObject({
       main_focus: 'mf',
       why_now: 'wn',
-      win_result: 'wr',
       week_failure: 'wf',
       raw_post: 'raw1',
     });

@@ -30,6 +30,7 @@ export interface HandlerDeps {
   matterSwitchService: ReturnType<typeof import('../../services/matter-switch-service.js').createMatterSwitchService>;
   stepService: ReturnType<typeof import('../../services/step-service.js').createStepService>;
   digestService: ReturnType<typeof import('../../services/digest-service.js').createDigestService>;
+  engineServices: ReturnType<typeof import('../../services/engine/index.js').createEngineServices>;
   settingsService: ReturnType<typeof import('../../services/settings-service.js').createSettingsService>;
   showSettingsMenu: (ctx: AppContext, userId: string) => Promise<void>;
   showNotificationsSettingsMenu: (ctx: AppContext, userId: string) => Promise<void>;

@@ -51,8 +51,8 @@ describe.skipIf(!dbUrl)('services', () => {
     beforeEach(async () => {
       const weekId = getWeekId(new Date().toISOString().slice(0, 10));
       await pool.query(
-        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, win_result, week_failure, raw_post)
-         VALUES ($1, $2, 'focus', 'now', 'result', 'fail', 'raw')
+        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, week_failure, raw_post)
+         VALUES ($1, $2, 'focus', 'now', 'fail', 'raw')
          ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'focus'`,
         [userId, weekId]
       );
@@ -127,8 +127,8 @@ describe.skipIf(!dbUrl)('services', () => {
     async function seedDeclarationForCurrentWeek() {
       const weekId = getWeekId(new Date().toISOString().slice(0, 10));
       await pool.query(
-        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, win_result, week_failure, raw_post)
-         VALUES ($1, $2, 'focus', 'now', 'result', 'fail', 'raw')
+        `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, week_failure, raw_post)
+         VALUES ($1, $2, 'focus', 'now', 'fail', 'raw')
          ON CONFLICT (user_id, week_id) DO UPDATE SET main_focus = 'focus'`,
         [userId, weekId]
       );
@@ -283,7 +283,7 @@ describe.skipIf(!dbUrl)('services', () => {
   });
 
   describe('declarationService', () => {
-    const answers = { main_focus: 'фокус', why_now: 'сейчас', win_result: 'результат', week_failure: 'провал' };
+    const answers = { main_focus: 'фокус', why_now: 'сейчас', week_failure: 'провал' };
 
     it('createDeclaration writes read model and DeclarationSet event', async () => {
       mockComplete.mockResolvedValueOnce({
@@ -327,7 +327,6 @@ describe.skipIf(!dbUrl)('services', () => {
       await declarationService.updateDeclarationManual(userId, {
         main_focus: 'mf2',
         why_now: 'wn2',
-        win_result: 'wr2',
         week_failure: 'wf2',
       });
 
@@ -359,7 +358,6 @@ describe.skipIf(!dbUrl)('services', () => {
         declarationService.updateDeclarationManual(userId, {
           main_focus: 'mf2',
           why_now: 'wn2',
-          win_result: 'wr2',
           week_failure: 'wf2',
         })
       ).rejects.toThrow(/через \/change/);
@@ -389,7 +387,7 @@ describe.skipIf(!dbUrl)('services', () => {
   });
 
   describe('priorityChangeService', () => {
-    const declAnswers = { main_focus: 'фокус', why_now: 'сейчас', win_result: 'результат', week_failure: 'провал' };
+    const declAnswers = { main_focus: 'фокус', why_now: 'сейчас', week_failure: 'провал' };
     const changeAnswers = {
       reason: 'Гипотеза не подтвердилась',
       new_focus: 'Новый фокус',

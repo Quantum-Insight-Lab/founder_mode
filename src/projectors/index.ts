@@ -4,7 +4,11 @@
 import type { Pool } from 'pg';
 import { EVENT_TYPES } from '../events/types.js';
 import type {
+  CommitmentSetEvent,
+  CommitmentSwitchedEvent,
+  DailyStepSubmittedEvent,
   DeclarationSetEvent,
+  DigestSetEvent,
   DomainEvent,
   FixationSubmittedEvent,
   MatterDigestSetEvent,
@@ -63,6 +67,18 @@ export function createProjectors(pool: Pool) {
         case EVENT_TYPES.MatterDigestSet:
           await projectDigest(event);
           break;
+        case EVENT_TYPES.CommitmentSet:
+          await projectEngineCommitment(event);
+          break;
+        case EVENT_TYPES.CommitmentSwitched:
+          await projectEngineSwitch(event);
+          break;
+        case EVENT_TYPES.DailyStepSubmitted:
+          await projectEngineStep(event);
+          break;
+        case EVENT_TYPES.DigestSet:
+          await projectEngineDigest(event);
+          break;
         default:
           break;
       }
@@ -91,16 +107,15 @@ export function createProjectors(pool: Pool) {
     const p = event.payload;
     await pool.query(
       `INSERT INTO weekly_declarations (
-        user_id, week_id, main_focus, why_now, win_result, week_failure, raw_post, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        user_id, week_id, main_focus, why_now, week_failure, raw_post, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
       ON CONFLICT (user_id, week_id) DO UPDATE SET
         main_focus = EXCLUDED.main_focus,
         why_now = EXCLUDED.why_now,
-        win_result = EXCLUDED.win_result,
         week_failure = EXCLUDED.week_failure,
         raw_post = EXCLUDED.raw_post,
         updated_at = NOW()`,
-      [p.user_id, p.week_id, p.main_focus, p.why_now, p.win_result, p.week_failure, p.raw_post]
+      [p.user_id, p.week_id, p.main_focus, p.why_now, p.week_failure, p.raw_post]
     );
   }
 
@@ -259,6 +274,81 @@ export function createProjectors(pool: Pool) {
         raw_post = EXCLUDED.raw_post,
         updated_at = NOW()`,
       [p.user_id, p.week_id, p.raw_post]
+    );
+  }
+
+  async function projectEngineDigest(event: DigestSetEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO engine_digests (user_id, mode, week_id, raw_post, updated_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id, mode, week_id) DO UPDATE SET
+         raw_post = EXCLUDED.raw_post,
+         updated_at = NOW()`,
+      [p.user_id, p.mode, p.week_id, p.raw_post]
+    );
+  }
+
+  async function projectEngineCommitment(event: CommitmentSetEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO engine_commitments (
+         user_id, mode, week_id, title, area_key, area_custom, answers, raw_post, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, NOW())
+       ON CONFLICT (user_id, mode, week_id) DO UPDATE SET
+         title = EXCLUDED.title,
+         area_key = EXCLUDED.area_key,
+         area_custom = EXCLUDED.area_custom,
+         answers = EXCLUDED.answers,
+         raw_post = EXCLUDED.raw_post,
+         updated_at = NOW()`,
+      [
+        p.user_id,
+        p.mode,
+        p.week_id,
+        p.title,
+        p.area_key ?? null,
+        p.area_custom ?? null,
+        JSON.stringify(p.answers),
+        p.raw_post,
+      ]
+    );
+  }
+
+  async function projectEngineSwitch(event: CommitmentSwitchedEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO engine_switches (user_id, mode, week_id, answers, raw_post, updated_at)
+       VALUES ($1, $2, $3, $4::jsonb, $5, NOW())
+       ON CONFLICT (user_id, mode, week_id) DO UPDATE SET
+         answers = EXCLUDED.answers,
+         raw_post = EXCLUDED.raw_post,
+         updated_at = NOW()`,
+      [p.user_id, p.mode, p.week_id, JSON.stringify(p.answers), p.raw_post]
+    );
+  }
+
+  async function projectEngineStep(event: DailyStepSubmittedEvent): Promise<void> {
+    const p = event.payload;
+    await pool.query(
+      `INSERT INTO engine_steps (
+         user_id, mode, date, day, movement_branch, answers, raw_post, updated_at
+       ) VALUES ($1, $2, $3::date, $4, $5, $6::jsonb, $7, NOW())
+       ON CONFLICT (user_id, mode, date) DO UPDATE SET
+         day = EXCLUDED.day,
+         movement_branch = EXCLUDED.movement_branch,
+         answers = EXCLUDED.answers,
+         raw_post = EXCLUDED.raw_post,
+         updated_at = NOW()`,
+      [
+        p.user_id,
+        p.mode,
+        p.date,
+        p.day,
+        p.movement_branch,
+        JSON.stringify(p.answers),
+        p.raw_post,
+      ]
     );
   }
 }

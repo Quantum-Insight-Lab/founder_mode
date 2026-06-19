@@ -125,7 +125,6 @@ export const ONBOARDING_CTA_YES_FINAL_MSG =
 export const WEEKLY_DECLARATION_QUESTIONS = [
   { key: 'main_focus', text: 'Какой приоритет на неделю?' },
   { key: 'why_now', text: 'Почему это важно именно сейчас?' },
-  { key: 'win_result', text: 'Как поймешь, что неделя удалась?' },
   { key: 'week_failure', text: 'Как поймешь, что неделя провалилась?' },
 ] as const;
 

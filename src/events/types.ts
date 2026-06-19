@@ -12,6 +12,10 @@ export const EVENT_TYPES = {
   MatterSwitched: 'MatterSwitched',
   MatterStepSubmitted: 'MatterStepSubmitted',
   MatterDigestSet: 'MatterDigestSet',
+  CommitmentSet: 'CommitmentSet',
+  CommitmentSwitched: 'CommitmentSwitched',
+  DailyStepSubmitted: 'DailyStepSubmitted',
+  DigestSet: 'DigestSet',
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];
@@ -44,10 +48,11 @@ export interface DeclarationSetPayload {
   week_id: string;
   main_focus: string;
   why_now: string;
-  win_result: string;
   week_failure: string;
   raw_post: string;
   source: EventSource;
+  /** @deprecated legacy events only */
+  win_result?: string;
 }
 
 export interface ReportSetPayload {
@@ -138,6 +143,48 @@ export interface MatterDigestSetPayload {
   source: EventSource;
 }
 
+export interface CommitmentSetPayload {
+  user_id: string;
+  mode: string;
+  week_id: string;
+  title: string;
+  area_key?: string | null;
+  area_custom?: string | null;
+  answers: Record<string, string>;
+  raw_post: string;
+  source: EventSource;
+}
+
+export interface CommitmentSwitchedPayload {
+  user_id: string;
+  mode: string;
+  week_id: string;
+  answers: Record<string, string>;
+  raw_post: string;
+  source: EventSource;
+}
+
+export type EngineStepMovementBranch = 'yes' | 'no' | 'partial';
+
+export interface DailyStepSubmittedPayload {
+  user_id: string;
+  mode: string;
+  date: string;
+  day: string;
+  movement_branch: EngineStepMovementBranch;
+  answers: Record<string, string>;
+  raw_post: string;
+  source: EventSource;
+}
+
+export interface DigestSetPayload {
+  user_id: string;
+  mode: string;
+  week_id: string;
+  raw_post: string;
+  source: EventSource;
+}
+
 export interface DeclarationSetEvent extends BaseEvent {
   event_type: 'DeclarationSet';
   payload: DeclarationSetPayload;
@@ -174,6 +221,22 @@ export interface MatterDigestSetEvent extends BaseEvent {
   event_type: 'MatterDigestSet';
   payload: MatterDigestSetPayload;
 }
+export interface CommitmentSetEvent extends BaseEvent {
+  event_type: 'CommitmentSet';
+  payload: CommitmentSetPayload;
+}
+export interface CommitmentSwitchedEvent extends BaseEvent {
+  event_type: 'CommitmentSwitched';
+  payload: CommitmentSwitchedPayload;
+}
+export interface DailyStepSubmittedEvent extends BaseEvent {
+  event_type: 'DailyStepSubmitted';
+  payload: DailyStepSubmittedPayload;
+}
+export interface DigestSetEvent extends BaseEvent {
+  event_type: 'DigestSet';
+  payload: DigestSetPayload;
+}
 
 export type DomainEvent =
   | DeclarationSetEvent
@@ -184,4 +247,8 @@ export type DomainEvent =
   | MatterSetEvent
   | MatterSwitchedEvent
   | MatterStepSubmittedEvent
-  | MatterDigestSetEvent;
+  | MatterDigestSetEvent
+  | CommitmentSetEvent
+  | CommitmentSwitchedEvent
+  | DailyStepSubmittedEvent
+  | DigestSetEvent;

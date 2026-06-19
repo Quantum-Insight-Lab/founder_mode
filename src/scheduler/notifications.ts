@@ -7,7 +7,7 @@ import type { Pool } from 'pg';
 import { logger } from '../observability/logger.js';
 import { parseTimezoneOffset } from '../domain/timezone.js';
 import { notificationCopyForMode } from './notification-copy.js';
-import { isClosureProductMode } from '../services/product-mode.js';
+import { isClosureProductMode, isEngineMode } from '../services/product-mode.js';
 import {
   computeUserLocalNotificationClock,
   matchesFixationNotificationWindow,
@@ -15,7 +15,7 @@ import {
 } from './notification-logic.js';
 import type { InlineButton } from '../bot/transport/types.js';
 import { hasDailyFixationForLocalDate } from './fixation-notify-helpers.js';
-import { hasMatterStepForLocalDate } from './step-notify-helpers.js';
+import { hasEngineStepForLocalDate, hasMatterStepForLocalDate } from './step-notify-helpers.js';
 
 const NOTIFY_WINDOW_MIN = 7;
 
@@ -41,7 +41,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
         last_declaration_notify_week_id: string | null;
         last_fixation_notify_date: string | null;
         last_report_notify_week_id: string | null;
-        product_mode: 'founder' | 'closure' | null;
+        product_mode: 'founder' | 'closure' | 'learning' | 'habit' | 'jobhunt' | null;
       }>(
         `SELECT s.user_id, u.tg_id, u.max_id, s.timezone, s.product_mode,
                 s.declaration_notify_day, s.declaration_notify_time,
@@ -121,9 +121,11 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           });
         }
         if (checkFixation() && r.last_fixation_notify_date !== userDateStr) {
-          const hasStepToday = isClosureProductMode(r.product_mode)
-            ? await hasMatterStepForLocalDate(pool, r.user_id, userDateStr)
-            : await hasDailyFixationForLocalDate(pool, r.user_id, userDateStr);
+          const hasStepToday = isEngineMode(r.product_mode)
+            ? await hasEngineStepForLocalDate(pool, r.user_id, r.product_mode!, userDateStr)
+            : isClosureProductMode(r.product_mode)
+              ? await hasMatterStepForLocalDate(pool, r.user_id, userDateStr)
+              : await hasDailyFixationForLocalDate(pool, r.user_id, userDateStr);
           if (hasStepToday) {
             await pool.query(
               'UPDATE user_settings SET last_fixation_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',

@@ -45,7 +45,8 @@ import {
   SETTINGS_AVATAR as CLOSURE_SETTINGS_AVATAR,
   SETTINGS_CONFIGURE_NOTIFICATIONS as CLOSURE_SETTINGS_CONFIGURE_NOTIFICATIONS,
 } from '../closure-conversations.js';
-import { isClosureProductMode, productModeLabel } from '../../services/product-mode.js';
+import { isClosureProductMode, isEngineMode, productModeLabel } from '../../services/product-mode.js';
+import { getModeConfig } from '../../modes/registry.js';
 import { SETTINGS_PRODUCT_MODE } from '../product-mode-copy.js';
 import { registerProductModeHandlers } from './product-mode.js';
 import { registerClosureOnboardingHandlers } from './closure/onboarding.js';
@@ -53,7 +54,8 @@ import { registerMatterHandlers } from './closure/matter.js';
 import { registerSwitchHandlers } from './closure/switch.js';
 import { registerStepHandlers } from './closure/step.js';
 import { registerDigestHandlers } from './closure/digest.js';
-import type { HandlerDeps } from './deps.js';
+import { registerEngineHandlers } from './engine/index.js';
+import { createEngineServices } from '../../services/engine/index.js';
 import { registerOnboardingHandlers } from './onboarding.js';
 import { registerDeclarationHandlers } from './declaration.js';
 import { registerReportHandlers } from './report.js';
@@ -61,6 +63,7 @@ import { registerChangeHandlers } from './change.js';
 import { registerFixationHandlers } from './fixation.js';
 import { registerSettingsHandlers } from './settings.js';
 import { registerDeleteHandlers } from './delete.js';
+import type { HandlerDeps } from './deps.js';
 import { formatUserFacingError, USER_SERVICE_ERROR_FALLBACK } from '../user-facing-error.js';
 import { recordServiceErrorIncident } from '../../services/service-error-incidents.js';
 
@@ -117,6 +120,7 @@ export function createAppDeps(): HandlerDeps {
   const matterSwitchService = createMatterSwitchService(eventStore, serviceDeps);
   const stepService = createStepService(eventStore, serviceDeps);
   const digestService = createDigestService(eventStore, serviceDeps);
+  const engineServices = createEngineServices(eventStore, serviceDeps);
   const settingsService = createSettingsService(pool);
 
   async function replyWithServiceError(
@@ -210,10 +214,12 @@ export function createAppDeps(): HandlerDeps {
 
     const mode = await settingsService.getProductMode(userId);
     const closure = isClosureProductMode(mode);
+    const engine = isEngineMode(mode);
+    const engineConfig = engine ? getModeConfig(mode) : null;
     const lblNotif = closure ? CLOSURE_SETTINGS_NOTIFICATIONS : SETTINGS_NOTIFICATIONS;
-    const lblDecl = closure ? CLOSURE_SETTINGS_MATTER : SETTINGS_DECLARATION;
-    const lblFix = closure ? CLOSURE_SETTINGS_STEP : SETTINGS_FIXATION;
-    const lblReport = closure ? CLOSURE_SETTINGS_DIGEST : SETTINGS_REPORT;
+    const lblDecl = engine ? engineConfig!.settings.commitLabel : closure ? CLOSURE_SETTINGS_MATTER : SETTINGS_DECLARATION;
+    const lblFix = engine ? engineConfig!.settings.dailyLabel : closure ? CLOSURE_SETTINGS_STEP : SETTINGS_FIXATION;
+    const lblReport = engine ? engineConfig!.settings.digestLabel : closure ? CLOSURE_SETTINGS_DIGEST : SETTINGS_REPORT;
     const lblTz = closure ? CLOSURE_SETTINGS_TIMEZONE : SETTINGS_TIMEZONE;
     const lblAvatar = closure ? CLOSURE_SETTINGS_AVATAR : SETTINGS_AVATAR;
     const lblConfigure = closure ? CLOSURE_SETTINGS_CONFIGURE_NOTIFICATIONS : SETTINGS_CONFIGURE_NOTIFICATIONS;
@@ -254,10 +260,12 @@ export function createAppDeps(): HandlerDeps {
 
     const mode = await settingsService.getProductMode(userId);
     const closure = isClosureProductMode(mode);
+    const engine = isEngineMode(mode);
+    const engineConfig = engine ? getModeConfig(mode) : null;
     const lblNotif = closure ? CLOSURE_SETTINGS_NOTIFICATIONS : SETTINGS_NOTIFICATIONS;
-    const lblDecl = closure ? CLOSURE_SETTINGS_MATTER : SETTINGS_DECLARATION;
-    const lblFix = closure ? CLOSURE_SETTINGS_STEP : SETTINGS_FIXATION;
-    const lblReport = closure ? CLOSURE_SETTINGS_DIGEST : SETTINGS_REPORT;
+    const lblDecl = engine ? engineConfig!.settings.commitLabel : closure ? CLOSURE_SETTINGS_MATTER : SETTINGS_DECLARATION;
+    const lblFix = engine ? engineConfig!.settings.dailyLabel : closure ? CLOSURE_SETTINGS_STEP : SETTINGS_FIXATION;
+    const lblReport = engine ? engineConfig!.settings.digestLabel : closure ? CLOSURE_SETTINGS_DIGEST : SETTINGS_REPORT;
 
     const text =
       `<b>${lblNotif}</b>: ${notif}\n` +
@@ -340,6 +348,7 @@ export function createAppDeps(): HandlerDeps {
     matterSwitchService,
     stepService,
     digestService,
+    engineServices,
     settingsService,
     showSettingsMenu,
     showNotificationsSettingsMenu,
@@ -364,6 +373,7 @@ export function registerHandlers(bot: Bot<BotContext>, deps: HandlerDeps) {
   registerSwitchHandlers(bot, deps);
   registerStepHandlers(bot, deps);
   registerDigestHandlers(bot, deps);
+  registerEngineHandlers(bot, deps);
   registerSettingsHandlers(bot, deps);
   registerDeleteHandlers(bot, deps);
 }

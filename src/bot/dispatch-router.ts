@@ -1,10 +1,11 @@
 import type { AppContext } from './transport/types.js';
 import type { IncomingEvent } from './transport/types.js';
 import type { HandlerDeps } from './handlers/deps.js';
-import { isClosureProductMode } from '../services/product-mode.js';
+import { isClosureProductMode, isEngineMode } from '../services/product-mode.js';
 import { PRODUCT_MODE_PICK_FIRST } from './product-mode-copy.js';
 import { dispatch } from './dispatch.js';
 import { dispatchClosure } from './dispatch-closure.js';
+import { dispatchEngine } from './dispatch-engine.js';
 import {
   handleUnifiedStart,
   handleProductModePick,
@@ -16,8 +17,14 @@ import {
 const PRODUCT_MODE_CALLBACKS = new Set([
   'product_mode_founder',
   'product_mode_closure',
+  'product_mode_learning',
+  'product_mode_habit',
+  'product_mode_jobhunt',
   'product_mode_set_founder',
   'product_mode_set_closure',
+  'product_mode_set_learning',
+  'product_mode_set_habit',
+  'product_mode_set_jobhunt',
   'settings_product_mode',
   'settings_product_mode_back',
 ]);
@@ -47,10 +54,22 @@ export async function dispatchForUser(ctx: AppContext, event: IncomingEvent, dep
         return handleProductModePick(ctx, 'founder', deps);
       case 'product_mode_closure':
         return handleProductModePick(ctx, 'closure', deps);
+      case 'product_mode_learning':
+        return handleProductModePick(ctx, 'learning', deps);
+      case 'product_mode_habit':
+        return handleProductModePick(ctx, 'habit', deps);
+      case 'product_mode_jobhunt':
+        return handleProductModePick(ctx, 'jobhunt', deps);
       case 'product_mode_set_founder':
         return handleProductModeSet(ctx, 'founder', deps);
       case 'product_mode_set_closure':
         return handleProductModeSet(ctx, 'closure', deps);
+      case 'product_mode_set_learning':
+        return handleProductModeSet(ctx, 'learning', deps);
+      case 'product_mode_set_habit':
+        return handleProductModeSet(ctx, 'habit', deps);
+      case 'product_mode_set_jobhunt':
+        return handleProductModeSet(ctx, 'jobhunt', deps);
       case 'settings_product_mode':
         return handleSettingsProductModeMenu(ctx, deps);
       case 'settings_product_mode_back':
@@ -91,6 +110,9 @@ export async function dispatchForUser(ctx: AppContext, event: IncomingEvent, dep
     return dispatch(ctx, event, deps);
   }
 
+  if (isEngineMode(mode)) {
+    return dispatchEngine(ctx, event, deps);
+  }
   if (isClosureProductMode(mode)) {
     return dispatchClosure(ctx, event, deps);
   }

@@ -46,6 +46,11 @@ export interface SessionData {
   isFirstMatter?: boolean;
   stepEditMode?: boolean;
   stepData?: StepSessionData;
+  engineFocusAnswers?: Record<string, string>;
+  engineFocusEditMode?: boolean;
+  engineLogData?: StepSessionData;
+  engineLogEditMode?: boolean;
+  enginePivotAnswers?: Record<string, string>;
   settingsData?: {
     editing?: 'declaration' | 'fixation' | 'report' | 'avatar';
     declaration_day?: number;

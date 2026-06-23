@@ -1,14 +1,5 @@
 import type { ModeConfig } from './types.js';
 
-const HABIT_AREAS = [
-  { key: 'health', label: 'Здоровье' },
-  { key: 'mind', label: 'Ум / фокус' },
-  { key: 'work', label: 'Работа' },
-  { key: 'relationships', label: 'Отношения' },
-  { key: 'home', label: 'Быт' },
-  { key: 'other', label: 'Другое' },
-] as const;
-
 export const habitConfig: ModeConfig = {
   key: 'habit',
   label: 'Habit',
@@ -38,8 +29,6 @@ export const habitConfig: ModeConfig = {
   },
   commitment: {
     titleQuestion: 'Какую привычку берёшь на эту неделю?',
-    areas: [...HABIT_AREAS],
-    areaOtherQuestion: 'Напиши своими словами, к какой сфере относится привычка:',
     followups: [
       { key: 'trigger', text: 'Когда / после чего будешь делать? (триггер)' },
       { key: 'why_now', text: 'Зачем именно сейчас?' },

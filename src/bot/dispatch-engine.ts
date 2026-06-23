@@ -19,7 +19,6 @@ import {
   handleFocusCommand,
   handleFocusShow,
   handleFocusEdit,
-  handleFocusAreaChoice,
   handleFocusMessage,
   handleNotifyFocus,
 } from './handlers/engine/commitment.js';
@@ -123,12 +122,16 @@ export async function dispatchEngine(ctx: AppContext, event: IncomingEvent, deps
         return handleProductModePick(ctx, 'habit', deps);
       case 'product_mode_jobhunt':
         return handleProductModePick(ctx, 'jobhunt', deps);
+      case 'product_mode_work':
+        return handleProductModePick(ctx, 'work', deps);
       case 'product_mode_set_learning':
         return handleProductModeSet(ctx, 'learning', deps);
       case 'product_mode_set_habit':
         return handleProductModeSet(ctx, 'habit', deps);
       case 'product_mode_set_jobhunt':
         return handleProductModeSet(ctx, 'jobhunt', deps);
+      case 'product_mode_set_work':
+        return handleProductModeSet(ctx, 'work', deps);
       case 'settings_product_mode':
         return handleSettingsProductModeMenu(ctx, deps);
       case 'settings_product_mode_back':
@@ -204,8 +207,6 @@ export async function dispatchEngine(ctx: AppContext, event: IncomingEvent, deps
       case 'delete_confirm_no':
         return handleDeleteConfirmNo(ctx, deps);
       default: {
-        const area = data.match(/^engine_area_(.+)$/);
-        if (area) return handleFocusAreaChoice(ctx, area[1], deps, config);
         const declDay = data.match(/^settings_declaration_day_(\d)$/);
         if (declDay) return handleSettingsDeclarationDay(ctx, parseInt(declDay[1], 10), deps);
         const declTime = data.match(/^settings_declaration_time_([\d-]+)$/);

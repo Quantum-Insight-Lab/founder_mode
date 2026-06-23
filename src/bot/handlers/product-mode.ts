@@ -51,6 +51,9 @@ const MODE_PICKER_MARKUP: import('../transport/types.js').InlineButton[][] = [
   [
     { text: 'Learning', callback_data: 'product_mode_learning' },
     { text: 'Habit', callback_data: 'product_mode_habit' },
+  ],
+  [
+    { text: 'Work', callback_data: 'product_mode_work' },
     { text: 'Job hunt', callback_data: 'product_mode_jobhunt' },
   ],
 ];
@@ -63,6 +66,9 @@ const SETTINGS_MODE_MARKUP: import('../transport/types.js').InlineButton[][] = [
   [
     { text: 'Learning', callback_data: 'product_mode_set_learning' },
     { text: 'Habit', callback_data: 'product_mode_set_habit' },
+  ],
+  [
+    { text: 'Work', callback_data: 'product_mode_set_work' },
     { text: 'Job hunt', callback_data: 'product_mode_set_jobhunt' },
   ],
   [{ text: 'Назад', callback_data: 'settings_product_mode_back' }],
@@ -175,6 +181,10 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleProductModePick(appCtx, 'jobhunt', deps);
   });
+  bot.callbackQuery('product_mode_work', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleProductModePick(appCtx, 'work', deps);
+  });
   bot.callbackQuery('product_mode_set_founder', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleProductModeSet(appCtx, 'founder', deps);
@@ -194,6 +204,10 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
   bot.callbackQuery('product_mode_set_jobhunt', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleProductModeSet(appCtx, 'jobhunt', deps);
+  });
+  bot.callbackQuery('product_mode_set_work', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleProductModeSet(appCtx, 'work', deps);
   });
   bot.callbackQuery('settings_product_mode', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });

@@ -3,7 +3,7 @@ import type { BotContext } from '../../context.js';
 import { buildAppContext } from '../../transport/telegram-adapter.js';
 import { withEngineMode } from '../../with-engine-mode.js';
 import type { HandlerDeps } from '../deps.js';
-import { handleFocusCommand, handleFocusShow, handleFocusEdit, handleFocusAreaChoice, handleFocusMessage, handleNotifyFocus } from './commitment.js';
+import { handleFocusCommand, handleFocusShow, handleFocusEdit, handleFocusMessage, handleNotifyFocus } from './commitment.js';
 import {
   handleLogCommand,
   handleLogDateChoice,
@@ -20,7 +20,7 @@ import { handleRecapCommand, handleRecapShow, handleRecapEdit, handleRecapChoice
 import { handlePivotCommand, handlePivotMessage } from './switch.js';
 
 const ENGINE_STEPS =
-  /^engine_(focus_(title|area_other|\d+|choice)|log_(date|movement|choice|yes|no|partial)_\d+|pivot_\d+|recap_choice)$/;
+  /^engine_(focus_(title|\d+|choice)|log_(date|movement|choice|yes|no|partial)_\d+|pivot_\d+|recap_choice)$/;
 
 export function registerEngineHandlers(bot: Bot<BotContext>, deps: HandlerDeps): void {
   bot.command('focus', async (ctx) => {
@@ -51,13 +51,6 @@ export function registerEngineHandlers(bot: Bot<BotContext>, deps: HandlerDeps):
   bot.callbackQuery('engine_focus_show', wrap((c, d, mode) => handleFocusShow(c, d, mode)));
   bot.callbackQuery('engine_focus_edit', wrap((c, d, mode, config) => handleFocusEdit(c, d, mode, config)));
   bot.callbackQuery('notify_focus', wrap((c, d, mode, config) => handleNotifyFocus(c, d, mode, config)));
-  bot.callbackQuery(/^engine_area_(.+)$/, async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    const m = ctx.callbackQuery.data.match(/^engine_area_(.+)$/);
-    if (m) {
-      await withEngineMode((c, d, mode, config) => handleFocusAreaChoice(c, m[1], d, config))(appCtx, deps);
-    }
-  });
 
   bot.callbackQuery('engine_log_show', wrap((c, d, mode) => handleLogShow(c, d, mode)));
   bot.callbackQuery('engine_log_edit', wrap((c, d, _mode, config) => handleLogEdit(c, d, config)));

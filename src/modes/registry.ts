@@ -3,11 +3,13 @@ import type { ModeConfig } from './types.js';
 import { learningConfig } from './learning.js';
 import { habitConfig } from './habit.js';
 import { jobhuntConfig } from './jobhunt.js';
+import { workConfig } from './work.js';
 
 export const MODE_CONFIGS: Record<EngineMode, ModeConfig> = {
   learning: learningConfig,
   habit: habitConfig,
   jobhunt: jobhuntConfig,
+  work: workConfig,
 };
 
 export function getModeConfig(mode: EngineMode): ModeConfig {

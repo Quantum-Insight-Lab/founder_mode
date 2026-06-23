@@ -1,14 +1,5 @@
 import type { ModeConfig } from './types.js';
 
-const LEARNING_AREAS = [
-  { key: 'language', label: 'Язык' },
-  { key: 'code', label: 'Программирование' },
-  { key: 'design', label: 'Дизайн' },
-  { key: 'business', label: 'Бизнес / менеджмент' },
-  { key: 'science', label: 'Наука' },
-  { key: 'other', label: 'Другое' },
-] as const;
-
 export const learningConfig: ModeConfig = {
   key: 'learning',
   label: 'Learning',
@@ -38,8 +29,6 @@ export const learningConfig: ModeConfig = {
   },
   commitment: {
     titleQuestion: 'Какой навык или тему берёшь на эту неделю?',
-    areas: [...LEARNING_AREAS],
-    areaOtherQuestion: 'Напиши своими словами, к какой области относится навык:',
     followups: [
       { key: 'why_now', text: 'Зачем осваивать это именно сейчас?' },
       { key: 'week_target', text: 'Что сможешь к концу недели?' },

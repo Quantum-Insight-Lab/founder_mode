@@ -114,7 +114,6 @@ describe.skipIf(!dbUrl)('engine services', () => {
   it('createCommitment writes engine_commitments', async () => {
     await services.commitment.createCommitment(userId, 'learning', {
       title: 'TypeScript',
-      area_key: 'code',
       answers: { why_now: 'career', week_target: 'basics', practice_plan: 'daily' },
     });
     const weekId = getWeekId(new Date().toISOString().slice(0, 10));

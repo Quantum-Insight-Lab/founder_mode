@@ -10,17 +10,6 @@ import { getWeekId, getWeekStartEnd } from '../../../services/week-service.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
 import type { HandlerDeps } from '../deps.js';
 
-function areaButtons(config: ModeConfig): import('../../transport/types.js').InlineButton[][] {
-  const areas = config.commitment.areas ?? [];
-  const rows: import('../../transport/types.js').InlineButton[][] = [];
-  for (let i = 0; i < areas.length; i += 2) {
-    rows.push(
-      areas.slice(i, i + 2).map((a) => ({ text: a.label, callback_data: `engine_area_${a.key}` }))
-    );
-  }
-  return rows;
-}
-
 async function sendFocusCard(ctx: AppContext, deps: HandlerDeps, userId: string, rawPost: string): Promise<void> {
   const { handleLlmReply, pool, resolveAvatarBackgroundImage } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
@@ -120,25 +109,6 @@ export async function handleFocusEdit(
   await ctx.reply(config.commitment.titleQuestion);
 }
 
-export async function handleFocusAreaChoice(
-  ctx: AppContext,
-  areaKey: string,
-  deps: HandlerDeps,
-  config: ModeConfig
-): Promise<void> {
-  ensureSession(ctx);
-  ctx.session.engineFocusAnswers ??= {};
-  ctx.session.engineFocusAnswers.area_key = areaKey;
-  await ctx.answerCallbackQuery();
-  if (areaKey === 'other') {
-    ctx.session.step = 'engine_focus_area_other';
-    await ctx.reply(config.commitment.areaOtherQuestion);
-    return;
-  }
-  ctx.session.step = 'engine_focus_0';
-  await ctx.reply(config.commitment.followups[0].text);
-}
-
 export async function handleFocusMessage(
   ctx: AppContext,
   text: string,
@@ -158,18 +128,6 @@ export async function handleFocusMessage(
   if (step === 'engine_focus_title') {
     ctx.session!.engineFocusAnswers ??= {};
     ctx.session!.engineFocusAnswers.title = text;
-    if (config.commitment.areas?.length) {
-      ctx.session!.step = 'engine_focus_area_pick';
-      await ctx.reply('К какой сфере относится?', { reply_markup: areaButtons(config) });
-      return;
-    }
-    ctx.session!.step = 'engine_focus_0';
-    await ctx.reply(config.commitment.followups[0].text);
-    return;
-  }
-
-  if (step === 'engine_focus_area_other') {
-    ctx.session!.engineFocusAnswers!.area_custom = text;
     ctx.session!.step = 'engine_focus_0';
     await ctx.reply(config.commitment.followups[0].text);
     return;
@@ -185,8 +143,6 @@ export async function handleFocusMessage(
     ctx.session!.step = undefined;
     const answers = { ...ctx.session!.engineFocusAnswers! };
     const title = answers.title ?? '';
-    const area_key = answers.area_key ?? null;
-    const area_custom = answers.area_custom ?? null;
     const followupAnswers: Record<string, string> = {};
     for (const fq of config.commitment.followups) followupAnswers[fq.key] = answers[fq.key] ?? '';
     const isEdit = ctx.session!.engineFocusEditMode ?? false;
@@ -198,14 +154,10 @@ export async function handleFocusMessage(
       const rawPost = isEdit
         ? await engineServices.commitment.updateCommitmentManual(userId, mode, {
             title,
-            area_key,
-            area_custom,
             answers: followupAnswers,
           })
         : await engineServices.commitment.createCommitment(userId, mode, {
             title,
-            area_key,
-            area_custom,
             answers: followupAnswers,
           });
       funnelCompleted.inc({ type: 'matter' });

@@ -14,12 +14,9 @@ import {
   stripTrailingDotsPerLine,
 } from '../domain/text-format.js';
 import { InvariantViolationError } from '../domain/errors.js';
-import { matterAreaLabel } from '../bot/closure-conversations.js';
 
 interface MatterAnswers {
   title: string;
-  area_key: string;
-  area_custom?: string | null;
   why_postponed: string;
   cost_of_inaction: string;
   week_target: string;
@@ -27,18 +24,9 @@ interface MatterAnswers {
 
 interface MatterStructured {
   title: string;
-  area_key: string;
-  area_custom: string | null;
   why_postponed: string;
   cost_of_inaction: string;
   week_target: string;
-}
-
-function validateMatterAnswers(answers: MatterAnswers): void {
-  if ((answers.area_key ?? '').trim() !== 'other') return;
-  if (!(answers.area_custom ?? '').trim()) {
-    throw new InvariantViolationError('Укажи сферу своими словами', 'MATTER_AREA_OTHER');
-  }
 }
 
 export function createMatterService(eventStore: EventStore, deps: ServiceDeps) {
@@ -50,10 +38,8 @@ export function createMatterService(eventStore: EventStore, deps: ServiceDeps) {
     answers: MatterAnswers,
     idempotencyKey: string
   ): Promise<{ rawPost: string }> {
-    validateMatterAnswers(answers);
     const userMessage = [
       `title: ${answers.title}`,
-      `area: ${matterAreaLabel(answers.area_key, answers.area_custom)}`,
       `why_postponed: ${answers.why_postponed}`,
       `cost_of_inaction: ${answers.cost_of_inaction}`,
       `week_target: ${answers.week_target}`,
@@ -86,13 +72,8 @@ export function createMatterService(eventStore: EventStore, deps: ServiceDeps) {
   }
 
   function toStructured(answers: MatterAnswers): MatterStructured {
-    validateMatterAnswers(answers);
-    const areaCustom =
-      answers.area_key.trim() === 'other' ? (answers.area_custom ?? '').trim() || null : null;
     return {
       title: answers.title.trim(),
-      area_key: answers.area_key.trim(),
-      area_custom: areaCustom,
       why_postponed: answers.why_postponed.trim(),
       cost_of_inaction: answers.cost_of_inaction.trim(),
       week_target: answers.week_target.trim(),

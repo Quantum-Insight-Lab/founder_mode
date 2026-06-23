@@ -20,11 +20,13 @@ const PRODUCT_MODE_CALLBACKS = new Set([
   'product_mode_learning',
   'product_mode_habit',
   'product_mode_jobhunt',
+  'product_mode_work',
   'product_mode_set_founder',
   'product_mode_set_closure',
   'product_mode_set_learning',
   'product_mode_set_habit',
   'product_mode_set_jobhunt',
+  'product_mode_set_work',
   'settings_product_mode',
   'settings_product_mode_back',
 ]);
@@ -60,6 +62,8 @@ export async function dispatchForUser(ctx: AppContext, event: IncomingEvent, dep
         return handleProductModePick(ctx, 'habit', deps);
       case 'product_mode_jobhunt':
         return handleProductModePick(ctx, 'jobhunt', deps);
+      case 'product_mode_work':
+        return handleProductModePick(ctx, 'work', deps);
       case 'product_mode_set_founder':
         return handleProductModeSet(ctx, 'founder', deps);
       case 'product_mode_set_closure':
@@ -70,6 +74,8 @@ export async function dispatchForUser(ctx: AppContext, event: IncomingEvent, dep
         return handleProductModeSet(ctx, 'habit', deps);
       case 'product_mode_set_jobhunt':
         return handleProductModeSet(ctx, 'jobhunt', deps);
+      case 'product_mode_set_work':
+        return handleProductModeSet(ctx, 'work', deps);
       case 'settings_product_mode':
         return handleSettingsProductModeMenu(ctx, deps);
       case 'settings_product_mode_back':

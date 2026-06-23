@@ -100,8 +100,6 @@ export interface MatterSetPayload {
   user_id: string;
   week_id: string;
   title: string;
-  area_key: string;
-  area_custom?: string | null;
   why_postponed: string;
   cost_of_inaction: string;
   week_target: string;
@@ -148,8 +146,6 @@ export interface CommitmentSetPayload {
   mode: string;
   week_id: string;
   title: string;
-  area_key?: string | null;
-  area_custom?: string | null;
   answers: Record<string, string>;
   raw_post: string;
   source: EventSource;

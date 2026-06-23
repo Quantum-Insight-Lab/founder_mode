@@ -61,33 +61,6 @@ export const CLOSURE_ONBOARDING_AFTER_MATTER_2 =
 
 export const CLOSURE_MATTER_TITLE_QUESTION = 'Какое отложенное дело берёшь на эту неделю?';
 
-export const CLOSURE_MATTER_AREA_QUESTION = 'К какой сфере относится?';
-
-export const CLOSURE_MATTER_AREA_OTHER_QUESTION = 'Напиши своими словами, к какой сфере относится дело:';
-
-export const MATTER_AREAS = [
-  { key: 'health', label: 'Здоровье' },
-  { key: 'legal', label: 'Юридическое' },
-  { key: 'work', label: 'Работа' },
-  { key: 'personal', label: 'Личное' },
-  { key: 'finance', label: 'Финансы' },
-  { key: 'family', label: 'Семья / отношения' },
-  { key: 'home', label: 'Быт / дом' },
-  { key: 'admin', label: 'Документы / госуслуги' },
-  { key: 'learning', label: 'Обучение / карьера' },
-  { key: 'other', label: 'Другое' },
-] as const;
-
-export type MatterAreaKey = (typeof MATTER_AREAS)[number]['key'];
-
-export function matterAreaLabel(areaKey: string, areaCustom?: string | null): string {
-  if (areaKey === 'other') {
-    const custom = (areaCustom ?? '').trim();
-    return custom || 'Другое';
-  }
-  return MATTER_AREAS.find((a) => a.key === areaKey)?.label ?? areaKey;
-}
-
 export const MATTER_FOLLOWUP_QUESTIONS = [
   { key: 'why_postponed', text: 'Почему откладывал? Что в этом деле неприятного или тревожного?' },
   { key: 'cost_of_inaction', text: 'Что будет, если так и не закрыть?' },
@@ -96,7 +69,7 @@ export const MATTER_FOLLOWUP_QUESTIONS = [
 
 export type MatterFollowupAnswerKey = (typeof MATTER_FOLLOWUP_QUESTIONS)[number]['key'];
 
-export type MatterAnswerKey = 'title' | 'area' | MatterFollowupAnswerKey;
+export type MatterAnswerKey = 'title' | MatterFollowupAnswerKey;
 
 export const MATTER_SWITCH_QUESTIONS = [
   { key: 'reason', text: 'Почему меняешь дело?' },

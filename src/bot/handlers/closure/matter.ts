@@ -7,13 +7,10 @@ import { withProductMode } from '../../with-product-mode.js';
 import type { AppContext } from '../../transport/types.js';
 import {
   CLOSURE_MATTER_TITLE_QUESTION,
-  CLOSURE_MATTER_AREA_QUESTION,
-  CLOSURE_MATTER_AREA_OTHER_QUESTION,
   CLOSURE_ONBOARDING_AFTER_MATTER_1,
   CLOSURE_ONBOARDING_AFTER_MATTER_2,
   FLOW_CHOICE_USE_BUTTONS_HINT,
   LLM_PREPARING_MATTER,
-  MATTER_AREAS,
   MATTER_EDIT_BLOCKED_HAS_STEPS,
   MATTER_FOLLOWUP_QUESTIONS,
   type MatterFollowupAnswerKey,
@@ -24,18 +21,6 @@ import { getUserLocalDate, getUserLocalTimeHHmm } from '../../../db/user-timezon
 import { getWeekId, getWeekStartEnd } from '../../../services/week-service.js';
 import { renderMatterCardPng } from '../../../services/matter-card-render.js';
 import type { HandlerDeps } from '../deps.js';
-
-function areaButtonsMarkup(): import('../../transport/types.js').InlineButton[][] {
-  const rows: import('../../transport/types.js').InlineButton[][] = [];
-  for (let i = 0; i < MATTER_AREAS.length; i += 2) {
-    const row = MATTER_AREAS.slice(i, i + 2).map((a) => ({
-      text: a.label,
-      callback_data: `matter_area_${a.key}`,
-    }));
-    rows.push(row);
-  }
-  return rows;
-}
 
 async function sendMatterAsCard(
   ctx: AppContext,
@@ -151,22 +136,6 @@ export async function handleMatterEdit(ctx: AppContext, deps: HandlerDeps): Prom
   await ctx.reply(CLOSURE_MATTER_TITLE_QUESTION);
 }
 
-export async function handleMatterAreaChoice(ctx: AppContext, areaKey: string, deps: HandlerDeps): Promise<void> {
-  const area = MATTER_AREAS.find((a) => a.key === areaKey);
-  if (!area) return;
-  ensureSession(ctx);
-  ctx.session.matterAnswers ??= {};
-  ctx.session.matterAnswers.area_key = areaKey;
-  await ctx.answerCallbackQuery();
-  if (areaKey === 'other') {
-    ctx.session.step = 'matter_area_other';
-    await ctx.reply(CLOSURE_MATTER_AREA_OTHER_QUESTION);
-    return;
-  }
-  ctx.session.step = 'matter_1';
-  await ctx.reply(MATTER_FOLLOWUP_QUESTIONS[0].text);
-}
-
 export async function handleMatterMessage(ctx: AppContext, text: string, deps: HandlerDeps): Promise<void> {
   const { matterService, replyWithServiceError } = deps;
   const userId = ctx.userId;
@@ -179,14 +148,6 @@ export async function handleMatterMessage(ctx: AppContext, text: string, deps: H
   if (step === 'matter_title') {
     ctx.session!.matterAnswers ??= {};
     ctx.session!.matterAnswers.title = text;
-    ctx.session!.step = 'matter_area';
-    await ctx.reply(CLOSURE_MATTER_AREA_QUESTION, { reply_markup: areaButtonsMarkup() });
-    return;
-  }
-
-  if (step === 'matter_area_other') {
-    ctx.session!.matterAnswers ??= {};
-    ctx.session!.matterAnswers.area_custom = text.trim();
     ctx.session!.step = 'matter_1';
     await ctx.reply(MATTER_FOLLOWUP_QUESTIONS[0].text);
     return;
@@ -208,8 +169,6 @@ export async function handleMatterMessage(ctx: AppContext, text: string, deps: H
 
     const record = {
       title: answers.title ?? '',
-      area_key: answers.area_key ?? '',
-      area_custom: answers.area_custom ?? null,
       why_postponed: answers.why_postponed ?? '',
       cost_of_inaction: answers.cost_of_inaction ?? '',
       week_target: answers.week_target ?? '',
@@ -256,16 +215,9 @@ export function registerMatterHandlers(bot: Bot<BotContext>, deps: HandlerDeps):
   registerGuardedCallback(bot, deps, 'closure', 'matter_show', handleMatterShow);
   registerGuardedCallback(bot, deps, 'closure', 'matter_edit', handleMatterEdit);
   registerGuardedCallback(bot, deps, 'closure', 'notify_matter', handleNotifyMatter);
-  bot.callbackQuery(/^matter_area_(.+)$/, async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    const m = ctx.callbackQuery.data.match(/^matter_area_(.+)$/);
-    if (m) {
-      await withProductMode('closure', (c, d) => handleMatterAreaChoice(c, m[1], d))(appCtx, deps);
-    }
-  });
   bot.on('message:text').filter(
     (ctx) =>
-      (ctx.session?.step?.match(/^matter_(title|area_other|\d+|choice)$/) ?? false) &&
+      (ctx.session?.step?.match(/^matter_(title|\d+|choice)$/) ?? false) &&
       !ctx.message.text?.trim().startsWith('/'),
     async (ctx) => {
       const appCtx = buildAppContext(ctx as BotContext & { userId?: string });

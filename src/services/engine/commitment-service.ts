@@ -21,8 +21,6 @@ import { resolveEnginePrompt } from './prompt-resolver.js';
 
 export interface CommitmentInput {
   title: string;
-  area_key?: string | null;
-  area_custom?: string | null;
   answers: Record<string, string>;
 }
 
@@ -66,13 +64,7 @@ export function createEngineCommitmentService(eventStore: EventStore, deps: Serv
       const userDateStr = await getUserLocalDate(userId, pool);
       const weekId = getWeekId(userDateStr);
       const idempotencyKey = `engine_commitment:${mode}:${userId}:${weekId}`;
-      const userMessage = buildCommitmentUserMessage(
-        config,
-        input.title,
-        input.area_key ?? null,
-        input.area_custom ?? null,
-        input.answers
-      );
+      const userMessage = buildCommitmentUserMessage(config, input.title, input.answers);
       const rawPost = await generateRawPost(llm, config.commitment.llmPromptKey, userMessage, userId, idempotencyKey, 'Commitment');
 
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
@@ -84,8 +76,6 @@ export function createEngineCommitmentService(eventStore: EventStore, deps: Serv
           mode,
           week_id: weekId,
           title: input.title.trim(),
-          area_key: input.area_key ?? null,
-          area_custom: input.area_custom ?? null,
           answers: input.answers,
           raw_post: rawPost,
           source: 'initial',
@@ -115,13 +105,7 @@ export function createEngineCommitmentService(eventStore: EventStore, deps: Serv
       }
 
       const idempotencyKey = `engine_commitment:${mode}:${userId}:${weekId}:manual:${randomUUID()}`;
-      const userMessage = buildCommitmentUserMessage(
-        config,
-        input.title,
-        input.area_key ?? null,
-        input.area_custom ?? null,
-        input.answers
-      );
+      const userMessage = buildCommitmentUserMessage(config, input.title, input.answers);
       const rawPost = await generateRawPost(llm, config.commitment.llmPromptKey, userMessage, userId, idempotencyKey, 'Commitment');
 
       const event: Omit<DomainEvent, 'event_id' | 'occurred_at'> = {
@@ -133,8 +117,6 @@ export function createEngineCommitmentService(eventStore: EventStore, deps: Serv
           mode,
           week_id: weekId,
           title: input.title.trim(),
-          area_key: input.area_key ?? null,
-          area_custom: input.area_custom ?? null,
           answers: input.answers,
           raw_post: rawPost,
           source: 'manual',

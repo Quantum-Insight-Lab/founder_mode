@@ -34,7 +34,6 @@ export const jobhuntConfig: ModeConfig = {
       { key: 'why_now', text: 'Почему именно сейчас?' },
       { key: 'week_plan', text: 'Что конкретно сделаешь? (отклики, собесы, нетворк — словами)' },
     ],
-    areaOtherQuestion: '',
     llmPromptKey: 'jobhuntCommitment',
     lockHint: '⚠️ На этой неделе уже есть шаги. Сменить цель: /pivot',
     preparingText: 'Собираю формулировку цели…',

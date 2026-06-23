@@ -17,12 +17,11 @@ export type LlmPromptKey =
   | 'jobhuntCommitment'
   | 'jobhuntDaily'
   | 'jobhuntDigest'
-  | 'jobhuntSwitch';
-
-export interface ModeArea {
-  key: string;
-  label: string;
-}
+  | 'jobhuntSwitch'
+  | 'workCommitment'
+  | 'workDaily'
+  | 'workDigest'
+  | 'workSwitch';
 
 export interface ModeConfig {
   key: EngineMode;
@@ -39,8 +38,6 @@ export interface ModeConfig {
   };
   commitment: {
     titleQuestion: string;
-    areas?: ModeArea[];
-    areaOtherQuestion: string;
     followups: Question[];
     llmPromptKey: LlmPromptKey;
     lockHint: string;

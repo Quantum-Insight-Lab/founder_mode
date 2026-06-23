@@ -15,7 +15,6 @@ import { getWeekId, getWeekStartEnd } from '../week-service.js';
 import { InvariantViolationError } from '../../domain/errors.js';
 import type { EngineMode } from '../../services/product-mode.js';
 import { getModeConfig } from '../../modes/registry.js';
-import { areaLabel } from '../../modes/shared.js';
 import { resolveEnginePrompt } from './prompt-resolver.js';
 
 export function createEngineDigestService(eventStore: EventStore, deps: ServiceDeps) {
@@ -29,11 +28,9 @@ export function createEngineDigestService(eventStore: EventStore, deps: ServiceD
 
     const commitmentRow = await pool.query<{
       title: string;
-      area_key: string | null;
-      area_custom: string | null;
       answers: Record<string, string>;
     }>(
-      `SELECT title, area_key, area_custom, answers FROM engine_commitments
+      `SELECT title, answers FROM engine_commitments
        WHERE user_id = $1 AND mode = $2 AND week_id = $3`,
       [userId, mode, weekId]
     );
@@ -43,7 +40,6 @@ export function createEngineDigestService(eventStore: EventStore, deps: ServiceD
     const c = commitmentRow.rows[0]!;
     const commitment = {
       title: c.title,
-      area: c.area_key ? areaLabel(config.commitment.areas, c.area_key, c.area_custom) : null,
       answers: c.answers,
     };
 

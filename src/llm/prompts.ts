@@ -30,4 +30,8 @@ export const prompts = {
   jobhuntDaily: () => loadPrompt('JOBHUNT_DAILY_SYSTEM_PROMPT'),
   jobhuntDigest: () => loadPrompt('JOBHUNT_DIGEST_SYSTEM_PROMPT'),
   jobhuntSwitch: () => loadPrompt('JOBHUNT_SWITCH_SYSTEM_PROMPT'),
+  workCommitment: () => loadPrompt('WORK_COMMITMENT_SYSTEM_PROMPT'),
+  workDaily: () => loadPrompt('WORK_DAILY_SYSTEM_PROMPT'),
+  workDigest: () => loadPrompt('WORK_DIGEST_SYSTEM_PROMPT'),
+  workSwitch: () => loadPrompt('WORK_SWITCH_SYSTEM_PROMPT'),
 };

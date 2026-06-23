@@ -1,15 +1,11 @@
 import type { ModeConfig } from '../../modes/types.js';
-import { areaLabel } from '../../modes/shared.js';
 
 export function buildCommitmentUserMessage(
   config: ModeConfig,
   title: string,
-  areaKey: string | null,
-  areaCustom: string | null,
   answers: Record<string, string>
 ): string {
   const lines = [`title: ${title}`, `mode: ${config.label}`];
-  if (areaKey) lines.push(`area: ${areaLabel(config.commitment.areas, areaKey, areaCustom)}`);
   for (const q of config.commitment.followups) {
     lines.push(`${q.key}: ${answers[q.key] ?? ''}`);
   }

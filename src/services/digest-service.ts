@@ -14,7 +14,6 @@ import {
 import { getUserLocalDate } from '../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from './week-service.js';
 import { InvariantViolationError } from '../domain/errors.js';
-import { matterAreaLabel } from '../bot/closure-conversations.js';
 
 interface GeneratedDigest {
   weekId: string;
@@ -32,13 +31,11 @@ export function createDigestService(eventStore: EventStore, deps: ServiceDeps) {
 
     const matterRow = await pool.query<{
       title: string;
-      area_key: string;
-      area_custom: string | null;
       why_postponed: string;
       cost_of_inaction: string;
       week_target: string;
     }>(
-      `SELECT title, area_key, area_custom, why_postponed, cost_of_inaction, week_target
+      `SELECT title, why_postponed, cost_of_inaction, week_target
        FROM weekly_matters
        WHERE user_id = $1 AND week_id = $2`,
       [userId, weekId]
@@ -47,10 +44,7 @@ export function createDigestService(eventStore: EventStore, deps: ServiceDeps) {
     if (!matterRowData) {
       throw new InvariantViolationError('Нужно дело недели для дайджеста. Напиши /matter', 'NOT_FOUND');
     }
-    const matter = {
-      ...matterRowData,
-      area: matterAreaLabel(matterRowData.area_key, matterRowData.area_custom),
-    };
+    const matter = { ...matterRowData };
 
     const stepsRow = await pool.query<{
       day: string;

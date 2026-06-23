@@ -34,6 +34,7 @@ describe('product-mode helpers', () => {
     expect(productModeLabel('learning')).toBe('Learning');
     expect(productModeLabel('habit')).toBe('Habit');
     expect(productModeLabel('jobhunt')).toBe('Job hunt');
+    expect(productModeLabel('work')).toBe('Work');
     expect(productModeLabel(null)).toBe('—');
   });
 

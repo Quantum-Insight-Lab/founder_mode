@@ -30,7 +30,6 @@ import {
   handleMatterEdit,
   handleMatterMessage,
   handleMatterShow,
-  handleMatterAreaChoice,
   handleNotifyMatter,
 } from './handlers/closure/matter.js';
 import {
@@ -212,8 +211,6 @@ export async function dispatchClosure(ctx: AppContext, event: IncomingEvent, dep
       case 'delete_confirm_no':
         return handleDeleteConfirmNo(ctx, deps);
       default: {
-        const matterArea = data.match(/^matter_area_(.+)$/);
-        if (matterArea) return handleMatterAreaChoice(ctx, matterArea[1], deps);
         const declDay = data.match(/^settings_declaration_day_(\d)$/);
         if (declDay) return handleSettingsDeclarationDay(ctx, parseInt(declDay[1], 10), deps);
         const declTime = data.match(/^settings_declaration_time_([\d-]+)$/);
@@ -256,7 +253,7 @@ export async function dispatchClosure(ctx: AppContext, event: IncomingEvent, dep
       await ctx.reply(FLOW_CHOICE_USE_BUTTONS_HINT);
       return;
     }
-    if (step?.match(/^matter_(title|area_other|\d+)$/)) return handleMatterMessage(ctx, text, deps);
+    if (step?.match(/^matter_(title|\d+)$/)) return handleMatterMessage(ctx, text, deps);
     if (step?.match(/^step_(movement|nomovement|partial)_\d+$/)) return handleStepMessage(ctx, text, deps);
     if (step?.match(/^switch_\d+$/)) return handleSwitchMessage(ctx, text, deps);
     if (

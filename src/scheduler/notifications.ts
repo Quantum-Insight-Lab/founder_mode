@@ -41,7 +41,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
         last_declaration_notify_week_id: string | null;
         last_fixation_notify_date: string | null;
         last_report_notify_week_id: string | null;
-        product_mode: 'founder' | 'closure' | 'learning' | 'habit' | 'jobhunt' | null;
+        product_mode: 'founder' | 'closure' | 'learning' | 'habit' | 'jobhunt' | 'work' | null;
       }>(
         `SELECT s.user_id, u.tg_id, u.max_id, s.timezone, s.product_mode,
                 s.declaration_notify_day, s.declaration_notify_time,

@@ -282,8 +282,6 @@ describe.skipIf(!dbUrl)('projectors', () => {
           user_id: userId,
           week_id: weekId,
           title: 'Стomatolog',
-          area_key: 'health',
-          area_custom: null,
           why_postponed: 'страшно',
           cost_of_inaction: 'боль',
           week_target: 'записаться',
@@ -297,45 +295,10 @@ describe.skipIf(!dbUrl)('projectors', () => {
       })
     );
     const r = await pool.query(
-      'SELECT title, area_key, area_custom, raw_post FROM weekly_matters WHERE user_id = $1 AND week_id = $2',
+      'SELECT title, raw_post FROM weekly_matters WHERE user_id = $1 AND week_id = $2',
       [userId, weekId]
     );
-    expect(r.rows[0]).toMatchObject({ title: 'Стomatolog', area_key: 'health', area_custom: null, raw_post: 'raw matter' });
-  });
-
-  it('MatterSet stores area_custom for other', async () => {
-    const projectors = createProjectors(pool);
-    const weekId = '20260310';
-    await projectors.handleEvent(
-      ev({
-        event_id: randomUUID(),
-        event_type: EVENT_TYPES.MatterSet,
-        occurred_at: new Date().toISOString(),
-        actor: { id: userId, role: 'user' },
-        subject: { entity: 'WeeklyMatter', id: `${userId}:${weekId}` },
-        payload: {
-          user_id: userId,
-          week_id: weekId,
-          title: 'Переезд',
-          area_key: 'other',
-          area_custom: 'переезд родителей',
-          why_postponed: 'x',
-          cost_of_inaction: 'y',
-          week_target: 'z',
-          raw_post: 'raw other',
-          source: 'initial' as const,
-        },
-        causation_id: null,
-        correlation_id: null,
-        idempotency_key: null,
-        schema_version: 1,
-      })
-    );
-    const r = await pool.query(
-      'SELECT area_key, area_custom FROM weekly_matters WHERE user_id = $1 AND week_id = $2',
-      [userId, weekId]
-    );
-    expect(r.rows[0]).toMatchObject({ area_key: 'other', area_custom: 'переезд родителей' });
+    expect(r.rows[0]).toMatchObject({ title: 'Стomatolog', raw_post: 'raw matter' });
   });
 
   it('MatterStepSubmitted upserts matter_steps', async () => {

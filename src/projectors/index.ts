@@ -188,12 +188,10 @@ export function createProjectors(pool: Pool) {
     const p = event.payload;
     await pool.query(
       `INSERT INTO weekly_matters (
-        user_id, week_id, title, area_key, area_custom, why_postponed, cost_of_inaction, week_target, raw_post, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        user_id, week_id, title, why_postponed, cost_of_inaction, week_target, raw_post, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
       ON CONFLICT (user_id, week_id) DO UPDATE SET
         title = EXCLUDED.title,
-        area_key = EXCLUDED.area_key,
-        area_custom = EXCLUDED.area_custom,
         why_postponed = EXCLUDED.why_postponed,
         cost_of_inaction = EXCLUDED.cost_of_inaction,
         week_target = EXCLUDED.week_target,
@@ -203,8 +201,6 @@ export function createProjectors(pool: Pool) {
         p.user_id,
         p.week_id,
         p.title,
-        p.area_key,
-        p.area_custom ?? null,
         p.why_postponed,
         p.cost_of_inaction,
         p.week_target,
@@ -293,12 +289,10 @@ export function createProjectors(pool: Pool) {
     const p = event.payload;
     await pool.query(
       `INSERT INTO engine_commitments (
-         user_id, mode, week_id, title, area_key, area_custom, answers, raw_post, updated_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, NOW())
+         user_id, mode, week_id, title, answers, raw_post, updated_at
+       ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, NOW())
        ON CONFLICT (user_id, mode, week_id) DO UPDATE SET
          title = EXCLUDED.title,
-         area_key = EXCLUDED.area_key,
-         area_custom = EXCLUDED.area_custom,
          answers = EXCLUDED.answers,
          raw_post = EXCLUDED.raw_post,
          updated_at = NOW()`,
@@ -307,8 +301,6 @@ export function createProjectors(pool: Pool) {
         p.mode,
         p.week_id,
         p.title,
-        p.area_key ?? null,
-        p.area_custom ?? null,
         JSON.stringify(p.answers),
         p.raw_post,
       ]

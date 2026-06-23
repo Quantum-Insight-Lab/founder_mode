@@ -26,6 +26,7 @@ export const startupConfig: ModeConfig = {
     afterFocusHint: 'Рычаг зафиксирован. Каждый вечер — /log: было ли движение по главному.',
     afterLogHint: 'В воскресенье — /recap: срез недели по рычагу.',
     afterRecapHint: 'Первый recap готов. Так видно, где traction, а где текучка.',
+    afterRecapQuestion: 'Продолжим на следующей неделе?',
   },
   commitment: {
     titleQuestion: 'Какой ОДИН рычаг двигаешь на этой неделе?',

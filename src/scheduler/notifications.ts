@@ -14,7 +14,6 @@ import {
   matchesNotificationTimeInWindow,
 } from './notification-logic.js';
 import type { InlineButton } from '../bot/transport/types.js';
-import { hasDailyFixationForLocalDate } from './fixation-notify-helpers.js';
 import { hasEngineStepForLocalDate } from './step-notify-helpers.js';
 
 const NOTIFY_WINDOW_MIN = 7;
@@ -41,7 +40,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
         last_declaration_notify_week_id: string | null;
         last_fixation_notify_date: string | null;
         last_report_notify_week_id: string | null;
-        product_mode: 'founder' | 'closure' | 'learning' | 'habit' | 'jobhunt' | 'work' | 'quit' | 'startup' | null;
+        product_mode: 'learning' | 'habit' | 'jobhunt' | 'work' | 'quit' | 'startup' | 'closure' | null;
       }>(
         `SELECT s.user_id, u.tg_id, u.max_id, s.timezone, s.product_mode,
                 s.declaration_notify_day, s.declaration_notify_time,
@@ -57,6 +56,17 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
       const now = new Date();
 
       for (const r of rows.rows) {
+        if (!isEngineMode(r.product_mode)) continue;
+        const userMode = r.product_mode;
+        const copy = notificationCopyForMode(userMode);
+        const declarationButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: copy.declarationCallback }]];
+        const reflectButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: copy.stepCallback }]];
+        const reportButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: copy.digestCallback }]];
+
+        const declarationNotifyText = copy.declarationText;
+        const stepNotifyText = copy.stepText;
+        const digestNotifyText = copy.digestText;
+
         const offsetMin = r.timezone ? parseTimezoneOffset(r.timezone) : 0;
         if (offsetMin === null && r.timezone) continue;
         const off = offsetMin ?? 0;
@@ -73,15 +83,6 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
             r.fixation_notify_time,
             NOTIFY_WINDOW_MIN
           );
-
-        const copy = notificationCopyForMode(r.product_mode);
-        const declarationButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: copy.declarationCallback }]];
-        const reflectButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: copy.stepCallback }]];
-        const reportButtons: InlineButton[][] = [[{ text: 'Продолжить', callback_data: copy.digestCallback }]];
-
-        const declarationNotifyText = copy.declarationText;
-        const stepNotifyText = copy.stepText;
-        const digestNotifyText = copy.digestText;
 
         const sendToUserChannels = async (
           text: string,
@@ -121,9 +122,7 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           });
         }
         if (checkFixation() && r.last_fixation_notify_date !== userDateStr) {
-          const hasStepToday = isEngineMode(r.product_mode)
-            ? await hasEngineStepForLocalDate(pool, r.user_id, r.product_mode!, userDateStr)
-            : await hasDailyFixationForLocalDate(pool, r.user_id, userDateStr);
+          const hasStepToday = await hasEngineStepForLocalDate(pool, r.user_id, userMode, userDateStr);
           if (hasStepToday) {
             await pool.query(
               'UPDATE user_settings SET last_fixation_notify_date = $1::date, updated_at = NOW() WHERE user_id = $2',

@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { dispatch } from '../src/bot/dispatch.js';
-import { FLOW_CHOICE_USE_BUTTONS_HINT } from '../src/bot/conversations.js';
-import { IDLE_COMMAND_LIST_REPLY } from '../src/bot/idle-message.js';
+import { dispatchEngine } from '../src/bot/dispatch-engine.js';
+import { getModeConfig } from '../src/modes/registry.js';
+import { FLOW_CHOICE_USE_BUTTONS_HINT } from '../src/modes/shared.js';
 
-function createTestCtx() {
+function createTestCtx(session: Record<string, unknown> = {}) {
   const replies: string[] = [];
   return {
     ctx: {
       userId: 'u1',
       channel: 'telegram' as const,
       externalId: 'ext1',
-      session: {},
+      session,
       async reply(text: string) {
         replies.push(text);
       },
@@ -20,35 +20,32 @@ function createTestCtx() {
   };
 }
 
-const founderDeps = {
-  getUserProductMode: async () => 'founder' as const,
+const learningDeps = {
+  getUserProductMode: async () => 'learning' as const,
 } as any;
 
-describe('dispatch: unknown commands', () => {
+describe('dispatchEngine: unknown commands', () => {
   it('replies with idle message for unknown command event', async () => {
     const { ctx, replies } = createTestCtx();
-    await dispatch(ctx, { type: 'command', name: 'abracadabra' }, founderDeps);
-    expect(replies).toEqual([IDLE_COMMAND_LIST_REPLY]);
+    await dispatchEngine(ctx, { type: 'command', name: 'abracadabra' }, learningDeps);
+    expect(replies).toEqual([getModeConfig('learning').idleReply]);
   });
 
   it('replies with idle message for unknown slash message', async () => {
     const { ctx, replies } = createTestCtx();
-    await dispatch(ctx, { type: 'message', text: '/abracadabra' }, founderDeps);
-    expect(replies).toEqual([IDLE_COMMAND_LIST_REPLY]);
+    await dispatchEngine(ctx, { type: 'message', text: '/abracadabra' }, learningDeps);
+    expect(replies).toEqual([getModeConfig('learning').idleReply]);
   });
 
   it('choice step + plain text: button hint, not idle', async () => {
-    const { ctx, replies } = createTestCtx();
-    (ctx as { session: { step: string } }).session = { step: 'declaration_choice' };
-    await dispatch(ctx, { type: 'message', text: 'просто текст' }, founderDeps);
+    const { ctx, replies } = createTestCtx({ step: 'engine_focus_choice' });
+    await dispatchEngine(ctx, { type: 'message', text: 'просто текст' }, learningDeps);
     expect(replies).toEqual([FLOW_CHOICE_USE_BUTTONS_HINT]);
   });
 
-  it('choice step + slash: idle (unknown command path), not button hint', async () => {
-    const { ctx, replies } = createTestCtx();
-    (ctx as { session: { step: string } }).session = { step: 'report_choice' };
-    await dispatch(ctx, { type: 'message', text: '/nope' }, founderDeps);
-    expect(replies).toEqual([IDLE_COMMAND_LIST_REPLY]);
+  it('choice step + slash: silent return (no button hint, no idle)', async () => {
+    const { ctx, replies } = createTestCtx({ step: 'engine_recap_choice' });
+    await dispatchEngine(ctx, { type: 'message', text: '/nope' }, learningDeps);
+    expect(replies).toEqual([]);
   });
 });
-

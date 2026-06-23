@@ -18,9 +18,10 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
   });
 
   beforeEach(async () => {
-    await pool.query('DELETE FROM daily_fixations WHERE user_id = $1', [userId]);
-    await pool.query('DELETE FROM weekly_reports WHERE user_id = $1', [userId]);
-    await pool.query('DELETE FROM weekly_declarations WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM engine_steps WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM engine_digests WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM engine_commitments WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM rhythm_snapshots WHERE user_id = $1', [userId]);
     await pool.query('DELETE FROM user_settings WHERE user_id = $1', [userId]);
     await pool.query('DELETE FROM events WHERE actor_id = $1', [userId]);
     await pool.query('DELETE FROM users WHERE user_id = $1', [userId]);
@@ -37,8 +38,8 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
     );
     const weekId = '20260308';
     await pool.query(
-      `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, week_failure, raw_post)
-       VALUES ($1, $2, 'f', 'n', 'fail', 'p') ON CONFLICT (user_id, week_id) DO NOTHING`,
+      `INSERT INTO engine_commitments (user_id, mode, week_id, title, answers, raw_post)
+       VALUES ($1, 'learning', $2, 'f', '{}', 'p') ON CONFLICT (user_id, mode, week_id) DO NOTHING`,
       [userId, weekId]
     );
 
@@ -46,44 +47,44 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
 
     const users = await pool.query('SELECT * FROM users WHERE user_id = $1', [userId]);
     const settings = await pool.query('SELECT * FROM user_settings WHERE user_id = $1', [userId]);
-    const decl = await pool.query('SELECT * FROM weekly_declarations WHERE user_id = $1', [userId]);
+    const commitments = await pool.query('SELECT * FROM engine_commitments WHERE user_id = $1', [userId]);
     expect(users.rows.length).toBe(0);
     expect(settings.rows.length).toBe(0);
-    expect(decl.rows.length).toBe(0);
+    expect(commitments.rows.length).toBe(0);
   });
 
-  it('removes fixations, reports, events, idempotency cache rows for user', async () => {
+  it('removes engine rows, events, idempotency cache rows for user', async () => {
     const weekId = '20260301';
     await pool.query(
       `INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
       [userId]
     );
     await pool.query(
-      `INSERT INTO weekly_declarations (user_id, week_id, main_focus, why_now, week_failure, raw_post)
-       VALUES ($1, $2, 'f', 'n', 'fail', 'p')`,
+      `INSERT INTO engine_commitments (user_id, mode, week_id, title, answers, raw_post)
+       VALUES ($1, 'learning', $2, 'f', '{}', 'p')`,
       [userId, weekId]
     );
     await pool.query(
-      `INSERT INTO weekly_reports (user_id, week_id, raw_post) VALUES ($1, $2, 'rep')`,
+      `INSERT INTO engine_digests (user_id, mode, week_id, raw_post) VALUES ($1, 'learning', $2, 'rep')`,
       [userId, weekId]
     );
     await pool.query(
-      `INSERT INTO daily_fixations (
-         user_id, date, day, had_movement, movement_branch, raw_post
-       ) VALUES ($1, '2026-03-05', 'Чт', true, 'yes', 'raw')`,
+      `INSERT INTO engine_steps (
+         user_id, mode, date, day, movement_branch, answers, raw_post
+       ) VALUES ($1, 'learning', '2026-03-05', 'Чт', 'yes', '{}', 'raw')`,
       [userId]
     );
     await pool.query(
       `INSERT INTO events (
          event_id, event_type, occurred_at, actor_id, actor_role,
          subject_entity, subject_id, payload, schema_version
-       ) VALUES ($1, 'FixationSubmitted', NOW(), $2, 'user', 'DailyFixation', $3, '{}', 1)`,
-      [randomUUID(), userId, `${userId}:2026-03-05`]
+       ) VALUES ($1, 'DailyStepSubmitted', NOW(), $2, 'user', 'EngineStep', $3, '{}', 1)`,
+      [randomUUID(), userId, `${userId}:learning:2026-03-05`]
     );
     await pool.query(
       `INSERT INTO idempotency_cache (idempotency_key, content, tokens_in, tokens_out, latency_ms, expires_at)
        VALUES ($1, 'x', 1, 1, 1, NOW() + interval '1 day')`,
-      [`declaration:${userId}:${weekId}`]
+      [`engine_commitment:${userId}:${weekId}`]
     );
     await pool.query(
       `INSERT INTO idempotency_cache (idempotency_key, content, tokens_in, tokens_out, latency_ms, expires_at)
@@ -115,18 +116,18 @@ describe.skipIf(!dbUrl)('user-deletion', () => {
     await deleteUserData(pool, userId);
 
     const ev = await pool.query('SELECT 1 FROM events WHERE actor_id = $1', [userId]);
-    const fx = await pool.query('SELECT 1 FROM daily_fixations WHERE user_id = $1', [userId]);
-    const wr = await pool.query('SELECT 1 FROM weekly_reports WHERE user_id = $1', [userId]);
+    const steps = await pool.query('SELECT 1 FROM engine_steps WHERE user_id = $1', [userId]);
+    const digests = await pool.query('SELECT 1 FROM engine_digests WHERE user_id = $1', [userId]);
     const ic = await pool.query('SELECT 1 FROM idempotency_cache WHERE idempotency_key = $1', [
-      `declaration:${userId}:${weekId}`,
+      `engine_commitment:${userId}:${weekId}`,
     ]);
     const userRegKey = await pool.query('SELECT 1 FROM idempotency_cache WHERE idempotency_key = $1', [
       'user:telegram:delete-test-user',
     ]);
     const avatarAfterDelete = await loadAvatarDataUrl(storedAvatar.storageKey, 'image/webp');
     expect(ev.rows.length).toBe(0);
-    expect(fx.rows.length).toBe(0);
-    expect(wr.rows.length).toBe(0);
+    expect(steps.rows.length).toBe(0);
+    expect(digests.rows.length).toBe(0);
     expect(ic.rows.length).toBe(0);
     expect(userRegKey.rows.length).toBe(0);
     expect(avatarAfterDelete).toBeNull();

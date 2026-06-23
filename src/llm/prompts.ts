@@ -10,14 +10,6 @@ function loadPrompt(name: string): string {
 }
 
 export const prompts = {
-  weeklyDeclaration: () => loadPrompt('WEEKLY_DECLARATION_SYSTEM_PROMPT'),
-  priorityChange: () => loadPrompt('PRIORITY_CHANGE_SYSTEM_PROMPT'),
-  dailyFixation: () => loadPrompt('DAILY_FIXATION_SYSTEM_PROMPT'),
-  weeklyReport: () => loadPrompt('WEEKLY_REPORT_SYSTEM_PROMPT'),
-  matter: () => loadPrompt('MATTER_SYSTEM_PROMPT'),
-  matterSwitch: () => loadPrompt('MATTER_SWITCH_SYSTEM_PROMPT'),
-  step: () => loadPrompt('STEP_SYSTEM_PROMPT'),
-  digest: () => loadPrompt('DIGEST_SYSTEM_PROMPT'),
   learningCommitment: () => loadPrompt('LEARNING_COMMITMENT_SYSTEM_PROMPT'),
   learningDaily: () => loadPrompt('LEARNING_DAILY_SYSTEM_PROMPT'),
   learningDigest: () => loadPrompt('LEARNING_DIGEST_SYSTEM_PROMPT'),

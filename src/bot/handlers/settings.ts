@@ -11,7 +11,7 @@ import {
   SETTINGS_TIME_INPUT_QUESTION,
   SETTINGS_TIME_INVALID,
   NOTIFICATION_TIMES,
-} from '../conversations.js';
+} from '../settings-copy.js';
 import { formatDay } from '../../services/settings-service.js';
 import { userTimeToTimezone } from '../../domain/timezone.js';
 import { logger } from '../../observability/logger.js';

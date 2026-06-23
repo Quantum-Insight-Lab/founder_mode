@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeUserLocalNotificationClock,
-  isOnboardingSundayReportInviteSlot,
   matchesFixationNotificationWindow,
   matchesNotificationTimeInWindow,
 } from '../src/scheduler/notification-logic.js';
@@ -37,16 +36,6 @@ describe('notification-logic', () => {
 
     it('skips unlisted day', () => {
       expect(matchesFixationNotificationWindow(2, 9 * 60 + 30, '1,3,5', '09:30', 7)).toBe(false);
-    });
-  });
-
-  describe('isOnboardingSundayReportInviteSlot', () => {
-    it('Sunday 12:00 inside window', () => {
-      expect(isOnboardingSundayReportInviteSlot(0, 12 * 60, 7)).toBe(true);
-    });
-
-    it('not Saturday', () => {
-      expect(isOnboardingSundayReportInviteSlot(6, 12 * 60, 7)).toBe(false);
     });
   });
 });

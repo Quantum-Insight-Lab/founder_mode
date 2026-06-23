@@ -16,7 +16,7 @@ export interface LLMResponse {
   latencyMs: number;
 }
 
-export type LLMCallType = 'declaration' | 'fixation' | 'report' | 'change' | 'matter' | 'step' | 'digest' | 'switch';
+export type LLMCallType = 'matter' | 'step' | 'digest' | 'switch';
 
 export interface LLMOptions {
   idempotencyKey?: string;

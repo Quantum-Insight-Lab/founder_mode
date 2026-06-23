@@ -4,7 +4,7 @@ import type { EngineMode } from '../../../services/product-mode.js';
 import type { ModeConfig } from '../../../modes/types.js';
 import { FLOW_CHOICE_USE_BUTTONS_HINT } from '../../../modes/shared.js';
 import { logger } from '../../../observability/logger.js';
-import { cardEditClicks, funnelCompleted, funnelStarted } from '../../../observability/metrics.js';
+import { cardEditClicks } from '../../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../../db/user-timezone.js';
 import { instantToUserLocalDateString, parseTimezoneOffset } from '../../../domain/timezone.js';
 import { getWeekId } from '../../../services/week-service.js';
@@ -20,12 +20,16 @@ const MOVEMENT_MARKUP: import('../../transport/types.js').InlineButton[][] = [
 ];
 
 async function sendLogCard(ctx: AppContext, deps: HandlerDeps, userId: string, rawPost: string): Promise<void> {
-  const { handleLlmReply, pool, resolveAvatarBackgroundImage } = deps;
+  const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'User';
   const avatarBackgroundImage = await resolveAvatarBackgroundImage(ctx, userId);
+  const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
-    const png = await renderEngineCardPng({ username, content: rawPost, timeHHmm, avatarBackgroundImage }, 'engine_log');
+    const png = await renderEngineCardPng(
+      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
+      'engine_log'
+    );
     if (ctx.replyImage) {
       await ctx.replyImage(png, 'log.png');
       return;
@@ -85,7 +89,7 @@ export async function handleLogCommandBase(
   mode: EngineMode,
   config: ModeConfig
 ): Promise<void> {
-  const { pool, getFixationDate } = deps;
+  const { pool, getLogDate } = deps;
   const userId = ctx.userId;
   ensureSession(ctx);
   ctx.session.engineLogData = {};
@@ -102,8 +106,8 @@ export async function handleLogCommandBase(
     return;
   }
 
-  const yesterday = await getFixationDate(userId, 'yesterday');
-  const today = await getFixationDate(userId, 'today');
+  const yesterday = await getLogDate(userId, 'yesterday');
+  const today = await getLogDate(userId, 'today');
   const meta = await pool.query<{
     has_yesterday: boolean;
     has_today: boolean;
@@ -153,7 +157,6 @@ export async function handleLogCommand(
   config: ModeConfig
 ): Promise<void> {
   logger.info({ channel: ctx.channel, mode }, 'Command /log');
-  funnelStarted.inc({ type: 'step' });
   await handleLogCommandBase(ctx, deps, mode, config);
 }
 
@@ -166,7 +169,7 @@ export async function handleLogDateChoice(
 ): Promise<void> {
   const userId = ctx.userId;
   await ctx.answerCallbackQuery();
-  const date = await deps.getFixationDate(userId, choice);
+  const date = await deps.getLogDate(userId, choice);
   await proceedWithLogDate(ctx, date, userId, deps, mode, config);
 }
 
@@ -273,7 +276,6 @@ export async function handleLogMessage(
       const rawPost = isEdit
         ? await engineServices.step.updateStepManual(userId, mode, payload)
         : await engineServices.step.submitStep(userId, mode, payload);
-      funnelCompleted.inc({ type: 'step' });
       if (isEdit) await ctx.reply('❗️ Обновлено.');
       await sendLogCard(ctx, deps, userId, rawPost);
       await ctx.reply(config.onboarding.afterLogHint);

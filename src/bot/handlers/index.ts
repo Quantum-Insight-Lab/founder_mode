@@ -12,14 +12,6 @@ import { getUserLocalDate } from '../../db/user-timezone.js';
 import { createEventStore } from '../../events/event-store.js';
 import { EVENT_TYPES } from '../../events/types.js';
 import { createProjectors } from '../../projectors/index.js';
-import { createDeclarationService } from '../../services/declaration-service.js';
-import { createReportService } from '../../services/report-service.js';
-import { createPriorityChangeService } from '../../services/priority-change-service.js';
-import { createFixationService } from '../../services/fixation-service.js';
-import { createMatterService } from '../../services/matter-service.js';
-import { createMatterSwitchService } from '../../services/matter-switch-service.js';
-import { createStepService } from '../../services/step-service.js';
-import { createDigestService } from '../../services/digest-service.js';
 import { createSettingsService, formatDay, formatDays, formatTime } from '../../services/settings-service.js';
 import { loadAvatarDataUrl, storeNormalizedAvatar } from '../../services/avatar-storage.js';
 import { resolveAvatarBackgroundImageValue } from '../../services/avatar-resolver.js';
@@ -29,24 +21,16 @@ import { getPool, getUserByTgId, getUserByMaxId, markOnboarded, countRows } from
 import { initTokenSpikeChecker } from '../../observability/token-spike.js';
 import {
   SETTINGS_NOTIFICATIONS,
-  SETTINGS_DECLARATION,
-  SETTINGS_FIXATION,
-  SETTINGS_REPORT,
   SETTINGS_TIMEZONE,
   SETTINGS_AVATAR,
   SETTINGS_CONFIGURE_NOTIFICATIONS,
-} from '../conversations.js';
+} from '../settings-copy.js';
 import { isEngineMode, productModeLabel } from '../../services/product-mode.js';
 import { getModeConfig } from '../../modes/registry.js';
 import { SETTINGS_PRODUCT_MODE } from '../product-mode-copy.js';
 import { registerProductModeHandlers } from './product-mode.js';
 import { registerEngineHandlers } from './engine/index.js';
 import { createEngineServices } from '../../services/engine/index.js';
-import { registerOnboardingHandlers } from './onboarding.js';
-import { registerDeclarationHandlers } from './declaration.js';
-import { registerReportHandlers } from './report.js';
-import { registerChangeHandlers } from './change.js';
-import { registerFixationHandlers } from './fixation.js';
 import { registerSettingsHandlers } from './settings.js';
 import { registerDeleteHandlers } from './delete.js';
 import type { HandlerDeps } from './deps.js';
@@ -91,21 +75,12 @@ function formatErrorForUser(err: unknown): string {
   return formatUserFacingError(err);
 }
 
-/** Creates handler deps (including ensureUser) for use in index and registerHandlers. */
 export function createAppDeps(): HandlerDeps {
   const pool = getPool();
   const eventStore = createEventStore(pool);
   const projectors = createProjectors(pool);
   const llm = createLLMClient();
   const serviceDeps = { pool, projectors, llm };
-  const declarationService = createDeclarationService(eventStore, serviceDeps);
-  const reportService = createReportService(eventStore, serviceDeps);
-  const priorityChangeService = createPriorityChangeService(eventStore, serviceDeps);
-  const fixationService = createFixationService(eventStore, serviceDeps);
-  const matterService = createMatterService(eventStore, serviceDeps);
-  const matterSwitchService = createMatterSwitchService(eventStore, serviceDeps);
-  const stepService = createStepService(eventStore, serviceDeps);
-  const digestService = createDigestService(eventStore, serviceDeps);
   const engineServices = createEngineServices(eventStore, serviceDeps);
   const settingsService = createSettingsService(pool);
 
@@ -146,7 +121,7 @@ export function createAppDeps(): HandlerDeps {
     return userId;
   }
 
-  async function getFixationDate(userId: string, choice: 'yesterday' | 'today'): Promise<string> {
+  async function getLogDate(userId: string, choice: 'yesterday' | 'today'): Promise<string> {
     const todayStr = await getUserLocalDate(userId, pool);
     if (choice === 'today') return todayStr;
     const d = new Date(todayStr + 'T12:00:00Z');
@@ -158,7 +133,7 @@ export function createAppDeps(): HandlerDeps {
     ctx: import('../transport/types.js').AppContext,
     rawPost: string,
     userId: string,
-    context: 'declaration' | 'fixation' | 'report' | 'change' | 'matter' | 'step' | 'digest' | 'switch'
+    context: string
   ): Promise<void> {
     const trimmed = rawPost?.trim() || '';
     const formatted = escapeHtml(trimmed);
@@ -175,10 +150,7 @@ export function createAppDeps(): HandlerDeps {
     await ctx.reply(formatted || USER_SERVICE_ERROR_FALLBACK, { parse_mode: 'HTML' });
   }
 
-  async function showSettingsMenu(
-    ctx: import('../transport/types.js').AppContext,
-    userId: string
-  ): Promise<void> {
+  async function showSettingsMenu(ctx: import('../transport/types.js').AppContext, userId: string): Promise<void> {
     const settings = await settingsService.getOrCreate(userId);
     const notif = settings.notifications_enabled ? 'Вкл' : 'Выкл';
     const declarationStr = settings.declaration_notify_day != null
@@ -199,28 +171,20 @@ export function createAppDeps(): HandlerDeps {
           : 'Стандартный';
 
     const mode = await settingsService.getProductMode(userId);
-    const engine = isEngineMode(mode);
-    const engineConfig = engine ? getModeConfig(mode) : null;
-    const lblNotif = SETTINGS_NOTIFICATIONS;
-    const lblDecl = engine ? engineConfig!.settings.commitLabel : SETTINGS_DECLARATION;
-    const lblFix = engine ? engineConfig!.settings.dailyLabel : SETTINGS_FIXATION;
-    const lblReport = engine ? engineConfig!.settings.digestLabel : SETTINGS_REPORT;
-    const lblTz = SETTINGS_TIMEZONE;
-    const lblAvatar = SETTINGS_AVATAR;
-    const lblConfigure = SETTINGS_CONFIGURE_NOTIFICATIONS;
+    const config = isEngineMode(mode) ? getModeConfig(mode) : null;
 
     const text =
       `<b>${SETTINGS_PRODUCT_MODE}</b>: ${productModeLabel(mode)}\n` +
-      `<b>${lblNotif}</b>: ${notif}\n` +
-      `<b>${lblDecl}</b>: ${declarationStr}\n` +
-      `<b>${lblFix}</b>: ${reflectStr}\n` +
-      `<b>${lblReport}</b>: ${reportStr}\n` +
-      `<b>${lblTz}</b>: ${tzStr}\n` +
-      `<b>${lblAvatar}</b>: ${avatarStr}`;
+      `<b>${SETTINGS_NOTIFICATIONS}</b>: ${notif}\n` +
+      `<b>${config?.settings.commitLabel ?? 'Фокус'}</b>: ${declarationStr}\n` +
+      `<b>${config?.settings.dailyLabel ?? 'Запись'}</b>: ${reflectStr}\n` +
+      `<b>${config?.settings.digestLabel ?? 'Recap'}</b>: ${reportStr}\n` +
+      `<b>${SETTINGS_TIMEZONE}</b>: ${tzStr}\n` +
+      `<b>${SETTINGS_AVATAR}</b>: ${avatarStr}`;
 
     const reply_markup: import('../transport/types.js').InlineButton[][] = [
       [{ text: 'Сменить режим', callback_data: 'settings_product_mode' }],
-      [{ text: lblConfigure, callback_data: 'settings_notifications' }],
+      [{ text: SETTINGS_CONFIGURE_NOTIFICATIONS, callback_data: 'settings_notifications' }],
       [{ text: 'Настроить аватар', callback_data: 'settings_avatar' }],
       [{ text: 'Часовой пояс', callback_data: 'settings_tz' }],
     ];
@@ -244,18 +208,13 @@ export function createAppDeps(): HandlerDeps {
       : '—';
 
     const mode = await settingsService.getProductMode(userId);
-    const engine = isEngineMode(mode);
-    const engineConfig = engine ? getModeConfig(mode) : null;
-    const lblNotif = SETTINGS_NOTIFICATIONS;
-    const lblDecl = engine ? engineConfig!.settings.commitLabel : SETTINGS_DECLARATION;
-    const lblFix = engine ? engineConfig!.settings.dailyLabel : SETTINGS_FIXATION;
-    const lblReport = engine ? engineConfig!.settings.digestLabel : SETTINGS_REPORT;
+    const config = isEngineMode(mode) ? getModeConfig(mode) : null;
 
     const text =
-      `<b>${lblNotif}</b>: ${notif}\n` +
-      `<b>${lblDecl}</b>: ${declarationStr}\n` +
-      `<b>${lblFix}</b>: ${reflectStr}\n` +
-      `<b>${lblReport}</b>: ${reportStr}`;
+      `<b>${SETTINGS_NOTIFICATIONS}</b>: ${notif}\n` +
+      `<b>${config?.settings.commitLabel ?? 'Фокус'}</b>: ${declarationStr}\n` +
+      `<b>${config?.settings.dailyLabel ?? 'Запись'}</b>: ${reflectStr}\n` +
+      `<b>${config?.settings.digestLabel ?? 'Recap'}</b>: ${reportStr}`;
 
     const reply_markup: import('../transport/types.js').InlineButton[][] = [
       [
@@ -265,9 +224,9 @@ export function createAppDeps(): HandlerDeps {
         },
       ],
       [
-        { text: engine ? engineConfig!.settings.commitLabel : 'Приоритет', callback_data: 'settings_declaration' },
-        { text: engine ? engineConfig!.settings.dailyLabel : 'Фиксация', callback_data: 'settings_fixation' },
-        { text: engine ? engineConfig!.settings.digestLabel : 'Отчёт', callback_data: 'settings_report' },
+        { text: config?.settings.commitLabel ?? 'Фокус', callback_data: 'settings_declaration' },
+        { text: config?.settings.dailyLabel ?? 'Запись', callback_data: 'settings_fixation' },
+        { text: config?.settings.digestLabel ?? 'Recap', callback_data: 'settings_report' },
       ],
       [{ text: 'Назад', callback_data: 'settings_notifications_back' }],
     ];
@@ -304,8 +263,7 @@ export function createAppDeps(): HandlerDeps {
     });
     if (bg !== 'none') return bg;
     const dataUrl = await ensureDefaultAvatarDataUrl();
-    const out = `url(${dataUrl})`;
-    return out;
+    return `url(${dataUrl})`;
   }
 
   async function getRhythmLineForCard(userId: string): Promise<string | null> {
@@ -319,19 +277,11 @@ export function createAppDeps(): HandlerDeps {
     getUserByMaxId: (maxId) => getUserByMaxId(pool, maxId),
     markOnboarded: (userId) => markOnboarded(pool, userId),
     ensureUser,
-    getFixationDate,
+    getLogDate,
     formatErrorForUser,
     replyWithServiceError,
     handleLlmReply,
     countRows,
-    declarationService,
-    reportService,
-    priorityChangeService,
-    fixationService,
-    matterService,
-    matterSwitchService,
-    stepService,
-    digestService,
     engineServices,
     settingsService,
     showSettingsMenu,
@@ -347,11 +297,6 @@ export function createAppDeps(): HandlerDeps {
 export function registerHandlers(bot: Bot<BotContext>, deps: HandlerDeps) {
   initTokenSpikeChecker(deps.pool, bot.api);
   registerProductModeHandlers(bot, deps);
-  registerOnboardingHandlers(bot, deps);
-  registerDeclarationHandlers(bot, deps);
-  registerChangeHandlers(bot, deps);
-  registerReportHandlers(bot, deps);
-  registerFixationHandlers(bot, deps);
   registerEngineHandlers(bot, deps);
   registerSettingsHandlers(bot, deps);
   registerDeleteHandlers(bot, deps);

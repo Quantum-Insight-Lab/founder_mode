@@ -4,19 +4,23 @@ import type { EngineMode } from '../../../services/product-mode.js';
 import type { ModeConfig } from '../../../modes/types.js';
 import { FLOW_CHOICE_USE_BUTTONS_HINT } from '../../../modes/shared.js';
 import { logger } from '../../../observability/logger.js';
-import { cardEditClicks, funnelCompleted, funnelStarted } from '../../../observability/metrics.js';
+import { cardEditClicks } from '../../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from '../../../services/week-service.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
 import type { HandlerDeps } from '../deps.js';
 
 async function sendFocusCard(ctx: AppContext, deps: HandlerDeps, userId: string, rawPost: string): Promise<void> {
-  const { handleLlmReply, pool, resolveAvatarBackgroundImage } = deps;
+  const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'User';
   const avatarBackgroundImage = await resolveAvatarBackgroundImage(ctx, userId);
+  const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
-    const png = await renderEngineCardPng({ username, content: rawPost, timeHHmm, avatarBackgroundImage }, 'engine_focus');
+    const png = await renderEngineCardPng(
+      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
+      'engine_focus'
+    );
     if (ctx.replyImage) {
       await ctx.replyImage(png, 'focus.png');
       return;
@@ -57,7 +61,6 @@ export async function handleFocusCommand(
 
   ctx.session.engineFocusAnswers = {};
   ctx.session.step = 'engine_focus_title';
-  funnelStarted.inc({ type: 'matter' });
   await ctx.reply(config.commitment.titleQuestion);
 }
 
@@ -105,7 +108,6 @@ export async function handleFocusEdit(
   ctx.session.engineFocusEditMode = true;
   ctx.session.engineFocusAnswers = {};
   ctx.session.step = 'engine_focus_title';
-  funnelStarted.inc({ type: 'matter' });
   await ctx.reply(config.commitment.titleQuestion);
 }
 
@@ -160,7 +162,6 @@ export async function handleFocusMessage(
             title,
             answers: followupAnswers,
           });
-      funnelCompleted.inc({ type: 'matter' });
       if (isEdit) await ctx.reply('❗️ Обновлено.');
       await sendFocusCard(ctx, deps, userId, rawPost);
       await ctx.reply(config.onboarding.afterFocusHint);

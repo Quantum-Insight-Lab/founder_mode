@@ -21,12 +21,9 @@ export async function handleDeleteCommand(ctx: AppContext, deps: HandlerDeps): P
   ensureSession(ctx);
   ctx.session.step = 'delete_confirm';
   const mode = await deps.getUserProductMode(user.user_id);
-  const deletePrompt =
-    mode === 'closure'
-      ? '⚠️ Удалить все данные? Дела, шаги, recap. Необратимо.'
-      : isEngineMode(mode)
-        ? '⚠️ Удалить все данные? Фокус, записи, recap. Необратимо.'
-        : '⚠️ Удалить все данные? Планы, фиксации, отчёты. Необратимо.';
+  const deletePrompt = isEngineMode(mode)
+    ? '⚠️ Удалить все данные? Фокус, записи, recap. Необратимо.'
+    : '⚠️ Удалить все данные? Необратимо.';
   await ctx.reply(deletePrompt, {
     reply_markup: [[
       { text: 'Да, удалить', callback_data: 'delete_confirm_yes' },

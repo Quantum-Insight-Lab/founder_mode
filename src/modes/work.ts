@@ -26,6 +26,7 @@ export const workConfig: ModeConfig = {
     afterFocusHint: 'Задача зафиксирована. Каждый день — /log: что продвинул и что на завтра.',
     afterLogHint: 'В воскресенье — /recap: что доставлено и где застряло.',
     afterRecapHint: 'Первый recap готов. Так видно прогресс и блокеры.',
+    afterRecapQuestion: 'Продолжим на следующей неделе?',
   },
   commitment: {
     titleQuestion: 'Какую рабочую задачу доводишь до результата на этой неделе?',

@@ -1,8 +1,7 @@
 import type { Pool } from 'pg';
 
-export type EngineMode = 'learning' | 'habit' | 'jobhunt' | 'work' | 'quit' | 'startup' | 'closure';
-export type LegacyProductMode = 'founder';
-export type ProductMode = LegacyProductMode | EngineMode;
+export type ProductMode = 'learning' | 'habit' | 'jobhunt' | 'work' | 'quit' | 'startup' | 'closure';
+export type EngineMode = ProductMode;
 
 export const ENGINE_MODES: EngineMode[] = ['learning', 'habit', 'jobhunt', 'work', 'quit', 'startup', 'closure'];
 
@@ -18,13 +17,8 @@ export function isEngineMode(mode: ProductMode | null | undefined): mode is Engi
   );
 }
 
-export function isFounderProductMode(mode: ProductMode | null | undefined): boolean {
-  return mode === 'founder';
-}
-
 export function productModeLabel(mode: ProductMode | null | undefined): string {
   if (mode === 'closure') return 'Closure';
-  if (mode === 'founder') return 'Founder Mode';
   if (mode === 'learning') return 'Learning';
   if (mode === 'habit') return 'Habit';
   if (mode === 'jobhunt') return 'Job hunt';

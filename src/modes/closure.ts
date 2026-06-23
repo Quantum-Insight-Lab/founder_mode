@@ -26,6 +26,7 @@ export const closureConfig: ModeConfig = {
     afterFocusHint: 'Дело зафиксировано. Каждый вечер — /log: что получилось и микрошаг на завтра.',
     afterLogHint: 'В воскресенье — /recap: короткий срез недели.',
     afterRecapHint: 'Первый recap готов. Так видно, что реально двигается, а что застревает.',
+    afterRecapQuestion: 'Продолжим на следующей неделе?',
   },
   commitment: {
     titleQuestion: 'Какое отложенное дело берёшь на эту неделю?',

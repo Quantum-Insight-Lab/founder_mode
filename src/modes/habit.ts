@@ -26,6 +26,7 @@ export const habitConfig: ModeConfig = {
     afterFocusHint: 'Привычка зафиксирована. Каждый вечер — /log: сделал сегодня или нет.',
     afterLogHint: 'В воскресенье — /recap: консистентность за неделю.',
     afterRecapHint: 'Первый recap готов. Так видно, где ритм держится, а где срывается.',
+    afterRecapQuestion: 'Продолжим на следующей неделе?',
   },
   commitment: {
     titleQuestion: 'Какую привычку берёшь на эту неделю?',

@@ -11,7 +11,7 @@ import {
   ENGINE_TIMEZONE_QUESTION,
 } from '../../../modes/shared.js';
 import { logger } from '../../../observability/logger.js';
-import { botOpens, experimentCompleted, experimentStarted } from '../../../observability/metrics.js';
+import { botOpens } from '../../../observability/metrics.js';
 import { userTimeToTimezone } from '../../../domain/timezone.js';
 import type { HandlerDeps } from '../deps.js';
 
@@ -58,14 +58,13 @@ export async function handleEngineStart(
   });
 }
 
-export async function handleEngineOnboardCtaYes(ctx: AppContext, deps: HandlerDeps, config: ModeConfig): Promise<void> {
+export async function handleEngineOnboardCtaYes(ctx: AppContext, deps: HandlerDeps, _config: ModeConfig): Promise<void> {
   const { pool } = deps;
   const userId = ctx.userId;
   await ctx.answerCallbackQuery();
   ensureSession(ctx);
   ctx.session.step = 'onboard_timezone';
   await pool.query('UPDATE users SET onboarding_started_at = NOW() WHERE user_id = $1', [userId]);
-  experimentStarted.inc();
   await ctx.reply(ENGINE_AFTER_CTA_YES);
   await ctx.reply(ENGINE_TIMEZONE_QUESTION);
 }
@@ -78,7 +77,6 @@ export async function handleEngineOnboardCtaLater(ctx: AppContext, deps: Handler
   ctx.session.step = undefined;
   await markOnboarded(userId);
   await pool.query('UPDATE users SET onboarding_completed_at = NOW() WHERE user_id = $1', [userId]);
-  experimentCompleted.inc();
   await ctx.reply(`Ок. Когда захочешь — /focus.\n\n${config.onboarding.intro}`);
 }
 
@@ -123,4 +121,30 @@ export async function handleEngineOnboardNotifOff(ctx: AppContext, deps: Handler
   await ctx.answerCallbackQuery();
   await settingsService.updateNotificationsEnabled(userId, false);
   await ctx.reply(ENGINE_REMINDERS_DISABLED_SHORT);
+}
+
+export async function handleEngineOnboardDigestCtaYes(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  config: ModeConfig
+): Promise<void> {
+  const { pool, markOnboarded } = deps;
+  const userId = ctx.userId;
+  await ctx.answerCallbackQuery();
+  await markOnboarded(userId);
+  await pool.query('UPDATE users SET onboarding_completed_at = NOW() WHERE user_id = $1', [userId]);
+  await ctx.reply(`Отлично.\n\n${config.onboarding.intro}`);
+}
+
+export async function handleEngineOnboardDigestCtaLater(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  config: ModeConfig
+): Promise<void> {
+  const { pool, markOnboarded } = deps;
+  const userId = ctx.userId;
+  await ctx.answerCallbackQuery();
+  await markOnboarded(userId);
+  await pool.query('UPDATE users SET onboarding_completed_at = NOW() WHERE user_id = $1', [userId]);
+  await ctx.reply(`Хорошо.\n\n${config.onboarding.intro}`);
 }

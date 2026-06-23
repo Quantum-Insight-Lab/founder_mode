@@ -14,30 +14,6 @@ export interface EventsRow {
   schema_version: number;
 }
 
-export interface WeeklyDeclarationRow {
-  user_id: string;
-  week_id: string;
-  main_focus: string;
-  why_now: string;
-  week_failure: string;
-  raw_post: string;
-}
-
-export interface DailyFixationRow {
-  user_id: string;
-  date: string;
-  day: string;
-  had_movement: boolean;
-  movement_branch: string | null;
-  what_moved: string | null;
-  tomorrow_step: string | null;
-  what_stopped: string | null;
-  attention_sink: string | null;
-  raw_post: string;
-  why_partial: string | null;
-}
-
-/** Снимок ритма на локальную дату пользователя (таблица rhythm_snapshots). */
 export interface RhythmSnapshotRow {
   user_id: string;
   as_of_date: string;

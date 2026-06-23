@@ -21,10 +21,10 @@ describe.skipIf(!dbUrl)('event-store', () => {
   });
 
   const baseEvent = {
-    event_type: EVENT_TYPES.FixationSubmitted as const,
+    event_type: EVENT_TYPES.DailyStepSubmitted as const,
     actor: { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', role: 'user' as const },
-    subject: { entity: 'DailyReflection', id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:2026-03-09' },
-    payload: { user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', date: '2026-03-09' },
+    subject: { entity: 'EngineStep', id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:learning:2026-03-09' },
+    payload: { user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', mode: 'learning', date: '2026-03-09' },
     causation_id: null,
     correlation_id: null,
     idempotency_key: 'test-key-123',
@@ -36,7 +36,7 @@ describe.skipIf(!dbUrl)('event-store', () => {
 
     expect(result.event_id).toBeDefined();
     expect(result.occurred_at).toBeDefined();
-    expect(result.event_type).toBe(EVENT_TYPES.FixationSubmitted);
+    expect(result.event_type).toBe(EVENT_TYPES.DailyStepSubmitted);
     expect(result.payload).toEqual(baseEvent.payload);
 
     const rows = await pool.query('SELECT * FROM events WHERE event_id = $1', [result.event_id]);
@@ -61,7 +61,7 @@ describe.skipIf(!dbUrl)('event-store', () => {
     const found = await eventStore.getByIdempotencyKey('test-key-123');
 
     expect(found).not.toBeNull();
-    expect(found!.event_type).toBe(EVENT_TYPES.FixationSubmitted);
+    expect(found!.event_type).toBe(EVENT_TYPES.DailyStepSubmitted);
     expect(found!.payload).toEqual(baseEvent.payload);
   });
 

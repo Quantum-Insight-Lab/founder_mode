@@ -26,6 +26,7 @@ export const learningConfig: ModeConfig = {
     afterFocusHint: 'Навык зафиксирован. Каждый вечер — /log: что практиковал и фокус на завтра.',
     afterLogHint: 'В воскресенье — /recap: срез обучения за неделю.',
     afterRecapHint: 'Первый recap готов. Так видно, что реально усваивается.',
+    afterRecapQuestion: 'Продолжим на следующей неделе?',
   },
   commitment: {
     titleQuestion: 'Какой навык или тему берёшь на эту неделю?',

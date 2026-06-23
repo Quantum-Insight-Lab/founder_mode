@@ -47,7 +47,7 @@ describe('mode engine registry', () => {
 });
 
 describe('withEngineMode guard', () => {
-  it('blocks non-engine mode', async () => {
+  it('blocks when mode unset', async () => {
     const replies: string[] = [];
     const ctx = {
       userId: 'u1',
@@ -56,12 +56,18 @@ describe('withEngineMode guard', () => {
       },
     } as unknown as AppContext;
     const deps = {
-      getUserProductMode: async () => 'founder' as const,
+      getUserProductMode: async () => null,
     } as HandlerDeps;
     const handler = vi.fn();
     await withEngineMode(handler)(ctx, deps);
     expect(handler).not.toHaveBeenCalled();
-    expect(replies[0]).toContain('Learning');
+    expect(replies[0]).toContain('режим');
+  });
+
+  it('pivot flow has exactly 3 questions in every mode', () => {
+    for (const mode of ENGINE_MODES) {
+      expect(MODE_CONFIGS[mode].switchFlow.questions).toHaveLength(3);
+    }
   });
 
   it('allows engine mode', async () => {

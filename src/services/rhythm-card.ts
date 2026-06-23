@@ -6,37 +6,36 @@ import { lastNWeekdaysOldestFirst } from '../domain/rhythm-weekdays.js';
 import { getWeekId, getPreviousWeekId } from './week-service.js';
 
 const RHYTHM_LABEL = 'Ритм:';
-
 const RHYTHM_WINDOW_WEEKDAYS = 14;
 
 /**
- * Строка для карточки («Ритм N») или null — не показывать, пока не было ни одного report.
+ * Cross-mode rhythm from engine_steps. Gate: at least one engine_digests row.
  */
 export async function getRhythmLineForCard(pool: Pool, userId: string, userLocalTodayYmd: string): Promise<string | null> {
-  const anyReport = await pool.query('SELECT 1 FROM weekly_reports WHERE user_id = $1 LIMIT 1', [userId]);
-  if (anyReport.rows.length === 0) return null;
+  const anyDigest = await pool.query('SELECT 1 FROM engine_digests WHERE user_id = $1 LIMIT 1', [userId]);
+  if (anyDigest.rows.length === 0) return null;
 
   const end = userLocalTodayYmd;
   const windowDates = lastNWeekdaysOldestFirst(end, RHYTHM_WINDOW_WEEKDAYS);
   const start = windowDates[0]!;
   const last = windowDates[windowDates.length - 1]!;
 
-  const rows = await pool.query<{ date: string; movement_branch: string | null }>(
-    `SELECT date::text AS date, movement_branch::text AS movement_branch
-     FROM daily_fixations
-     WHERE user_id = $1 AND date >= $2::date AND date <= $3::date`,
+  const rows = await pool.query<{ date: string; movement_branch: string }>(
+    `SELECT date::text AS date, movement_branch
+     FROM engine_steps
+     WHERE user_id = $1 AND date >= $2::date AND date <= $3::date
+     ORDER BY date, mode`,
     [userId, start, last]
   );
+
   const byDate = new Map<string, MovementBranch | null>();
   for (const r of rows.rows) {
     const br = r.movement_branch;
     if (br === 'yes' || br === 'no' || br === 'partial') {
-      byDate.set(r.date, br);
-    } else if (br === 'week_closed') {
-      // legacy строки в БД — считаем как «да» по весу
-      byDate.set(r.date, 'yes');
-    } else {
-      byDate.set(r.date, null);
+      const existing = byDate.get(r.date);
+      if (!existing || (existing === 'no' && br !== 'no') || (existing === 'partial' && br === 'yes')) {
+        byDate.set(r.date, br);
+      }
     }
   }
 
@@ -47,11 +46,11 @@ export async function getRhythmLineForCard(pool: Pool, userId: string, userLocal
 
   const weekNow = getWeekId(userLocalTodayYmd);
   const weekPrev = getPreviousWeekId(userLocalTodayYmd);
-  const reportWeek = await pool.query(
-    `SELECT 1 FROM weekly_reports WHERE user_id = $1 AND week_id = ANY($2::text[]) LIMIT 1`,
+  const digestWeek = await pool.query(
+    `SELECT 1 FROM engine_digests WHERE user_id = $1 AND week_id = ANY($2::text[]) LIMIT 1`,
     [userId, [weekNow, weekPrev]]
   );
-  const hasReportCurrentOrPreviousWeek = reportWeek.rows.length > 0;
+  const hasReportCurrentOrPreviousWeek = digestWeek.rows.length > 0;
 
   const breakdown = computeRhythmBreakdown(days, hasReportCurrentOrPreviousWeek);
 
@@ -81,9 +80,6 @@ export async function getRhythmLineForCard(pool: Pool, userId: string, userLocal
   return `${RHYTHM_LABEL} ${breakdown.score}`;
 }
 
-/**
- * История снимков ритма за интервал дат (локальные YYYY-MM-DD), от старых к новым.
- */
 export async function getRhythmSnapshotsForUser(
   pool: Pool,
   userId: string,

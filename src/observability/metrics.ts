@@ -27,20 +27,6 @@ export const llmCallLatency = new Histogram({
   registers: [register],
 });
 
-export const funnelStarted = new Counter({
-  name: 'funnel_started_total',
-  help: 'Funnel starts (first question shown)',
-  labelNames: ['type'],
-  registers: [register],
-});
-
-export const funnelCompleted = new Counter({
-  name: 'funnel_completed_total',
-  help: 'Completed funnel steps',
-  labelNames: ['type'],
-  registers: [register],
-});
-
 export const botOpens = new Counter({
   name: 'bot_opens_total',
   help: 'Bot /start command invocations',
@@ -54,17 +40,4 @@ export const cardEditClicks = new Counter({
   registers: [register],
 });
 
-export const experimentStarted = new Counter({
-  name: 'experiment_started_total',
-  help: 'Total experiment starts (CTA "Да")',
-  registers: [register],
-});
-
-export const experimentCompleted = new Counter({
-  name: 'experiment_completed_total',
-  help: 'Total experiment completions (after first report CTA)',
-  registers: [register],
-});
-
-// Default Node.js metrics (event loop, memory, etc.)
 collectDefaultMetrics({ register });

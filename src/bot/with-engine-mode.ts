@@ -3,7 +3,7 @@ import type { HandlerDeps } from './handlers/deps.js';
 import { isEngineMode, type EngineMode } from '../services/product-mode.js';
 import { getModeConfig } from '../modes/registry.js';
 import type { ModeConfig } from '../modes/types.js';
-import { wrongProductModeHint } from './product-mode-copy.js';
+import { PRODUCT_MODE_PICK_FIRST } from './product-mode-copy.js';
 
 export async function requireEngineMode(
   ctx: AppContext,
@@ -11,7 +11,7 @@ export async function requireEngineMode(
 ): Promise<{ mode: EngineMode; config: ModeConfig } | null> {
   const mode = await deps.getUserProductMode(ctx.userId);
   if (!isEngineMode(mode)) {
-    await ctx.reply(wrongProductModeHint(mode, 'learning'));
+    await ctx.reply(PRODUCT_MODE_PICK_FIRST);
     return null;
   }
   return { mode, config: getModeConfig(mode) };

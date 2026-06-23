@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildCardHtmlFromTemplate } from '../src/services/card-render-shared.js';
 
-/** ~90 слов, 5 абзацев — реалистичный длинный пост для подстановки в карточку. */
 const LONG_CARD_CONTENT = `Первый реальный выход в рынок
 
 На этой неделе сделал важный шаг — вышел в кофейни с продуктом. Формально всё просто: зашёл в пять точек, пообщался, понял, как они работают с поставщиками и кто у них отвечает за закупку кофе.
@@ -15,21 +14,22 @@ const LONG_CARD_CONTENT = `Первый реальный выход в рыно�
 describe('buildCardHtmlFromTemplate', () => {
   it('replaces placeholders and escapes HTML in content', async () => {
     const html = await buildCardHtmlFromTemplate(
-      'declaration-card.html',
+      'fixation-card.html',
       {
         username: 'Test & <User>',
         content: 'Line1\n<script>x</script>',
         timeHHmm: '14:30',
         avatarBackgroundImage: 'none',
+        rhythmLine: 'Ритм: 7',
       },
       { designH: 1080, cardMinH: 1044 },
-      'declaration'
+      'fixation'
     );
     expect(html).toContain('Test &amp; &lt;User&gt;');
     expect(html).toContain('&lt;script&gt;');
     expect(html).not.toContain('{{USERNAME}}');
     expect(html).not.toContain('{{CONTENT}}');
-    expect(html).not.toContain('{{RHYTHM}}');
+    expect(html).toContain('Ритм: 7');
     expect(html).not.toContain('{{BADGE_IMAGE}}');
     expect(html).toContain('14:30');
   });
@@ -66,22 +66,5 @@ describe('buildCardHtmlFromTemplate', () => {
     expect(html).not.toContain('{{TYPE_SCALE}}');
     expect(html).toContain('Первый реальный выход в рынок');
     expect(html).toContain('конверсия дегустаций в закупки');
-  });
-
-  it('renders change card template placeholders', async () => {
-    const html = await buildCardHtmlFromTemplate(
-      'change-card.html',
-      {
-        username: 'Founder',
-        content: 'Причина: pivot',
-        timeHHmm: '10:10',
-        avatarBackgroundImage: 'none',
-      },
-      { designH: 1350, cardMinH: 1314 },
-      'change'
-    );
-    expect(html).toContain('Смена приоритета');
-    expect(html).not.toContain('{{TYPE_SCALE}}');
-    expect(html).not.toContain('{{CONTENT}}');
   });
 });

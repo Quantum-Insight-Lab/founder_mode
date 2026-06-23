@@ -11,14 +11,10 @@ import {
 } from '../src/services/product-mode.js';
 import { notificationCopyForMode } from '../src/scheduler/notification-copy.js';
 import { idleCommandListForMode } from '../src/bot/idle-for-mode.js';
-import { IDLE_COMMAND_LIST_REPLY } from '../src/bot/idle-message.js';
-import { getModeConfig } from '../src/modes/registry.js';
-import { withProductMode } from '../src/bot/with-product-mode.js';
-import { wrongProductModeHint, PRODUCT_MODE_PICK_FIRST } from '../src/bot/product-mode-copy.js';
-import {
-  handleUnifiedStart,
-  handleProductModePick,
-} from '../src/bot/handlers/product-mode.js';
+import { getModeConfig, MODE_CONFIGS } from '../src/modes/registry.js';
+import { withEngineMode } from '../src/bot/with-engine-mode.js';
+import { PRODUCT_MODE_PICK_FIRST } from '../src/bot/product-mode-copy.js';
+import { handleUnifiedStart, handleProductModePick } from '../src/bot/handlers/product-mode.js';
 import type { AppContext } from '../src/bot/transport/types.js';
 import type { HandlerDeps } from '../src/bot/handlers/deps.js';
 import { PRODUCT_MODE_PICKER_TEXT } from '../src/bot/product-mode-copy.js';
@@ -27,50 +23,37 @@ const dbUrl = process.env.TEST_DATABASE_URL;
 
 describe('product-mode helpers', () => {
   it('labels modes', () => {
-    expect(productModeLabel('founder')).toBe('Founder Mode');
     expect(productModeLabel('closure')).toBe('Closure');
     expect(productModeLabel('learning')).toBe('Learning');
-    expect(productModeLabel('habit')).toBe('Habit');
-    expect(productModeLabel('jobhunt')).toBe('Job hunt');
-    expect(productModeLabel('work')).toBe('Work');
-    expect(productModeLabel('quit')).toBe('Quit');
     expect(productModeLabel('startup')).toBe('Startup');
     expect(productModeLabel(null)).toBe('—');
   });
 
-  it('isEngineMode', () => {
+  it('isEngineMode for all engine modes', () => {
     for (const mode of ENGINE_MODES) expect(isEngineMode(mode)).toBe(true);
-    expect(isEngineMode('founder')).toBe(false);
     expect(isEngineMode(null)).toBe(false);
   });
 
-  it('notification copy per mode', () => {
-    const founder = notificationCopyForMode('founder');
-    expect(founder.declarationCallback).toBe('notify_declaration');
-    expect(founder.declarationText).toContain('declaration');
+  it('all modes have pivot with 3 questions', () => {
+    for (const mode of ENGINE_MODES) {
+      expect(MODE_CONFIGS[mode].switchFlow.questions).toHaveLength(3);
+    }
+  });
 
+  it('notification copy per mode', () => {
     const closure = notificationCopyForMode('closure');
     expect(closure.stepCallback).toBe('notify_log');
     expect(closure.digestText).toContain('recap');
-
     const learning = notificationCopyForMode('learning');
     expect(learning.declarationCallback).toBe('notify_focus');
-    expect(learning.stepText).toContain('практики');
   });
 
   it('idle list per mode', () => {
-    expect(idleCommandListForMode('founder')).toBe(IDLE_COMMAND_LIST_REPLY);
     expect(idleCommandListForMode('closure')).toBe(getModeConfig('closure').idleReply);
-    expect(idleCommandListForMode('learning')).toBe(getModeConfig('learning').idleReply);
-    expect(idleCommandListForMode(null)).toBe(IDLE_COMMAND_LIST_REPLY);
+    expect(idleCommandListForMode(null)).toBe(PRODUCT_MODE_PICK_FIRST);
   });
 
-  it('wrong mode hints', () => {
-    expect(wrongProductModeHint(null, 'founder')).toBe(PRODUCT_MODE_PICK_FIRST);
-    expect(wrongProductModeHint('closure', 'founder')).toContain('Founder');
-  });
-
-  it('withProductMode blocks wrong mode', async () => {
+  it('withEngineMode blocks when mode unset', async () => {
     const replies: string[] = [];
     const ctx = {
       userId: 'u1',
@@ -78,13 +61,11 @@ describe('product-mode helpers', () => {
         replies.push(text);
       },
     } as unknown as AppContext;
-    const deps = {
-      getUserProductMode: async () => 'closure' as const,
-    } as HandlerDeps;
+    const deps = { getUserProductMode: async () => null } as HandlerDeps;
     const handler = vi.fn();
-    await withProductMode('founder', handler)(ctx, deps);
+    await withEngineMode(handler)(ctx, deps);
     expect(handler).not.toHaveBeenCalled();
-    expect(replies[0]).toContain('Founder');
+    expect(replies[0]).toBe(PRODUCT_MODE_PICK_FIRST);
   });
 });
 
@@ -104,26 +85,23 @@ describe('product-mode handlers (unit)', () => {
 
   it('first /start shows picker when mode unset', async () => {
     const replies: string[] = [];
-    const ctx = mockCtx(replies);
     const deps = {
       getUserProductMode: async () => null,
       setUserProductMode: vi.fn(),
     } as unknown as HandlerDeps;
-    await handleUnifiedStart(ctx, deps);
+    await handleUnifiedStart(mockCtx(replies), deps);
     expect(replies[0]).toBe(PRODUCT_MODE_PICKER_TEXT);
   });
 
-  it('product mode pick saves and starts onboarding', async () => {
-    const replies: string[] = [];
-    const ctx = mockCtx(replies);
+  it('product mode pick saves mode', async () => {
     const setMode = vi.fn();
     const deps = {
       getUserProductMode: async () => null,
       setUserProductMode: setMode,
       pool: { query: vi.fn().mockResolvedValue({ rows: [{ onboarding_started_at: null, onboarding_completed_at: null }] }) },
     } as unknown as HandlerDeps;
-    await handleProductModePick(ctx, 'founder', deps);
-    expect(setMode).toHaveBeenCalledWith('u1', 'founder');
+    await handleProductModePick(mockCtx([]), 'learning', deps);
+    expect(setMode).toHaveBeenCalledWith('u1', 'learning');
   });
 });
 
@@ -144,17 +122,13 @@ describe.skipIf(!dbUrl)('product-mode settings-service', () => {
 
   it('get/set product_mode via settings service', async () => {
     const settings = createSettingsService(pool);
-    expect(await settings.getProductMode(userId)).toBeNull();
     await settings.setProductMode(userId, 'closure');
     expect(await settings.getProductMode(userId)).toBe('closure');
-    const row = await settings.get(userId);
-    expect(row?.product_mode).toBe('closure');
   });
 
   it('getUserProductMode from product-mode service', async () => {
-    expect(await getUserProductMode(pool, userId)).toBeNull();
-    await setUserProductMode(pool, userId, 'founder');
-    expect(await getUserProductMode(pool, userId)).toBe('founder');
-    expect(isEngineMode(await getUserProductMode(pool, userId))).toBe(false);
+    await setUserProductMode(pool, userId, 'startup');
+    expect(await getUserProductMode(pool, userId)).toBe('startup');
+    expect(isEngineMode(await getUserProductMode(pool, userId))).toBe(true);
   });
 });

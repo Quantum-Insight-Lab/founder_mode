@@ -1,5 +1,5 @@
 /**
- * Card PNG pipeline with mocked Playwright — no Chromium, runs in default npm test.
+ * Engine card PNG pipeline with mocked Playwright — no Chromium, runs in default npm test.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -33,12 +33,12 @@ vi.mock('playwright', () => ({
   },
 }));
 
-async function loadRenderDeclaration() {
-  const mod = await import('../src/services/declaration-card-render.js');
-  return mod.renderDeclarationCardPng;
+async function loadRenderEngine() {
+  const mod = await import('../src/services/engine/card-render.js');
+  return mod.renderEngineCardPng;
 }
 
-describe('card PNG render (mocked Playwright)', () => {
+describe('engine card PNG render (mocked Playwright)', () => {
   beforeEach(async () => {
     vi.resetModules();
     launchMock.mockReset();
@@ -49,13 +49,13 @@ describe('card PNG render (mocked Playwright)', () => {
       newPage: vi.fn().mockResolvedValue(createMockPage({ fits: true })),
     });
 
-    const renderDeclarationCardPng = await loadRenderDeclaration();
-    const buf = await renderDeclarationCardPng({
+    const renderEngineCardPng = await loadRenderEngine();
+    const buf = await renderEngineCardPng({
       username: 'Test',
       content: 'Фокус: A\n\nРезультат: B\n\nПровал: C',
       timeHHmm: '12:00',
       avatarBackgroundImage: 'none',
-    });
+    }, 'engine_focus');
 
     expect(buf.subarray(0, 8).toString('binary')).toBe('\x89PNG\r\n\x1a\n');
     expect(buf.length).toBeGreaterThan(8);
@@ -71,13 +71,14 @@ describe('card PNG render (mocked Playwright)', () => {
 
     launchMock.mockResolvedValue({ newPage });
 
-    const renderDeclarationCardPng = await loadRenderDeclaration();
-    const buf = await renderDeclarationCardPng({
+    const renderEngineCardPng = await loadRenderEngine();
+    const buf = await renderEngineCardPng({
       username: 'U',
       content: 'x',
       timeHHmm: '09:00',
       avatarBackgroundImage: 'none',
-    });
+      rhythmLine: 'Ритм: 5',
+    }, 'engine_log');
 
     expect(newPage).toHaveBeenCalledTimes(3);
     expect(buf.subarray(0, 8).toString('binary')).toBe('\x89PNG\r\n\x1a\n');
@@ -88,13 +89,13 @@ describe('card PNG render (mocked Playwright)', () => {
       newPage: vi.fn().mockResolvedValue(createMockPage({ fits: false })),
     });
 
-    const renderDeclarationCardPng = await loadRenderDeclaration();
-    const buf = await renderDeclarationCardPng({
+    const renderEngineCardPng = await loadRenderEngine();
+    const buf = await renderEngineCardPng({
       username: 'U',
       content: 'y',
       timeHHmm: '10:00',
       avatarBackgroundImage: 'none',
-    });
+    }, 'engine_recap');
 
     expect(buf.subarray(0, 8).toString('binary')).toBe('\x89PNG\r\n\x1a\n');
     expect(launchMock).toHaveBeenCalledTimes(1);

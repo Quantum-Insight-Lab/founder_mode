@@ -1,6 +1,6 @@
--- Founder Mode: PDA Event Core + Read Models (единая начальная схема).
+-- Engine-only schema: event store + engine read models + core tables.
 
--- Events (append-only, PDA 4.4)
+-- Events (append-only)
 CREATE TABLE IF NOT EXISTS events (
   event_id UUID PRIMARY KEY,
   event_type VARCHAR(64) NOT NULL,
@@ -22,7 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_events_actor ON events(actor_id);
 CREATE INDEX IF NOT EXISTS idx_events_occurred ON events(occurred_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_events_idempotency ON events(idempotency_key) WHERE idempotency_key IS NOT NULL;
 
--- Users (user_id = internal ID; tg_id / max_id = platform IDs, at least one required)
+-- Users
 CREATE TABLE IF NOT EXISTS users (
   user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tg_id VARCHAR(64) UNIQUE NULL,
@@ -33,9 +33,10 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT users_at_least_one_channel CHECK (tg_id IS NOT NULL OR max_id IS NOT NULL)
 );
 
--- User settings (timezone, notifications, avatar)
+-- User settings (notify columns reused as focus/log/recap)
 CREATE TABLE IF NOT EXISTS user_settings (
   user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+  product_mode VARCHAR(16),
   timezone VARCHAR(64),
   notifications_enabled BOOLEAN NOT NULL DEFAULT false,
   declaration_notify_day INT,
@@ -48,8 +49,6 @@ CREATE TABLE IF NOT EXISTS user_settings (
   last_fixation_notify_date DATE,
   last_report_notify_week_id VARCHAR(32),
   skip_hint_shown_at TIMESTAMPTZ,
-  fixation_onboarding_hint_shown_at TIMESTAMPTZ NULL,
-  onboarding_report_invite_sent_at TIMESTAMPTZ NULL,
   avatar_mode VARCHAR(16) NOT NULL DEFAULT 'messenger',
   avatar_storage_key TEXT,
   avatar_mime VARCHAR(64),
@@ -59,10 +58,13 @@ CREATE TABLE IF NOT EXISTS user_settings (
   avatar_version INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT user_settings_avatar_mode_check CHECK (avatar_mode IN ('uploaded', 'messenger', 'default'))
+  CONSTRAINT user_settings_avatar_mode_check CHECK (avatar_mode IN ('uploaded', 'messenger', 'default')),
+  CONSTRAINT user_settings_product_mode_check CHECK (
+    product_mode IS NULL OR product_mode IN ('learning', 'habit', 'jobhunt', 'work', 'quit', 'startup', 'closure')
+  )
 );
 
--- Weeks (reference for day_range)
+-- Weeks (reference)
 CREATE TABLE IF NOT EXISTS weeks (
   id VARCHAR(32) PRIMARY KEY,
   start_date DATE NOT NULL,
@@ -70,63 +72,54 @@ CREATE TABLE IF NOT EXISTS weeks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Weekly declarations (read model)
-CREATE TABLE IF NOT EXISTS weekly_declarations (
-  user_id UUID NOT NULL REFERENCES users(user_id),
+-- Engine read models
+CREATE TABLE IF NOT EXISTS engine_commitments (
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  mode VARCHAR(16) NOT NULL,
   week_id VARCHAR(32) NOT NULL,
-  main_focus TEXT NOT NULL,
-  why_now TEXT NOT NULL,
-  win_result TEXT NOT NULL,
-  week_failure TEXT NOT NULL,
+  title TEXT NOT NULL,
+  answers JSONB NOT NULL DEFAULT '{}',
   raw_post TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, week_id)
+  PRIMARY KEY (user_id, mode, week_id)
 );
 
--- Weekly reports (read model)
-CREATE TABLE IF NOT EXISTS weekly_reports (
-  user_id UUID NOT NULL REFERENCES users(user_id),
+CREATE TABLE IF NOT EXISTS engine_switches (
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  mode VARCHAR(16) NOT NULL,
   week_id VARCHAR(32) NOT NULL,
+  answers JSONB NOT NULL DEFAULT '{}',
   raw_post TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, week_id)
+  PRIMARY KEY (user_id, mode, week_id)
 );
 
--- Daily fixations (read model, INV-001: unique user_id, date)
-CREATE TABLE IF NOT EXISTS daily_fixations (
-  user_id UUID NOT NULL REFERENCES users(user_id),
+CREATE TABLE IF NOT EXISTS engine_steps (
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  mode VARCHAR(16) NOT NULL,
   date DATE NOT NULL,
   day VARCHAR(16) NOT NULL,
-  had_movement BOOLEAN NOT NULL,
-  movement_branch VARCHAR(32),
-  what_moved TEXT,
-  tomorrow_step TEXT,
-  what_stopped TEXT,
-  attention_sink TEXT,
+  movement_branch VARCHAR(16) NOT NULL,
+  answers JSONB NOT NULL DEFAULT '{}',
   raw_post TEXT NOT NULL,
-  why_partial TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, date)
+  PRIMARY KEY (user_id, mode, date)
 );
 
--- Weekly priority change (one per user/week)
-CREATE TABLE IF NOT EXISTS weekly_priority_changes (
+CREATE TABLE IF NOT EXISTS engine_digests (
   user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  mode VARCHAR(16) NOT NULL,
   week_id VARCHAR(32) NOT NULL,
-  reason TEXT NOT NULL,
-  new_focus TEXT NOT NULL,
-  new_win TEXT NOT NULL,
-  new_failure TEXT NOT NULL,
   raw_post TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, week_id)
+  PRIMARY KEY (user_id, mode, week_id)
 );
 
--- Снимки ритма (0–100 + компоненты 0..1) на локальную дату пользователя
+-- Rhythm snapshots (cross-mode)
 CREATE TABLE IF NOT EXISTS rhythm_snapshots (
   user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   as_of_date DATE NOT NULL,
@@ -139,7 +132,7 @@ CREATE TABLE IF NOT EXISTS rhythm_snapshots (
   PRIMARY KEY (user_id, as_of_date)
 );
 
--- LLM calls (audit, INV-006)
+-- LLM audit
 CREATE TABLE IF NOT EXISTS llm_calls (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_type VARCHAR(64) NOT NULL,
@@ -155,7 +148,7 @@ CREATE TABLE IF NOT EXISTS llm_calls (
 
 CREATE INDEX IF NOT EXISTS idx_llm_calls_idempotency ON llm_calls(idempotency_key) WHERE idempotency_key IS NOT NULL;
 
--- Idempotency cache (INV-006)
+-- Idempotency cache
 CREATE TABLE IF NOT EXISTS idempotency_cache (
   idempotency_key VARCHAR(256) PRIMARY KEY,
   content TEXT NOT NULL,

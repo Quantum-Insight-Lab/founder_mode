@@ -26,6 +26,7 @@ export const jobhuntConfig: ModeConfig = {
     afterFocusHint: 'Цель зафиксирована. Каждый день — /log: что сделал по поиску.',
     afterLogHint: 'В воскресенье — /recap: срез воронки за неделю.',
     afterRecapHint: 'Первый recap готов. Так видно, где движение, а где застой.',
+    afterRecapQuestion: 'Продолжим на следующей неделе?',
   },
   commitment: {
     titleQuestion: 'Какая цель поиска работы на эту неделю?',

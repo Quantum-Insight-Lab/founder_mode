@@ -42,8 +42,8 @@ describe.skipIf(!dbUrl)('LLM idempotency (INV-006)', () => {
     const client = createLLMClient();
     const key = `inv006-test-${Date.now()}`;
 
-    const r1 = await client.complete('sys', 'user', { idempotencyKey: key, callType: 'declaration' });
-    const r2 = await client.complete('sys', 'user', { idempotencyKey: key, callType: 'declaration' });
+    const r1 = await client.complete('sys', 'user', { idempotencyKey: key, callType: 'matter' });
+    const r2 = await client.complete('sys', 'user', { idempotencyKey: key, callType: 'matter' });
 
     expect(r1.content).toBe('cached response');
     expect(r2.content).toBe('cached response');

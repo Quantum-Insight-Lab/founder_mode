@@ -3,18 +3,21 @@ import type { AppContext } from '../../transport/types.js';
 import type { EngineMode } from '../../../services/product-mode.js';
 import type { ModeConfig } from '../../../modes/types.js';
 import { logger } from '../../../observability/logger.js';
-import { funnelCompleted, funnelStarted } from '../../../observability/metrics.js';
 import { getUserLocalTimeHHmm } from '../../../db/user-timezone.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
 import type { HandlerDeps } from '../deps.js';
 
 async function sendPivotCard(ctx: AppContext, deps: HandlerDeps, userId: string, rawPost: string): Promise<void> {
-  const { handleLlmReply, pool, resolveAvatarBackgroundImage } = deps;
+  const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'User';
   const avatarBackgroundImage = await resolveAvatarBackgroundImage(ctx, userId);
+  const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
-    const png = await renderEngineCardPng({ username, content: rawPost, timeHHmm, avatarBackgroundImage }, 'engine_pivot');
+    const png = await renderEngineCardPng(
+      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
+      'engine_pivot'
+    );
     if (ctx.replyImage) {
       await ctx.replyImage(png, 'pivot.png');
       return;
@@ -35,7 +38,6 @@ export async function handlePivotCommand(
   ensureSession(ctx);
   ctx.session.enginePivotAnswers = {};
   ctx.session.step = 'engine_pivot_0';
-  funnelStarted.inc({ type: 'switch' });
   await ctx.reply(config.switchFlow.questions[0].text);
 }
 
@@ -62,7 +64,6 @@ export async function handlePivotMessage(
     try {
       await ctx.reply(config.switchFlow.preparingText);
       const rawPost = await engineServices.switch.createSwitch(userId, mode, answers);
-      funnelCompleted.inc({ type: 'switch' });
       await sendPivotCard(ctx, deps, userId, rawPost);
     } catch (err) {
       logger.error({ err, userId, mode }, 'Engine pivot failed');

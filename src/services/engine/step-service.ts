@@ -4,7 +4,7 @@ import { logger } from '../../observability/logger.js';
 import { getTraceId } from '../../observability/trace.js';
 import type { DomainEvent, EngineStepMovementBranch } from '../../events/types.js';
 import { EVENT_TYPES } from '../../events/types.js';
-import { validateFixationDate } from '../../domain/validators.js';
+import { validateLogDate } from '../../domain/validators.js';
 import { getUserLocalDate } from '../../db/user-timezone.js';
 import { formatDayFull } from '../../domain/date-format.js';
 import {
@@ -34,7 +34,7 @@ export function createEngineStepService(eventStore: EventStore, deps: ServiceDep
     const config = getModeConfig(mode);
     validateEngineStepAnswers(data.movement_branch, data.answers, config);
     const todayStr = await getUserLocalDate(userId, pool);
-    if (!skipDateValidation) validateFixationDate(data.date, todayStr);
+    if (!skipDateValidation) validateLogDate(data.date, todayStr);
 
     const weekId = getWeekId(data.date);
     const hasCommitment = await pool.query(

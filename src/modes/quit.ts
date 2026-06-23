@@ -26,6 +26,7 @@ export const quitConfig: ModeConfig = {
     afterFocusHint: 'Обязательство зафиксировано. Каждый день — /log: как прошёл день.',
     afterLogHint: 'В воскресенье — /recap: срез недели и триггеры.',
     afterRecapHint: 'Первый recap готов. Срыв — не конец, а данные для следующей недели.',
+    afterRecapQuestion: 'Продолжим на следующей неделе?',
   },
   commitment: {
     titleQuestion: 'От чего отказываешься на этой неделе?',

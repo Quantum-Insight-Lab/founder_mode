@@ -4,19 +4,23 @@ import type { EngineMode } from '../../../services/product-mode.js';
 import type { ModeConfig } from '../../../modes/types.js';
 import { FLOW_CHOICE_USE_BUTTONS_HINT } from '../../../modes/shared.js';
 import { logger } from '../../../observability/logger.js';
-import { cardEditClicks, funnelCompleted, funnelStarted } from '../../../observability/metrics.js';
+import { cardEditClicks } from '../../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../../db/user-timezone.js';
 import { getWeekId } from '../../../services/week-service.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
 import type { HandlerDeps } from '../deps.js';
 
 async function sendRecapCard(ctx: AppContext, deps: HandlerDeps, userId: string, rawPost: string): Promise<void> {
-  const { handleLlmReply, pool, resolveAvatarBackgroundImage } = deps;
+  const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'User';
   const avatarBackgroundImage = await resolveAvatarBackgroundImage(ctx, userId);
+  const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
-    const png = await renderEngineCardPng({ username, content: rawPost, timeHHmm, avatarBackgroundImage }, 'engine_recap');
+    const png = await renderEngineCardPng(
+      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
+      'engine_recap'
+    );
     if (ctx.replyImage) {
       await ctx.replyImage(png, 'recap.png');
       return;
@@ -25,6 +29,28 @@ async function sendRecapCard(ctx: AppContext, deps: HandlerDeps, userId: string,
     logger.error({ err, userId }, 'Engine recap card PNG failed');
   }
   await handleLlmReply(ctx, rawPost, userId, 'digest');
+}
+
+async function maybeShowAfterRecapCta(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  config: ModeConfig,
+  isFirstRecap: boolean
+): Promise<void> {
+  if (!isFirstRecap) return;
+  const { pool } = deps;
+  const userId = ctx.userId;
+  const row = await pool.query<{ onboarding_completed_at: Date | null }>(
+    'SELECT onboarding_completed_at FROM users WHERE user_id = $1',
+    [userId]
+  );
+  if (row.rows[0]?.onboarding_completed_at != null) return;
+  await ctx.reply(config.onboarding.afterRecapQuestion, {
+    reply_markup: [[
+      { text: 'Да', callback_data: 'onboard_digest_cta_yes' },
+      { text: 'Позже', callback_data: 'onboard_digest_cta_later' },
+    ]],
+  });
 }
 
 export async function handleRecapCommand(
@@ -55,8 +81,12 @@ export async function handleRecapCommand(
     return;
   }
 
-  funnelStarted.inc({ type: 'digest' });
-  await runRecapGenerate(ctx, deps, mode, config, false);
+  const priorDigests = await pool.query(
+    'SELECT 1 FROM engine_digests WHERE user_id = $1 AND mode = $2 LIMIT 1',
+    [userId, mode]
+  );
+  const isFirstRecap = priorDigests.rows.length === 0;
+  await runRecapGenerate(ctx, deps, mode, config, false, isFirstRecap);
 }
 
 async function runRecapGenerate(
@@ -64,7 +94,8 @@ async function runRecapGenerate(
   deps: HandlerDeps,
   mode: EngineMode,
   config: ModeConfig,
-  isEdit: boolean
+  isEdit: boolean,
+  isFirstRecap: boolean
 ): Promise<void> {
   const { engineServices, replyWithServiceError } = deps;
   const userId = ctx.userId;
@@ -73,10 +104,10 @@ async function runRecapGenerate(
     const rawPost = isEdit
       ? await engineServices.digest.updateDigestManual(userId, mode)
       : await engineServices.digest.createDigest(userId, mode);
-    funnelCompleted.inc({ type: 'digest' });
     if (isEdit) await ctx.reply('❗️ Recap обновлён.');
     await sendRecapCard(ctx, deps, userId, rawPost);
     await ctx.reply(config.onboarding.afterRecapHint);
+    await maybeShowAfterRecapCta(ctx, deps, config, isFirstRecap);
   } catch (err) {
     logger.error({ err, userId, mode }, 'Engine recap failed');
     ctx.alertError?.(err, 'digest', userId);
@@ -110,8 +141,7 @@ export async function handleRecapEdit(
 ): Promise<void> {
   await ctx.answerCallbackQuery();
   cardEditClicks.inc({ kind: 'digest' });
-  funnelStarted.inc({ type: 'digest' });
-  await runRecapGenerate(ctx, deps, mode, config, true);
+  await runRecapGenerate(ctx, deps, mode, config, true, false);
 }
 
 export async function handleRecapChoiceMessage(ctx: AppContext, text: string): Promise<void> {

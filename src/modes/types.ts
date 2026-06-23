@@ -47,6 +47,7 @@ export interface ModeConfig {
     afterFocusHint: string;
     afterLogHint: string;
     afterRecapHint: string;
+    afterRecapQuestion: string;
   };
   commitment: {
     titleQuestion: string;

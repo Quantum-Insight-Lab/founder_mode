@@ -1,17 +1,8 @@
 /**
- * Event types: one type per act.
- * `source` in payload distinguishes initial creation from manual edit.
+ * Event types: engine-only.
  */
 export const EVENT_TYPES = {
-  DeclarationSet: 'DeclarationSet',
-  PriorityChanged: 'PriorityChanged',
-  ReportSet: 'ReportSet',
-  FixationSubmitted: 'FixationSubmitted',
   UserRegistered: 'UserRegistered',
-  MatterSet: 'MatterSet',
-  MatterSwitched: 'MatterSwitched',
-  MatterStepSubmitted: 'MatterStepSubmitted',
-  MatterDigestSet: 'MatterDigestSet',
   CommitmentSet: 'CommitmentSet',
   CommitmentSwitched: 'CommitmentSwitched',
   DailyStepSubmitted: 'DailyStepSubmitted',
@@ -43,102 +34,10 @@ interface BaseEvent {
 
 export type EventSource = 'initial' | 'manual';
 
-export interface DeclarationSetPayload {
-  user_id: string;
-  week_id: string;
-  main_focus: string;
-  why_now: string;
-  week_failure: string;
-  raw_post: string;
-  source: EventSource;
-  /** @deprecated legacy events only */
-  win_result?: string;
-}
-
-export interface ReportSetPayload {
-  user_id: string;
-  week_id: string;
-  raw_post: string;
-  source: EventSource;
-}
-
-export interface PriorityChangedPayload {
-  user_id: string;
-  week_id: string;
-  reason: string;
-  new_focus: string;
-  new_win: string;
-  new_failure: string;
-  raw_post: string;
-  source: EventSource;
-}
-
-export type FixationMovementBranch = 'yes' | 'no' | 'partial';
-
-export interface FixationSubmittedPayload {
-  user_id: string;
-  date: string; // YYYY-MM-DD
-  day: string; // Понедельник, Вторник, ... (рус.)
-  had_movement: boolean;
-  movement_branch: FixationMovementBranch;
-  what_moved?: string;
-  tomorrow_step?: string;
-  what_stopped?: string;
-  attention_sink?: string;
-  raw_post: string;
-  why_partial?: string;
-  source: EventSource;
-}
-
 export interface UserRegisteredPayload {
-  user_id: string; // UUID, internal
-  tg_id?: string; // Telegram platform ID
-  max_id?: string; // MAX messenger platform ID (at least one of tg_id, max_id)
-}
-
-export interface MatterSetPayload {
   user_id: string;
-  week_id: string;
-  title: string;
-  why_postponed: string;
-  cost_of_inaction: string;
-  week_target: string;
-  raw_post: string;
-  source: EventSource;
-}
-
-export interface MatterSwitchedPayload {
-  user_id: string;
-  week_id: string;
-  reason: string;
-  new_title: string;
-  new_target: string;
-  raw_post: string;
-  source: EventSource;
-}
-
-export type MatterStepMovementBranch = 'yes' | 'no' | 'partial';
-
-export interface MatterStepSubmittedPayload {
-  user_id: string;
-  date: string;
-  day: string;
-  had_movement: boolean;
-  movement_branch: MatterStepMovementBranch;
-  what_moved?: string;
-  tomorrow_step?: string;
-  what_stopped?: string;
-  avoidance?: string;
-  raw_post: string;
-  why_partial?: string;
-  source: EventSource;
-}
-
-export interface MatterDigestSetPayload {
-  user_id: string;
-  week_id: string;
-  raw_post: string;
-  source: EventSource;
+  tg_id?: string;
+  max_id?: string;
 }
 
 export interface CommitmentSetPayload {
@@ -181,41 +80,9 @@ export interface DigestSetPayload {
   source: EventSource;
 }
 
-export interface DeclarationSetEvent extends BaseEvent {
-  event_type: 'DeclarationSet';
-  payload: DeclarationSetPayload;
-}
-export interface ReportSetEvent extends BaseEvent {
-  event_type: 'ReportSet';
-  payload: ReportSetPayload;
-}
-export interface PriorityChangedEvent extends BaseEvent {
-  event_type: 'PriorityChanged';
-  payload: PriorityChangedPayload;
-}
-export interface FixationSubmittedEvent extends BaseEvent {
-  event_type: 'FixationSubmitted';
-  payload: FixationSubmittedPayload;
-}
 export interface UserRegisteredEvent extends BaseEvent {
   event_type: 'UserRegistered';
   payload: UserRegisteredPayload;
-}
-export interface MatterSetEvent extends BaseEvent {
-  event_type: 'MatterSet';
-  payload: MatterSetPayload;
-}
-export interface MatterSwitchedEvent extends BaseEvent {
-  event_type: 'MatterSwitched';
-  payload: MatterSwitchedPayload;
-}
-export interface MatterStepSubmittedEvent extends BaseEvent {
-  event_type: 'MatterStepSubmitted';
-  payload: MatterStepSubmittedPayload;
-}
-export interface MatterDigestSetEvent extends BaseEvent {
-  event_type: 'MatterDigestSet';
-  payload: MatterDigestSetPayload;
 }
 export interface CommitmentSetEvent extends BaseEvent {
   event_type: 'CommitmentSet';
@@ -235,15 +102,7 @@ export interface DigestSetEvent extends BaseEvent {
 }
 
 export type DomainEvent =
-  | DeclarationSetEvent
-  | PriorityChangedEvent
-  | ReportSetEvent
-  | FixationSubmittedEvent
   | UserRegisteredEvent
-  | MatterSetEvent
-  | MatterSwitchedEvent
-  | MatterStepSubmittedEvent
-  | MatterDigestSetEvent
   | CommitmentSetEvent
   | CommitmentSwitchedEvent
   | DailyStepSubmittedEvent

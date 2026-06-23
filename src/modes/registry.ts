@@ -4,12 +4,18 @@ import { learningConfig } from './learning.js';
 import { habitConfig } from './habit.js';
 import { jobhuntConfig } from './jobhunt.js';
 import { workConfig } from './work.js';
+import { quitConfig } from './quit.js';
+import { startupConfig } from './startup.js';
+import { closureConfig } from './closure.js';
 
 export const MODE_CONFIGS: Record<EngineMode, ModeConfig> = {
   learning: learningConfig,
   habit: habitConfig,
   jobhunt: jobhuntConfig,
   work: workConfig,
+  quit: quitConfig,
+  startup: startupConfig,
+  closure: closureConfig,
 };
 
 export function getModeConfig(mode: EngineMode): ModeConfig {

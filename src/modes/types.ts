@@ -21,7 +21,19 @@ export type LlmPromptKey =
   | 'workCommitment'
   | 'workDaily'
   | 'workDigest'
-  | 'workSwitch';
+  | 'workSwitch'
+  | 'quitCommitment'
+  | 'quitDaily'
+  | 'quitDigest'
+  | 'quitSwitch'
+  | 'startupCommitment'
+  | 'startupDaily'
+  | 'startupDigest'
+  | 'startupSwitch'
+  | 'closureCommitment'
+  | 'closureDaily'
+  | 'closureDigest'
+  | 'closureSwitch';
 
 export interface ModeConfig {
   key: EngineMode;

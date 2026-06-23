@@ -1,17 +1,21 @@
 import type { Pool } from 'pg';
 
-export type EngineMode = 'learning' | 'habit' | 'jobhunt' | 'work';
-export type LegacyProductMode = 'founder' | 'closure';
+export type EngineMode = 'learning' | 'habit' | 'jobhunt' | 'work' | 'quit' | 'startup' | 'closure';
+export type LegacyProductMode = 'founder';
 export type ProductMode = LegacyProductMode | EngineMode;
 
-export const ENGINE_MODES: EngineMode[] = ['learning', 'habit', 'jobhunt', 'work'];
+export const ENGINE_MODES: EngineMode[] = ['learning', 'habit', 'jobhunt', 'work', 'quit', 'startup', 'closure'];
 
 export function isEngineMode(mode: ProductMode | null | undefined): mode is EngineMode {
-  return mode === 'learning' || mode === 'habit' || mode === 'jobhunt' || mode === 'work';
-}
-
-export function isClosureProductMode(mode: ProductMode | null | undefined): boolean {
-  return mode === 'closure';
+  return (
+    mode === 'learning' ||
+    mode === 'habit' ||
+    mode === 'jobhunt' ||
+    mode === 'work' ||
+    mode === 'quit' ||
+    mode === 'startup' ||
+    mode === 'closure'
+  );
 }
 
 export function isFounderProductMode(mode: ProductMode | null | undefined): boolean {
@@ -25,6 +29,8 @@ export function productModeLabel(mode: ProductMode | null | undefined): string {
   if (mode === 'habit') return 'Habit';
   if (mode === 'jobhunt') return 'Job hunt';
   if (mode === 'work') return 'Work';
+  if (mode === 'quit') return 'Quit';
+  if (mode === 'startup') return 'Startup';
   return '—';
 }
 

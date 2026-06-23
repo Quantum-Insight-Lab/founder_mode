@@ -36,24 +36,10 @@ import {
   SETTINGS_AVATAR,
   SETTINGS_CONFIGURE_NOTIFICATIONS,
 } from '../conversations.js';
-import {
-  CLOSURE_SETTINGS_MATTER,
-  CLOSURE_SETTINGS_STEP,
-  CLOSURE_SETTINGS_DIGEST,
-  SETTINGS_NOTIFICATIONS as CLOSURE_SETTINGS_NOTIFICATIONS,
-  SETTINGS_TIMEZONE as CLOSURE_SETTINGS_TIMEZONE,
-  SETTINGS_AVATAR as CLOSURE_SETTINGS_AVATAR,
-  SETTINGS_CONFIGURE_NOTIFICATIONS as CLOSURE_SETTINGS_CONFIGURE_NOTIFICATIONS,
-} from '../closure-conversations.js';
-import { isClosureProductMode, isEngineMode, productModeLabel } from '../../services/product-mode.js';
+import { isEngineMode, productModeLabel } from '../../services/product-mode.js';
 import { getModeConfig } from '../../modes/registry.js';
 import { SETTINGS_PRODUCT_MODE } from '../product-mode-copy.js';
 import { registerProductModeHandlers } from './product-mode.js';
-import { registerClosureOnboardingHandlers } from './closure/onboarding.js';
-import { registerMatterHandlers } from './closure/matter.js';
-import { registerSwitchHandlers } from './closure/switch.js';
-import { registerStepHandlers } from './closure/step.js';
-import { registerDigestHandlers } from './closure/digest.js';
 import { registerEngineHandlers } from './engine/index.js';
 import { createEngineServices } from '../../services/engine/index.js';
 import { registerOnboardingHandlers } from './onboarding.js';
@@ -213,16 +199,15 @@ export function createAppDeps(): HandlerDeps {
           : 'Стандартный';
 
     const mode = await settingsService.getProductMode(userId);
-    const closure = isClosureProductMode(mode);
     const engine = isEngineMode(mode);
     const engineConfig = engine ? getModeConfig(mode) : null;
-    const lblNotif = closure ? CLOSURE_SETTINGS_NOTIFICATIONS : SETTINGS_NOTIFICATIONS;
-    const lblDecl = engine ? engineConfig!.settings.commitLabel : closure ? CLOSURE_SETTINGS_MATTER : SETTINGS_DECLARATION;
-    const lblFix = engine ? engineConfig!.settings.dailyLabel : closure ? CLOSURE_SETTINGS_STEP : SETTINGS_FIXATION;
-    const lblReport = engine ? engineConfig!.settings.digestLabel : closure ? CLOSURE_SETTINGS_DIGEST : SETTINGS_REPORT;
-    const lblTz = closure ? CLOSURE_SETTINGS_TIMEZONE : SETTINGS_TIMEZONE;
-    const lblAvatar = closure ? CLOSURE_SETTINGS_AVATAR : SETTINGS_AVATAR;
-    const lblConfigure = closure ? CLOSURE_SETTINGS_CONFIGURE_NOTIFICATIONS : SETTINGS_CONFIGURE_NOTIFICATIONS;
+    const lblNotif = SETTINGS_NOTIFICATIONS;
+    const lblDecl = engine ? engineConfig!.settings.commitLabel : SETTINGS_DECLARATION;
+    const lblFix = engine ? engineConfig!.settings.dailyLabel : SETTINGS_FIXATION;
+    const lblReport = engine ? engineConfig!.settings.digestLabel : SETTINGS_REPORT;
+    const lblTz = SETTINGS_TIMEZONE;
+    const lblAvatar = SETTINGS_AVATAR;
+    const lblConfigure = SETTINGS_CONFIGURE_NOTIFICATIONS;
 
     const text =
       `<b>${SETTINGS_PRODUCT_MODE}</b>: ${productModeLabel(mode)}\n` +
@@ -259,13 +244,12 @@ export function createAppDeps(): HandlerDeps {
       : '—';
 
     const mode = await settingsService.getProductMode(userId);
-    const closure = isClosureProductMode(mode);
     const engine = isEngineMode(mode);
     const engineConfig = engine ? getModeConfig(mode) : null;
-    const lblNotif = closure ? CLOSURE_SETTINGS_NOTIFICATIONS : SETTINGS_NOTIFICATIONS;
-    const lblDecl = engine ? engineConfig!.settings.commitLabel : closure ? CLOSURE_SETTINGS_MATTER : SETTINGS_DECLARATION;
-    const lblFix = engine ? engineConfig!.settings.dailyLabel : closure ? CLOSURE_SETTINGS_STEP : SETTINGS_FIXATION;
-    const lblReport = engine ? engineConfig!.settings.digestLabel : closure ? CLOSURE_SETTINGS_DIGEST : SETTINGS_REPORT;
+    const lblNotif = SETTINGS_NOTIFICATIONS;
+    const lblDecl = engine ? engineConfig!.settings.commitLabel : SETTINGS_DECLARATION;
+    const lblFix = engine ? engineConfig!.settings.dailyLabel : SETTINGS_FIXATION;
+    const lblReport = engine ? engineConfig!.settings.digestLabel : SETTINGS_REPORT;
 
     const text =
       `<b>${lblNotif}</b>: ${notif}\n` +
@@ -281,9 +265,9 @@ export function createAppDeps(): HandlerDeps {
         },
       ],
       [
-        { text: closure ? 'Дело недели' : 'Приоритет', callback_data: 'settings_declaration' },
-        { text: closure ? 'Шаг дня' : 'Фиксация', callback_data: 'settings_fixation' },
-        { text: closure ? 'Дайджест' : 'Отчёт', callback_data: 'settings_report' },
+        { text: engine ? engineConfig!.settings.commitLabel : 'Приоритет', callback_data: 'settings_declaration' },
+        { text: engine ? engineConfig!.settings.dailyLabel : 'Фиксация', callback_data: 'settings_fixation' },
+        { text: engine ? engineConfig!.settings.digestLabel : 'Отчёт', callback_data: 'settings_report' },
       ],
       [{ text: 'Назад', callback_data: 'settings_notifications_back' }],
     ];
@@ -364,15 +348,10 @@ export function registerHandlers(bot: Bot<BotContext>, deps: HandlerDeps) {
   initTokenSpikeChecker(deps.pool, bot.api);
   registerProductModeHandlers(bot, deps);
   registerOnboardingHandlers(bot, deps);
-  registerClosureOnboardingHandlers(bot, deps);
   registerDeclarationHandlers(bot, deps);
   registerChangeHandlers(bot, deps);
   registerReportHandlers(bot, deps);
   registerFixationHandlers(bot, deps);
-  registerMatterHandlers(bot, deps);
-  registerSwitchHandlers(bot, deps);
-  registerStepHandlers(bot, deps);
-  registerDigestHandlers(bot, deps);
   registerEngineHandlers(bot, deps);
   registerSettingsHandlers(bot, deps);
   registerDeleteHandlers(bot, deps);

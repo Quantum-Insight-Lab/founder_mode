@@ -6,14 +6,12 @@ import {
   getUserProductMode,
   setUserProductMode,
   productModeLabel,
-  isClosureProductMode,
   isEngineMode,
   ENGINE_MODES,
 } from '../src/services/product-mode.js';
 import { notificationCopyForMode } from '../src/scheduler/notification-copy.js';
 import { idleCommandListForMode } from '../src/bot/idle-for-mode.js';
 import { IDLE_COMMAND_LIST_REPLY } from '../src/bot/idle-message.js';
-import { CLOSURE_IDLE_COMMAND_LIST_REPLY } from '../src/bot/closure-idle-message.js';
 import { getModeConfig } from '../src/modes/registry.js';
 import { withProductMode } from '../src/bot/with-product-mode.js';
 import { wrongProductModeHint, PRODUCT_MODE_PICK_FIRST } from '../src/bot/product-mode-copy.js';
@@ -35,13 +33,14 @@ describe('product-mode helpers', () => {
     expect(productModeLabel('habit')).toBe('Habit');
     expect(productModeLabel('jobhunt')).toBe('Job hunt');
     expect(productModeLabel('work')).toBe('Work');
+    expect(productModeLabel('quit')).toBe('Quit');
+    expect(productModeLabel('startup')).toBe('Startup');
     expect(productModeLabel(null)).toBe('—');
   });
 
   it('isEngineMode', () => {
     for (const mode of ENGINE_MODES) expect(isEngineMode(mode)).toBe(true);
     expect(isEngineMode('founder')).toBe(false);
-    expect(isEngineMode('closure')).toBe(false);
     expect(isEngineMode(null)).toBe(false);
   });
 
@@ -51,8 +50,8 @@ describe('product-mode helpers', () => {
     expect(founder.declarationText).toContain('declaration');
 
     const closure = notificationCopyForMode('closure');
-    expect(closure.stepCallback).toBe('notify_step');
-    expect(closure.digestText).toContain('дайджест');
+    expect(closure.stepCallback).toBe('notify_log');
+    expect(closure.digestText).toContain('recap');
 
     const learning = notificationCopyForMode('learning');
     expect(learning.declarationCallback).toBe('notify_focus');
@@ -61,7 +60,7 @@ describe('product-mode helpers', () => {
 
   it('idle list per mode', () => {
     expect(idleCommandListForMode('founder')).toBe(IDLE_COMMAND_LIST_REPLY);
-    expect(idleCommandListForMode('closure')).toBe(CLOSURE_IDLE_COMMAND_LIST_REPLY);
+    expect(idleCommandListForMode('closure')).toBe(getModeConfig('closure').idleReply);
     expect(idleCommandListForMode('learning')).toBe(getModeConfig('learning').idleReply);
     expect(idleCommandListForMode(null)).toBe(IDLE_COMMAND_LIST_REPLY);
   });
@@ -156,6 +155,6 @@ describe.skipIf(!dbUrl)('product-mode settings-service', () => {
     expect(await getUserProductMode(pool, userId)).toBeNull();
     await setUserProductMode(pool, userId, 'founder');
     expect(await getUserProductMode(pool, userId)).toBe('founder');
-    expect(isClosureProductMode(await getUserProductMode(pool, userId))).toBe(false);
+    expect(isEngineMode(await getUserProductMode(pool, userId))).toBe(false);
   });
 });

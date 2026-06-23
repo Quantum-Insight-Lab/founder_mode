@@ -8,7 +8,7 @@ export function getAppMode(): AppMode {
   return 'founder';
 }
 
-/** @deprecated Use isClosureProductMode(mode) with user's product_mode */
+/** @deprecated Use isEngineMode(mode) with user's product_mode */
 export function isClosureMode(): boolean {
   return false;
 }

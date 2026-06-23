@@ -118,20 +118,28 @@ export async function dispatchEngine(ctx: AppContext, event: IncomingEvent, deps
     switch (data) {
       case 'product_mode_learning':
         return handleProductModePick(ctx, 'learning', deps);
+      case 'product_mode_startup':
+        return handleProductModePick(ctx, 'startup', deps);
       case 'product_mode_habit':
         return handleProductModePick(ctx, 'habit', deps);
       case 'product_mode_jobhunt':
         return handleProductModePick(ctx, 'jobhunt', deps);
       case 'product_mode_work':
         return handleProductModePick(ctx, 'work', deps);
+      case 'product_mode_quit':
+        return handleProductModePick(ctx, 'quit', deps);
       case 'product_mode_set_learning':
         return handleProductModeSet(ctx, 'learning', deps);
+      case 'product_mode_set_startup':
+        return handleProductModeSet(ctx, 'startup', deps);
       case 'product_mode_set_habit':
         return handleProductModeSet(ctx, 'habit', deps);
       case 'product_mode_set_jobhunt':
         return handleProductModeSet(ctx, 'jobhunt', deps);
       case 'product_mode_set_work':
         return handleProductModeSet(ctx, 'work', deps);
+      case 'product_mode_set_quit':
+        return handleProductModeSet(ctx, 'quit', deps);
       case 'settings_product_mode':
         return handleSettingsProductModeMenu(ctx, deps);
       case 'settings_product_mode_back':

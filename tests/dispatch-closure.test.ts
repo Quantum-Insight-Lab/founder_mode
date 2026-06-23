@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { dispatchClosure } from '../src/bot/dispatch-closure.js';
-import { CLOSURE_IDLE_COMMAND_LIST_REPLY } from '../src/bot/closure-idle-message.js';
+import { idleCommandListForMode } from '../src/bot/idle-for-mode.js';
 import { FLOW_CHOICE_USE_BUTTONS_HINT } from '../src/bot/closure-conversations.js';
 
 function createTestCtx() {
@@ -28,7 +28,7 @@ describe('dispatchClosure', () => {
   it('replies with closure idle message for unknown command', async () => {
     const { ctx, replies } = createTestCtx();
     await dispatchClosure(ctx, { type: 'command', name: 'abracadabra' }, closureDeps);
-    expect(replies).toEqual([CLOSURE_IDLE_COMMAND_LIST_REPLY]);
+    expect(replies).toEqual([idleCommandListForMode('closure')]);
   });
 
   it('matter_choice + plain text: button hint', async () => {

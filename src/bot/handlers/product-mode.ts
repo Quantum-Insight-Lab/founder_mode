@@ -4,13 +4,12 @@ import { ensureSession } from '../context.js';
 import { buildAppContext } from '../transport/telegram-adapter.js';
 import type { AppContext } from '../transport/types.js';
 import type { ProductMode } from '../../services/product-mode.js';
-import { isClosureProductMode, isEngineMode, productModeLabel } from '../../services/product-mode.js';
+import { isEngineMode, productModeLabel } from '../../services/product-mode.js';
 import { getModeConfig } from '../../modes/registry.js';
 import type { ModeConfig } from '../../modes/types.js';
 import { botOpens } from '../../observability/metrics.js';
 import { logger } from '../../observability/logger.js';
 import { ONBOARDING_INTRO } from '../conversations.js';
-import { CLOSURE_ONBOARDING_INTRO } from '../closure-conversations.js';
 import {
   PRODUCT_MODE_PICKER_TEXT,
   productModeSwitchedText,
@@ -27,15 +26,6 @@ import {
   handleOnboardReportCtaLater,
 } from './onboarding.js';
 import {
-  handleClosureStart,
-  handleClosureOnboardCtaYes,
-  handleClosureOnboardCtaLater,
-  handleClosureOnboardNotifOff,
-  handleClosureOnboardTimezone,
-  handleClosureOnboardDigestCtaYes,
-  handleClosureOnboardDigestCtaLater,
-} from './closure/onboarding.js';
-import {
   handleEngineStart,
   handleEngineOnboardCtaYes,
   handleEngineOnboardCtaLater,
@@ -49,12 +39,16 @@ const MODE_PICKER_MARKUP: import('../transport/types.js').InlineButton[][] = [
     { text: 'Closure', callback_data: 'product_mode_closure' },
   ],
   [
+    { text: 'Startup', callback_data: 'product_mode_startup' },
     { text: 'Learning', callback_data: 'product_mode_learning' },
-    { text: 'Habit', callback_data: 'product_mode_habit' },
   ],
   [
+    { text: 'Habit', callback_data: 'product_mode_habit' },
     { text: 'Work', callback_data: 'product_mode_work' },
+  ],
+  [
     { text: 'Job hunt', callback_data: 'product_mode_jobhunt' },
+    { text: 'Quit', callback_data: 'product_mode_quit' },
   ],
 ];
 
@@ -64,12 +58,16 @@ const SETTINGS_MODE_MARKUP: import('../transport/types.js').InlineButton[][] = [
     { text: 'Closure', callback_data: 'product_mode_set_closure' },
   ],
   [
+    { text: 'Startup', callback_data: 'product_mode_set_startup' },
     { text: 'Learning', callback_data: 'product_mode_set_learning' },
-    { text: 'Habit', callback_data: 'product_mode_set_habit' },
   ],
   [
+    { text: 'Habit', callback_data: 'product_mode_set_habit' },
     { text: 'Work', callback_data: 'product_mode_set_work' },
+  ],
+  [
     { text: 'Job hunt', callback_data: 'product_mode_set_jobhunt' },
+    { text: 'Quit', callback_data: 'product_mode_set_quit' },
   ],
   [{ text: 'Назад', callback_data: 'settings_product_mode_back' }],
 ];
@@ -77,8 +75,6 @@ const SETTINGS_MODE_MARKUP: import('../transport/types.js').InlineButton[][] = [
 export async function runModeStart(ctx: AppContext, deps: HandlerDeps, mode: ProductMode): Promise<void> {
   if (isEngineMode(mode)) {
     await handleEngineStart(ctx, deps, mode, getModeConfig(mode), { skipBotOpen: true });
-  } else if (isClosureProductMode(mode)) {
-    await handleClosureStart(ctx, deps, { skipBotOpen: true });
   } else {
     await handleStart(ctx, deps, { skipBotOpen: true });
   }
@@ -122,11 +118,7 @@ export async function handleProductModeSet(ctx: AppContext, mode: ProductMode, d
   await deps.setUserProductMode(userId, mode);
   logger.info({ userId, mode }, 'Product mode switched from settings');
   const switched = productModeSwitchedText(mode);
-  const intro = isEngineMode(mode)
-    ? getModeConfig(mode).onboarding.intro
-    : isClosureProductMode(mode)
-      ? CLOSURE_ONBOARDING_INTRO
-      : ONBOARDING_INTRO;
+  const intro = isEngineMode(mode) ? getModeConfig(mode).onboarding.intro : ONBOARDING_INTRO;
   await ctx.reply(`${switched}\n\n${intro}`, { parse_mode: 'HTML' });
 }
 
@@ -137,7 +129,6 @@ export async function handleSettingsProductModeBack(ctx: AppContext, deps: Handl
 
 interface OnboardHandlers {
   founder: () => Promise<void>;
-  closure: () => Promise<void>;
   engine: (config: ModeConfig) => Promise<void>;
 }
 
@@ -151,8 +142,7 @@ async function routeOnboardByMode(ctx: AppContext, deps: HandlerDeps, handlers: 
     await handlers.engine(getModeConfig(mode));
     return;
   }
-  if (isClosureProductMode(mode)) await handlers.closure();
-  else await handlers.founder();
+  await handlers.founder();
 }
 
 export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerDeps): void {
@@ -173,6 +163,10 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleProductModePick(appCtx, 'learning', deps);
   });
+  bot.callbackQuery('product_mode_startup', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleProductModePick(appCtx, 'startup', deps);
+  });
   bot.callbackQuery('product_mode_habit', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleProductModePick(appCtx, 'habit', deps);
@@ -184,6 +178,10 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
   bot.callbackQuery('product_mode_work', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleProductModePick(appCtx, 'work', deps);
+  });
+  bot.callbackQuery('product_mode_quit', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleProductModePick(appCtx, 'quit', deps);
   });
   bot.callbackQuery('product_mode_set_founder', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
@@ -197,6 +195,10 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleProductModeSet(appCtx, 'learning', deps);
   });
+  bot.callbackQuery('product_mode_set_startup', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleProductModeSet(appCtx, 'startup', deps);
+  });
   bot.callbackQuery('product_mode_set_habit', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleProductModeSet(appCtx, 'habit', deps);
@@ -208,6 +210,10 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
   bot.callbackQuery('product_mode_set_work', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleProductModeSet(appCtx, 'work', deps);
+  });
+  bot.callbackQuery('product_mode_set_quit', async (ctx) => {
+    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
+    await handleProductModeSet(appCtx, 'quit', deps);
   });
   bot.callbackQuery('settings_product_mode', async (ctx) => {
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
@@ -222,7 +228,6 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await routeOnboardByMode(appCtx, deps, {
       founder: () => handleOnboardCtaYes(appCtx, deps),
-      closure: () => handleClosureOnboardCtaYes(appCtx, deps),
       engine: (config) => handleEngineOnboardCtaYes(appCtx, deps, config),
     });
   });
@@ -230,7 +235,6 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await routeOnboardByMode(appCtx, deps, {
       founder: () => handleOnboardCtaLater(appCtx, deps),
-      closure: () => handleClosureOnboardCtaLater(appCtx, deps),
       engine: (config) => handleEngineOnboardCtaLater(appCtx, deps, config),
     });
   });
@@ -238,7 +242,6 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await routeOnboardByMode(appCtx, deps, {
       founder: () => handleOnboardNotifOff(appCtx, deps),
-      closure: () => handleClosureOnboardNotifOff(appCtx, deps),
       engine: () => handleEngineOnboardNotifOff(appCtx, deps),
     });
   });
@@ -250,14 +253,6 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
     const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
     await handleOnboardReportCtaLater(appCtx, deps);
   });
-  bot.callbackQuery('onboard_digest_cta_yes', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleClosureOnboardDigestCtaYes(appCtx, deps);
-  });
-  bot.callbackQuery('onboard_digest_cta_later', async (ctx) => {
-    const appCtx = buildAppContext(ctx as BotContext & { userId?: string });
-    await handleClosureOnboardDigestCtaLater(appCtx, deps);
-  });
 
   bot.on('message:text').filter(
     (ctx) =>
@@ -268,7 +263,6 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
       const text = ctx.message.text?.trim() ?? '';
       await routeOnboardByMode(appCtx, deps, {
         founder: () => handleOnboardTimezone(appCtx, text, deps),
-        closure: () => handleClosureOnboardTimezone(appCtx, text, deps),
         engine: (config) => handleEngineOnboardTimezone(appCtx, text, deps, config),
       });
     }

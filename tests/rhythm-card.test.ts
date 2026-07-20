@@ -36,7 +36,7 @@ describe.skipIf(!dbUrl)('rhythm-card cross-mode', () => {
 
   it('aggregates steps across modes when digest exists', async () => {
     await pool.query(
-      `INSERT INTO engine_digests (user_id, mode, week_id, raw_post) VALUES ($1, 'habit', '20260309', 'd')`,
+      `INSERT INTO engine_digests (user_id, mode, week_id, raw_post) VALUES ($1, 'learning', '20260309', 'd')`,
       [userId]
     );
     await pool.query(

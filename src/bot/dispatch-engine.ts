@@ -149,8 +149,6 @@ export async function dispatchEngine(ctx: AppContext, event: IncomingEvent, deps
         return handleProductModePick(ctx, 'learning', deps);
       case 'product_mode_startup':
         return handleProductModePick(ctx, 'startup', deps);
-      case 'product_mode_habit':
-        return handleProductModePick(ctx, 'habit', deps);
       case 'product_mode_jobhunt':
         return handleProductModePick(ctx, 'jobhunt', deps);
       case 'product_mode_work':
@@ -163,8 +161,6 @@ export async function dispatchEngine(ctx: AppContext, event: IncomingEvent, deps
         return handleProductModeSet(ctx, 'learning', deps);
       case 'product_mode_set_startup':
         return handleProductModeSet(ctx, 'startup', deps);
-      case 'product_mode_set_habit':
-        return handleProductModeSet(ctx, 'habit', deps);
       case 'product_mode_set_jobhunt':
         return handleProductModeSet(ctx, 'jobhunt', deps);
       case 'product_mode_set_work':

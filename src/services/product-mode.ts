@@ -1,14 +1,13 @@
 import type { Pool } from 'pg';
 
-export type ProductMode = 'learning' | 'habit' | 'jobhunt' | 'work' | 'quit' | 'startup' | 'closure';
+export type ProductMode = 'learning' | 'jobhunt' | 'work' | 'quit' | 'startup' | 'closure';
 export type EngineMode = ProductMode;
 
-export const ENGINE_MODES: EngineMode[] = ['learning', 'habit', 'jobhunt', 'work', 'quit', 'startup', 'closure'];
+export const ENGINE_MODES: EngineMode[] = ['learning', 'jobhunt', 'work', 'quit', 'startup', 'closure'];
 
 export function isEngineMode(mode: ProductMode | null | undefined): mode is EngineMode {
   return (
     mode === 'learning' ||
-    mode === 'habit' ||
     mode === 'jobhunt' ||
     mode === 'work' ||
     mode === 'quit' ||
@@ -20,7 +19,6 @@ export function isEngineMode(mode: ProductMode | null | undefined): mode is Engi
 export function productModeLabel(mode: ProductMode | null | undefined): string {
   if (mode === 'closure') return 'Closure';
   if (mode === 'learning') return 'Learning';
-  if (mode === 'habit') return 'Habit';
   if (mode === 'jobhunt') return 'Job hunt';
   if (mode === 'work') return 'Work';
   if (mode === 'quit') return 'Quit';

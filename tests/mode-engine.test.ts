@@ -73,11 +73,11 @@ describe('withEngineMode guard', () => {
   it('allows engine mode', async () => {
     const ctx = { userId: 'u1', async reply() {} } as unknown as AppContext;
     const deps = {
-      getUserProductMode: async () => 'habit' as const,
+      getUserProductMode: async () => 'learning' as const,
     } as HandlerDeps;
     const handler = vi.fn();
     await withEngineMode(handler)(ctx, deps);
-    expect(handler).toHaveBeenCalledWith(ctx, deps, 'habit', MODE_CONFIGS.habit);
+    expect(handler).toHaveBeenCalledWith(ctx, deps, 'learning', MODE_CONFIGS.learning);
   });
 });
 

@@ -29,10 +29,7 @@ const MODE_PICKER_MARKUP: import('../transport/types.js').InlineButton[][] = [
     { text: 'Closure', callback_data: 'product_mode_closure' },
     { text: 'Startup', callback_data: 'product_mode_startup' },
   ],
-  [
-    { text: 'Learning', callback_data: 'product_mode_learning' },
-    { text: 'Habit', callback_data: 'product_mode_habit' },
-  ],
+  [{ text: 'Learning', callback_data: 'product_mode_learning' }],
   [
     { text: 'Work', callback_data: 'product_mode_work' },
     { text: 'Job hunt', callback_data: 'product_mode_jobhunt' },
@@ -45,10 +42,7 @@ const SETTINGS_MODE_MARKUP: import('../transport/types.js').InlineButton[][] = [
     { text: 'Closure', callback_data: 'product_mode_set_closure' },
     { text: 'Startup', callback_data: 'product_mode_set_startup' },
   ],
-  [
-    { text: 'Learning', callback_data: 'product_mode_set_learning' },
-    { text: 'Habit', callback_data: 'product_mode_set_habit' },
-  ],
+  [{ text: 'Learning', callback_data: 'product_mode_set_learning' }],
   [
     { text: 'Work', callback_data: 'product_mode_set_work' },
     { text: 'Job hunt', callback_data: 'product_mode_set_jobhunt' },
@@ -126,14 +120,12 @@ export function registerProductModeHandlers(bot: Bot<BotContext>, deps: HandlerD
   bot.callbackQuery('product_mode_closure', pick('closure'));
   bot.callbackQuery('product_mode_startup', pick('startup'));
   bot.callbackQuery('product_mode_learning', pick('learning'));
-  bot.callbackQuery('product_mode_habit', pick('habit'));
   bot.callbackQuery('product_mode_jobhunt', pick('jobhunt'));
   bot.callbackQuery('product_mode_work', pick('work'));
   bot.callbackQuery('product_mode_quit', pick('quit'));
   bot.callbackQuery('product_mode_set_closure', set('closure'));
   bot.callbackQuery('product_mode_set_startup', set('startup'));
   bot.callbackQuery('product_mode_set_learning', set('learning'));
-  bot.callbackQuery('product_mode_set_habit', set('habit'));
   bot.callbackQuery('product_mode_set_jobhunt', set('jobhunt'));
   bot.callbackQuery('product_mode_set_work', set('work'));
   bot.callbackQuery('product_mode_set_quit', set('quit'));

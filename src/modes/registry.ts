@@ -1,7 +1,6 @@
 import type { EngineMode } from '../services/product-mode.js';
 import type { ModeConfig } from './types.js';
 import { learningConfig } from './learning.js';
-import { habitConfig } from './habit.js';
 import { jobhuntConfig } from './jobhunt.js';
 import { workConfig } from './work.js';
 import { quitConfig } from './quit.js';
@@ -10,7 +9,6 @@ import { closureConfig } from './closure.js';
 
 export const MODE_CONFIGS: Record<EngineMode, ModeConfig> = {
   learning: learningConfig,
-  habit: habitConfig,
   jobhunt: jobhuntConfig,
   work: workConfig,
   quit: quitConfig,

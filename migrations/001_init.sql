@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT user_settings_avatar_mode_check CHECK (avatar_mode IN ('uploaded', 'messenger', 'default')),
   CONSTRAINT user_settings_product_mode_check CHECK (
-    product_mode IS NULL OR product_mode IN ('learning', 'habit', 'jobhunt', 'work', 'quit', 'startup', 'closure')
+    product_mode IS NULL OR product_mode IN ('learning', 'jobhunt', 'work', 'quit', 'startup', 'closure')
   )
 );
 

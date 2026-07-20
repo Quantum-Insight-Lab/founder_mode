@@ -5,7 +5,7 @@ export const startupConfig: ModeConfig = {
   label: 'Startup',
   picker: {
     title: 'Startup Mode',
-    description: 'Один рычаг на неделю: traction, продукт, fundraising — без тонущей в операционке.',
+    description: 'Один рычаг на неделю: первые пользователи, доработка продукта, привлечение инвестиций — без тонущей в операционке.',
   },
   onboarding: {
     msgs: [
@@ -29,7 +29,7 @@ export const startupConfig: ModeConfig = {
     afterRecapQuestion: 'Продолжим на следующей неделе?',
   },
   commitment: {
-    titleQuestion: 'Какой ОДИН рычаг двигаешь на этой неделе?',
+    titleQuestion: 'Какой ОДИН рычаг двигаешь на этой неделе? (рост, первые пользователи/продажи, доработка продукта под рынок, привлечение инвестиций)',
     followups: [
       { key: 'why_lever', text: 'Почему это сейчас главный рычаг, а не текучка?' },
       { key: 'success_metric', text: 'Как поймёшь, что сдвинул? (метрика или факт словами)' },

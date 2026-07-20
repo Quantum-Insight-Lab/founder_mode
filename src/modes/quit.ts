@@ -31,7 +31,7 @@ export const quitConfig: ModeConfig = {
   commitment: {
     titleQuestion: 'От чего отказываешься на этой неделе?',
     followups: [
-      { key: 'why_now', text: 'Зачем бросаешь именно сейчас?' },
+      { key: 'why_now', text: 'Почему именно сейчас бросаешь?' },
       { key: 'main_trigger', text: 'Когда тянет сильнее всего? (ситуация, время, эмоция)' },
       { key: 'replacement', text: 'Чем заменишь в момент тяги?' },
       { key: 'week_target', text: 'Цель недели: полный отказ или сокращение? (словами)' },

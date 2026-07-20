@@ -93,5 +93,10 @@ export const jobhuntConfig: ModeConfig = {
     '/recap — итог недели\n' +
     '/pivot — сменить цель\n' +
     '/settings — настройки',
-  card: { commitTitle: 'Цель недели', dailyTitle: 'Шаг', digestTitle: 'Recap' },
+  card: {
+    commitTitle: 'Цель недели',
+    dailyTitle: 'Шаг',
+    digestTitle: 'Recap',
+    switchTitle: 'Смена цели',
+  },
 };

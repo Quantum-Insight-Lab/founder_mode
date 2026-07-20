@@ -93,5 +93,10 @@ export const workConfig: ModeConfig = {
     '/recap — итог недели\n' +
     '/pivot — сменить задачу\n' +
     '/settings — настройки',
-  card: { commitTitle: 'Задача недели', dailyTitle: 'Прогресс', digestTitle: 'Recap' },
+  card: {
+    commitTitle: 'Задача недели',
+    dailyTitle: 'Прогресс',
+    digestTitle: 'Recap',
+    switchTitle: 'Смена задачи',
+  },
 };

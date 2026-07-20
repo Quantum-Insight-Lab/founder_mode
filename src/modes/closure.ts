@@ -93,5 +93,10 @@ export const closureConfig: ModeConfig = {
     '/recap — итог недели\n' +
     '/pivot — сменить дело\n' +
     '/settings — настройки',
-  card: { commitTitle: 'Дело недели', dailyTitle: 'Шаг', digestTitle: 'Recap' },
+  card: {
+    commitTitle: 'Дело недели',
+    dailyTitle: 'Шаг',
+    digestTitle: 'Recap',
+    switchTitle: 'Смена дела',
+  },
 };

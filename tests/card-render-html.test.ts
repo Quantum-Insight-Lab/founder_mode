@@ -14,7 +14,7 @@ const LONG_CARD_CONTENT = `Первый реальный выход в рыно�
 describe('buildCardHtmlFromTemplate', () => {
   it('replaces placeholders and escapes HTML in content', async () => {
     const html = await buildCardHtmlFromTemplate(
-      'fixation-card.html',
+      'declaration-card.html',
       {
         username: 'Test & <User>',
         content: 'Line1\n<script>x</script>',
@@ -23,15 +23,31 @@ describe('buildCardHtmlFromTemplate', () => {
         rhythmLine: 'Ритм: 7',
       },
       { designH: 1080, cardMinH: 1044 },
-      'fixation'
+      'declaration'
     );
     expect(html).toContain('Test &amp; &lt;User&gt;');
     expect(html).toContain('&lt;script&gt;');
     expect(html).not.toContain('{{USERNAME}}');
     expect(html).not.toContain('{{CONTENT}}');
+    expect(html).toContain('Приоритет недели');
     expect(html).toContain('Ритм: 7');
     expect(html).not.toContain('{{BADGE_IMAGE}}');
     expect(html).toContain('14:30');
+  });
+
+  it('fixation card keeps hardcoded daily title', async () => {
+    const html = await buildCardHtmlFromTemplate(
+      'fixation-card.html',
+      {
+        username: 'U',
+        content: 'step',
+        timeHHmm: '21:00',
+        avatarBackgroundImage: 'none',
+      },
+      { designH: 1080, cardMinH: 1044 },
+      'fixation'
+    );
+    expect(html).toContain('Фиксация дня');
   });
 
   it('inlines Roboto variable font as data URL', async () => {

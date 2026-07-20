@@ -93,5 +93,10 @@ export const learningConfig: ModeConfig = {
     '/recap — итог недели\n' +
     '/pivot — сменить навык\n' +
     '/settings — настройки',
-  card: { commitTitle: 'Навык недели', dailyTitle: 'Практика', digestTitle: 'Recap' },
+  card: {
+    commitTitle: 'Навык недели',
+    dailyTitle: 'Практика',
+    digestTitle: 'Recap',
+    switchTitle: 'Смена навыка',
+  },
 };

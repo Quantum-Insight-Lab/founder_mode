@@ -82,5 +82,5 @@ export interface ModeConfig {
     recapCallback: string;
   };
   idleReply: string;
-  card: { commitTitle: string; dailyTitle: string; digestTitle: string };
+  card: { commitTitle: string; dailyTitle: string; digestTitle: string; switchTitle: string };
 }

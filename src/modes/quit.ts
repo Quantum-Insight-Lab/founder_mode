@@ -94,5 +94,10 @@ export const quitConfig: ModeConfig = {
     '/recap — итог недели\n' +
     '/pivot — сменить фокус\n' +
     '/settings — настройки',
-  card: { commitTitle: 'Отказ недели', dailyTitle: 'Чек-ин', digestTitle: 'Recap' },
+  card: {
+    commitTitle: 'Отказ недели',
+    dailyTitle: 'Чек-ин',
+    digestTitle: 'Recap',
+    switchTitle: 'Смена фокуса',
+  },
 };

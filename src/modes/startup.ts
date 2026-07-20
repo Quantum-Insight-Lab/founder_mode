@@ -93,5 +93,10 @@ export const startupConfig: ModeConfig = {
     '/recap — итог недели\n' +
     '/pivot — сменить рычаг\n' +
     '/settings — настройки',
-  card: { commitTitle: 'Рычаг недели', dailyTitle: 'Фиксация', digestTitle: 'Recap' },
+  card: {
+    commitTitle: 'Рычаг недели',
+    dailyTitle: 'Фиксация',
+    digestTitle: 'Recap',
+    switchTitle: 'Смена рычага',
+  },
 };

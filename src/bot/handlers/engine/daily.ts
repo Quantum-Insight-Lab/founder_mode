@@ -10,6 +10,7 @@ import { instantToUserLocalDateString, parseTimezoneOffset } from '../../../doma
 import { getWeekId } from '../../../services/week-service.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
 import { getModeConfig } from '../../../modes/registry.js';
+import { markLogNotifyDone } from '../../../scheduler/notify-consumed.js';
 import type { HandlerDeps } from '../deps.js';
 
 const MOVEMENT_MARKUP: import('../../transport/types.js').InlineButton[][] = [
@@ -284,6 +285,7 @@ export async function handleLogMessage(
       const rawPost = isEdit
         ? await engineServices.step.updateStepManual(userId, mode, payload)
         : await engineServices.step.submitStep(userId, mode, payload);
+      await markLogNotifyDone(deps.pool, userId, payload.date);
       if (isEdit) await ctx.reply('❗️ Обновлено.');
       await sendLogCard(ctx, deps, userId, rawPost, [config.card.dailyTitle]);
       await ctx.reply(config.onboarding.afterLogHint);

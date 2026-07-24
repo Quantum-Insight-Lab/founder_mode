@@ -9,6 +9,7 @@ import { getUserLocalDate, getUserLocalTimeHHmm } from '../../../db/user-timezon
 import { getWeekId } from '../../../services/week-service.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
 import { getModeConfig } from '../../../modes/registry.js';
+import { markRecapNotifyDone } from '../../../scheduler/notify-consumed.js';
 import type { HandlerDeps } from '../deps.js';
 
 async function sendRecapCard(
@@ -105,13 +106,15 @@ async function runRecapGenerate(
   isEdit: boolean,
   isFirstRecap: boolean
 ): Promise<void> {
-  const { engineServices, replyWithServiceError } = deps;
+  const { engineServices, replyWithServiceError, pool } = deps;
   const userId = ctx.userId;
   try {
     await ctx.reply(config.digest.preparingText);
     const rawPost = isEdit
       ? await engineServices.digest.updateDigestManual(userId, mode)
       : await engineServices.digest.createDigest(userId, mode);
+    const weekId = getWeekId(await getUserLocalDate(userId, pool));
+    await markRecapNotifyDone(pool, userId, weekId);
     if (isEdit) await ctx.reply('❗️ Recap обновлён.');
     await sendRecapCard(ctx, deps, userId, rawPost, [config.card.digestTitle]);
     await ctx.reply(config.onboarding.afterRecapHint);

@@ -9,6 +9,7 @@ import { getUserLocalDate, getUserLocalTimeHHmm } from '../../../db/user-timezon
 import { getWeekId, getWeekStartEnd } from '../../../services/week-service.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
 import { getModeConfig } from '../../../modes/registry.js';
+import { markFocusNotifyDone } from '../../../scheduler/notify-consumed.js';
 import type { HandlerDeps } from '../deps.js';
 
 async function sendFocusCard(
@@ -170,6 +171,8 @@ export async function handleFocusMessage(
             title,
             answers: followupAnswers,
           });
+      const weekId = getWeekId(await getUserLocalDate(userId, deps.pool));
+      await markFocusNotifyDone(deps.pool, userId, weekId);
       if (isEdit) await ctx.reply('❗️ Обновлено.');
       await sendFocusCard(ctx, deps, userId, rawPost, [config.card.commitTitle]);
       await ctx.reply(config.onboarding.afterFocusHint);

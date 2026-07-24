@@ -1,6 +1,6 @@
 /**
  * Notification scheduler: sends "Время X" + [Продолжить] at configured day+time per user.
- * Also sends onboarding first-Sunday report invite (no notification settings required).
+ * Skips if the corresponding engine stage is already done for the week/day.
  */
 import cron from 'node-cron';
 import type { Pool } from 'pg';
@@ -14,7 +14,11 @@ import {
   matchesNotificationTimeInWindow,
 } from './notification-logic.js';
 import type { InlineButton } from '../bot/transport/types.js';
-import { hasEngineStepForLocalDate } from './step-notify-helpers.js';
+import {
+  hasEngineCommitmentForWeek,
+  hasEngineDigestForWeek,
+  hasEngineStepForLocalDate,
+} from './step-notify-helpers.js';
 
 const NOTIFY_WINDOW_MIN = 7;
 
@@ -113,13 +117,25 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           check(r.declaration_notify_day, r.declaration_notify_time) &&
           r.last_declaration_notify_week_id !== userWeekId
         ) {
-          await sendToUserChannels(declarationNotifyText, declarationButtons, async () => {
+          const hasFocus = await hasEngineCommitmentForWeek(pool, r.user_id, userMode, userWeekId);
+          if (hasFocus) {
             await pool.query(
               'UPDATE user_settings SET last_declaration_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
               [userWeekId, r.user_id]
             );
-            logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify declaration sent');
-          });
+            logger.debug(
+              { userId: r.user_id, weekId: userWeekId },
+              'Notify focus skipped (commitment already set this week)'
+            );
+          } else {
+            await sendToUserChannels(declarationNotifyText, declarationButtons, async () => {
+              await pool.query(
+                'UPDATE user_settings SET last_declaration_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
+                [userWeekId, r.user_id]
+              );
+              logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify declaration sent');
+            });
+          }
         }
         if (checkFixation() && r.last_fixation_notify_date !== userDateStr) {
           const hasStepToday = await hasEngineStepForLocalDate(pool, r.user_id, userMode, userDateStr);
@@ -140,13 +156,25 @@ export function initNotificationScheduler(pool: Pool, sender: NotificationSender
           }
         }
         if (check(r.report_notify_day, r.report_notify_time) && r.last_report_notify_week_id !== userWeekId) {
-          await sendToUserChannels(digestNotifyText, reportButtons, async () => {
+          const hasRecap = await hasEngineDigestForWeek(pool, r.user_id, userMode, userWeekId);
+          if (hasRecap) {
             await pool.query(
               'UPDATE user_settings SET last_report_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
               [userWeekId, r.user_id]
             );
-            logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify report sent');
-          });
+            logger.debug(
+              { userId: r.user_id, weekId: userWeekId },
+              'Notify recap skipped (digest already set this week)'
+            );
+          } else {
+            await sendToUserChannels(digestNotifyText, reportButtons, async () => {
+              await pool.query(
+                'UPDATE user_settings SET last_report_notify_week_id = $1, updated_at = NOW() WHERE user_id = $2',
+                [userWeekId, r.user_id]
+              );
+              logger.debug({ userId: r.user_id, weekId: userWeekId }, 'Notify report sent');
+            });
+          }
         }
       }
     } catch (err) {

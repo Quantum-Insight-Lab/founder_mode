@@ -7,7 +7,13 @@ import { getUserLocalTimeHHmm } from '../../../db/user-timezone.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
 import type { HandlerDeps } from '../deps.js';
 
-async function sendPivotCard(ctx: AppContext, deps: HandlerDeps, userId: string, rawPost: string): Promise<void> {
+async function sendPivotCard(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  userId: string,
+  rawPost: string,
+  extraHeadings: string[]
+): Promise<void> {
   const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'User';
@@ -16,7 +22,8 @@ async function sendPivotCard(ctx: AppContext, deps: HandlerDeps, userId: string,
   try {
     const png = await renderEngineCardPng(
       { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
-      'engine_pivot'
+      'engine_pivot',
+      extraHeadings
     );
     if (ctx.replyImage) {
       await ctx.replyImage(png, 'pivot.png');
@@ -64,7 +71,7 @@ export async function handlePivotMessage(
     try {
       await ctx.reply(config.switchFlow.preparingText);
       const rawPost = await engineServices.switch.createSwitch(userId, mode, answers);
-      await sendPivotCard(ctx, deps, userId, rawPost);
+      await sendPivotCard(ctx, deps, userId, rawPost, [config.card.switchTitle]);
     } catch (err) {
       logger.error({ err, userId, mode }, 'Engine pivot failed');
       ctx.alertError?.(err, 'switch', userId);

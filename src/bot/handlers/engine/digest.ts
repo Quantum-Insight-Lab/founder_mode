@@ -8,9 +8,16 @@ import { cardEditClicks } from '../../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../../db/user-timezone.js';
 import { getWeekId } from '../../../services/week-service.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
+import { getModeConfig } from '../../../modes/registry.js';
 import type { HandlerDeps } from '../deps.js';
 
-async function sendRecapCard(ctx: AppContext, deps: HandlerDeps, userId: string, rawPost: string): Promise<void> {
+async function sendRecapCard(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  userId: string,
+  rawPost: string,
+  extraHeadings: string[]
+): Promise<void> {
   const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'User';
@@ -19,7 +26,8 @@ async function sendRecapCard(ctx: AppContext, deps: HandlerDeps, userId: string,
   try {
     const png = await renderEngineCardPng(
       { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
-      'engine_recap'
+      'engine_recap',
+      extraHeadings
     );
     if (ctx.replyImage) {
       await ctx.replyImage(png, 'recap.png');
@@ -105,7 +113,7 @@ async function runRecapGenerate(
       ? await engineServices.digest.updateDigestManual(userId, mode)
       : await engineServices.digest.createDigest(userId, mode);
     if (isEdit) await ctx.reply('❗️ Recap обновлён.');
-    await sendRecapCard(ctx, deps, userId, rawPost);
+    await sendRecapCard(ctx, deps, userId, rawPost, [config.card.digestTitle]);
     await ctx.reply(config.onboarding.afterRecapHint);
     await maybeShowAfterRecapCta(ctx, deps, config, isFirstRecap);
   } catch (err) {
@@ -130,7 +138,7 @@ export async function handleRecapShow(ctx: AppContext, deps: HandlerDeps, mode: 
     await ctx.reply('Пусто.');
     return;
   }
-  await sendRecapCard(ctx, deps, userId, raw);
+  await sendRecapCard(ctx, deps, userId, raw, [getModeConfig(mode).card.digestTitle]);
 }
 
 export async function handleRecapEdit(

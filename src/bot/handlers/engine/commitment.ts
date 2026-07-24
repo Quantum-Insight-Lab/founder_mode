@@ -8,9 +8,16 @@ import { cardEditClicks } from '../../../observability/metrics.js';
 import { getUserLocalDate, getUserLocalTimeHHmm } from '../../../db/user-timezone.js';
 import { getWeekId, getWeekStartEnd } from '../../../services/week-service.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
+import { getModeConfig } from '../../../modes/registry.js';
 import type { HandlerDeps } from '../deps.js';
 
-async function sendFocusCard(ctx: AppContext, deps: HandlerDeps, userId: string, rawPost: string): Promise<void> {
+async function sendFocusCard(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  userId: string,
+  rawPost: string,
+  extraHeadings: string[]
+): Promise<void> {
   const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'User';
@@ -19,7 +26,8 @@ async function sendFocusCard(ctx: AppContext, deps: HandlerDeps, userId: string,
   try {
     const png = await renderEngineCardPng(
       { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
-      'engine_focus'
+      'engine_focus',
+      extraHeadings
     );
     if (ctx.replyImage) {
       await ctx.replyImage(png, 'focus.png');
@@ -80,7 +88,7 @@ export async function handleFocusShow(ctx: AppContext, deps: HandlerDeps, mode: 
     await ctx.reply('Пусто.');
     return;
   }
-  await sendFocusCard(ctx, deps, userId, raw);
+  await sendFocusCard(ctx, deps, userId, raw, [getModeConfig(mode).card.commitTitle]);
 }
 
 export async function handleFocusEdit(
@@ -163,7 +171,7 @@ export async function handleFocusMessage(
             answers: followupAnswers,
           });
       if (isEdit) await ctx.reply('❗️ Обновлено.');
-      await sendFocusCard(ctx, deps, userId, rawPost);
+      await sendFocusCard(ctx, deps, userId, rawPost, [config.card.commitTitle]);
       await ctx.reply(config.onboarding.afterFocusHint);
     } catch (err) {
       logger.error({ err, userId, mode }, 'Engine focus failed');

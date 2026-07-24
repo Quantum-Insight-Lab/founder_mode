@@ -9,6 +9,7 @@ import { getUserLocalDate, getUserLocalTimeHHmm } from '../../../db/user-timezon
 import { instantToUserLocalDateString, parseTimezoneOffset } from '../../../domain/timezone.js';
 import { getWeekId } from '../../../services/week-service.js';
 import { renderEngineCardPng } from '../../../services/engine/card-render.js';
+import { getModeConfig } from '../../../modes/registry.js';
 import type { HandlerDeps } from '../deps.js';
 
 const MOVEMENT_MARKUP: import('../../transport/types.js').InlineButton[][] = [
@@ -19,7 +20,13 @@ const MOVEMENT_MARKUP: import('../../transport/types.js').InlineButton[][] = [
   ],
 ];
 
-async function sendLogCard(ctx: AppContext, deps: HandlerDeps, userId: string, rawPost: string): Promise<void> {
+async function sendLogCard(
+  ctx: AppContext,
+  deps: HandlerDeps,
+  userId: string,
+  rawPost: string,
+  extraHeadings: string[]
+): Promise<void> {
   const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
   const timeHHmm = await getUserLocalTimeHHmm(userId, pool);
   const username = ctx.displayName?.trim() || 'User';
@@ -28,7 +35,8 @@ async function sendLogCard(ctx: AppContext, deps: HandlerDeps, userId: string, r
   try {
     const png = await renderEngineCardPng(
       { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
-      'engine_log'
+      'engine_log',
+      extraHeadings
     );
     if (ctx.replyImage) {
       await ctx.replyImage(png, 'log.png');
@@ -192,7 +200,7 @@ export async function handleLogShow(ctx: AppContext, deps: HandlerDeps, mode: En
     await ctx.reply('Пусто.');
     return;
   }
-  await sendLogCard(ctx, deps, userId, raw);
+  await sendLogCard(ctx, deps, userId, raw, [getModeConfig(mode).card.dailyTitle]);
 }
 
 export async function handleLogEdit(ctx: AppContext, deps: HandlerDeps, config: ModeConfig): Promise<void> {
@@ -277,7 +285,7 @@ export async function handleLogMessage(
         ? await engineServices.step.updateStepManual(userId, mode, payload)
         : await engineServices.step.submitStep(userId, mode, payload);
       if (isEdit) await ctx.reply('❗️ Обновлено.');
-      await sendLogCard(ctx, deps, userId, rawPost);
+      await sendLogCard(ctx, deps, userId, rawPost, [config.card.dailyTitle]);
       await ctx.reply(config.onboarding.afterLogHint);
     } catch (err) {
       logger.error({ err, userId, mode }, 'Engine log failed');

@@ -20,6 +20,7 @@ describe('buildCardHtmlFromTemplate', () => {
         content: 'Line1\n<script>x</script>',
         timeHHmm: '14:30',
         avatarBackgroundImage: 'none',
+        modeLabel: 'Startup Mode',
         rhythmLine: 'Ритм: 7',
       },
       { designH: 1080, cardMinH: 1044 },
@@ -29,10 +30,14 @@ describe('buildCardHtmlFromTemplate', () => {
     expect(html).toContain('&lt;script&gt;');
     expect(html).not.toContain('{{USERNAME}}');
     expect(html).not.toContain('{{CONTENT}}');
+    expect(html).not.toContain('{{MODE_LABEL}}');
+    expect(html).toContain('Startup Mode');
     expect(html).toContain('Приоритет недели');
     expect(html).toContain('Ритм: 7');
-    expect(html).not.toContain('{{BADGE_IMAGE}}');
-    expect(html).toContain('14:30');
+    // order: username, then mode, then badge
+    expect(html.indexOf('Test &amp;')).toBeLessThan(html.indexOf('Startup Mode'));
+    expect(html.indexOf('Startup Mode')).toBeLessThan(html.indexOf('class="badge"'));
+    expect(html).toContain('title-main');
   });
 
   it('fixation card keeps hardcoded daily title', async () => {

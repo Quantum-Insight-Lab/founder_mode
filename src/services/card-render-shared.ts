@@ -12,6 +12,8 @@ export type CardHtmlInput = {
   content: string;
   timeHHmm: string;
   avatarBackgroundImage: string;
+  /** Режим под именем (Startup, Learning, …). */
+  modeLabel?: string;
   /** «Ритм N» или пусто — скрывает левую часть подвала */
   rhythmLine?: string;
   /** Optional badge image (data URL). If not provided, default badge is used. */
@@ -106,6 +108,7 @@ export async function buildCardHtmlFromTemplate(
   const badgeImage = input.badgeImage ?? (await ensureEmbeddedDefaultBadge()) ?? '';
   const data: Record<string, string> = {
     USERNAME: input.username,
+    MODE_LABEL: input.modeLabel ?? '',
     CONTENT: input.content,
     TIME: input.timeHHmm,
     AVATAR_BG_IMAGE: input.avatarBackgroundImage,

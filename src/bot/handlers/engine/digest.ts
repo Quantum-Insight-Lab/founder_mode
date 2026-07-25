@@ -17,6 +17,7 @@ async function sendRecapCard(
   deps: HandlerDeps,
   userId: string,
   rawPost: string,
+  modeLabel: string,
   extraHeadings: string[]
 ): Promise<void> {
   const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
@@ -26,7 +27,7 @@ async function sendRecapCard(
   const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
     const png = await renderEngineCardPng(
-      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
+      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine, modeLabel },
       'engine_recap',
       extraHeadings
     );
@@ -116,7 +117,7 @@ async function runRecapGenerate(
     const weekId = getWeekId(await getUserLocalDate(userId, pool));
     await markRecapNotifyDone(pool, userId, weekId);
     if (isEdit) await ctx.reply('❗️ Recap обновлён.');
-    await sendRecapCard(ctx, deps, userId, rawPost, [config.card.digestTitle]);
+    await sendRecapCard(ctx, deps, userId, rawPost, `${config.label} Mode`, [config.card.digestTitle]);
     await ctx.reply(config.onboarding.afterRecapHint);
     await maybeShowAfterRecapCta(ctx, deps, config, isFirstRecap);
   } catch (err) {
@@ -141,7 +142,9 @@ export async function handleRecapShow(ctx: AppContext, deps: HandlerDeps, mode: 
     await ctx.reply('Пусто.');
     return;
   }
-  await sendRecapCard(ctx, deps, userId, raw, [getModeConfig(mode).card.digestTitle]);
+  await sendRecapCard(ctx, deps, userId, raw, `${getModeConfig(mode).label} Mode`, [
+    getModeConfig(mode).card.digestTitle,
+  ]);
 }
 
 export async function handleRecapEdit(

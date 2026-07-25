@@ -12,6 +12,7 @@ async function sendPivotCard(
   deps: HandlerDeps,
   userId: string,
   rawPost: string,
+  modeLabel: string,
   extraHeadings: string[]
 ): Promise<void> {
   const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
@@ -21,7 +22,7 @@ async function sendPivotCard(
   const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
     const png = await renderEngineCardPng(
-      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
+      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine, modeLabel },
       'engine_pivot',
       extraHeadings
     );
@@ -71,7 +72,7 @@ export async function handlePivotMessage(
     try {
       await ctx.reply(config.switchFlow.preparingText);
       const rawPost = await engineServices.switch.createSwitch(userId, mode, answers);
-      await sendPivotCard(ctx, deps, userId, rawPost, [config.card.switchTitle]);
+      await sendPivotCard(ctx, deps, userId, rawPost, `${config.label} Mode`, [config.card.switchTitle]);
     } catch (err) {
       logger.error({ err, userId, mode }, 'Engine pivot failed');
       ctx.alertError?.(err, 'switch', userId);

@@ -99,23 +99,43 @@
     .title-block {
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
       line-height: normal;
-      margin-top: 0px;
+      margin-top: 0;
+    }
+
+    .title-main {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-start;
+      gap: 0;
+      /* (avatar 180 − block ≈122) × 0.382 ≈ golden offset above center */
+      margin-top: calc((180px - (62px * 1.1 + 4px + 53px * 1.1)) * 0.382);
     }
 
     .title-block .username {
       font-family: "Roboto", sans-serif;
-      font-size: 52px;
+      font-size: 62px;
       font-weight: 500;
       color: #000;
-      margin: 16px 0 0 0;
+      margin: 0;
+      line-height: 1.1;
+    }
+
+    .title-block .mode-line {
+      font-family: "Roboto", sans-serif;
+      font-size: 53px;
+      font-weight: 400;
+      color: #6e6e6e;
+      margin: 4px 0 0 0;
+      line-height: 1.1;
     }
 
     .title-block .badge {
       width: 80px;
       height: 80px;
-      margin: 12px 0 0 0;
+      margin: 14px 0 0 0;
       border-radius: 16px;
       object-fit: contain;
       display: block;
@@ -190,7 +210,10 @@
           <div class="avatar" style="--avatar-bg-image: {{AVATAR_BG_IMAGE}};"></div>
 
           <div class="title-block">
-            <h1 class="username">{{USERNAME}}</h1>
+            <div class="title-main">
+              <h1 class="username">{{USERNAME}}</h1>
+              <p class="mode-line">{{MODE_LABEL}}</p>
+            </div>
             <img class="badge" style="display: {{BADGE_DISPLAY}};" src="{{BADGE_IMAGE}}" alt="badge" />
           </div>
         </div>

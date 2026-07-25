@@ -17,6 +17,7 @@ async function sendFocusCard(
   deps: HandlerDeps,
   userId: string,
   rawPost: string,
+  modeLabel: string,
   extraHeadings: string[]
 ): Promise<void> {
   const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
@@ -26,7 +27,7 @@ async function sendFocusCard(
   const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
     const png = await renderEngineCardPng(
-      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
+      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine, modeLabel },
       'engine_focus',
       extraHeadings
     );
@@ -89,7 +90,9 @@ export async function handleFocusShow(ctx: AppContext, deps: HandlerDeps, mode: 
     await ctx.reply('Пусто.');
     return;
   }
-  await sendFocusCard(ctx, deps, userId, raw, [getModeConfig(mode).card.commitTitle]);
+  await sendFocusCard(ctx, deps, userId, raw, `${getModeConfig(mode).label} Mode`, [
+    getModeConfig(mode).card.commitTitle,
+  ]);
 }
 
 export async function handleFocusEdit(
@@ -174,7 +177,7 @@ export async function handleFocusMessage(
       const weekId = getWeekId(await getUserLocalDate(userId, deps.pool));
       await markFocusNotifyDone(deps.pool, userId, weekId);
       if (isEdit) await ctx.reply('❗️ Обновлено.');
-      await sendFocusCard(ctx, deps, userId, rawPost, [config.card.commitTitle]);
+      await sendFocusCard(ctx, deps, userId, rawPost, `${config.label} Mode`, [config.card.commitTitle]);
       await ctx.reply(config.onboarding.afterFocusHint);
     } catch (err) {
       logger.error({ err, userId, mode }, 'Engine focus failed');

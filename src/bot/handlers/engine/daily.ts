@@ -26,6 +26,7 @@ async function sendLogCard(
   deps: HandlerDeps,
   userId: string,
   rawPost: string,
+  modeLabel: string,
   extraHeadings: string[]
 ): Promise<void> {
   const { handleLlmReply, pool, resolveAvatarBackgroundImage, getRhythmLineForCard } = deps;
@@ -35,7 +36,7 @@ async function sendLogCard(
   const rhythmLine = (await getRhythmLineForCard(userId)) ?? undefined;
   try {
     const png = await renderEngineCardPng(
-      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine },
+      { username, content: rawPost, timeHHmm, avatarBackgroundImage, rhythmLine, modeLabel },
       'engine_log',
       extraHeadings
     );
@@ -201,7 +202,9 @@ export async function handleLogShow(ctx: AppContext, deps: HandlerDeps, mode: En
     await ctx.reply('Пусто.');
     return;
   }
-  await sendLogCard(ctx, deps, userId, raw, [getModeConfig(mode).card.dailyTitle]);
+  await sendLogCard(ctx, deps, userId, raw, `${getModeConfig(mode).label} Mode`, [
+    getModeConfig(mode).card.dailyTitle,
+  ]);
 }
 
 export async function handleLogEdit(ctx: AppContext, deps: HandlerDeps, config: ModeConfig): Promise<void> {
@@ -287,7 +290,7 @@ export async function handleLogMessage(
         : await engineServices.step.submitStep(userId, mode, payload);
       await markLogNotifyDone(deps.pool, userId, payload.date);
       if (isEdit) await ctx.reply('❗️ Обновлено.');
-      await sendLogCard(ctx, deps, userId, rawPost, [config.card.dailyTitle]);
+      await sendLogCard(ctx, deps, userId, rawPost, `${config.label} Mode`, [config.card.dailyTitle]);
       await ctx.reply(config.onboarding.afterLogHint);
     } catch (err) {
       logger.error({ err, userId, mode }, 'Engine log failed');
